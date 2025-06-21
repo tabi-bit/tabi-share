@@ -1,0 +1,19 @@
+{
+  "name": "Tabishare",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+  
+  "features": {
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.13"
+    },
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "22"
+    },
+    "ghcr.io/itsmechlark/features/postgresql:1": {
+      "version": "16"
+    },
+    "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {}
+  },
+
+  "forwardPorts": [3000, 8000, 5432]
+}

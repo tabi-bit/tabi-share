@@ -1,0 +1,32 @@
+{
+  "recommendations": [
+    "ms-vsliveshare.vsliveshare",
+    "eamodio.gitlens",
+    "github.copilot",
+    "github.copilot-chat",
+    "github.github-vscode-theme",
+    "github.vscode-github-actions",
+    "github.vscode-pull-request-github",
+    "mangano-ito.git-branch-wise-session",
+    "ms-ceintl.vscode-language-pack-ja",
+    "gruntfuggly.todo-tree",
+    "hediet.vscode-drawio",
+    "anseki.vscode-color",
+    "ms-python.python",
+    "ms-python.vscode-pylance",
+    "meta.pyrefly",
+    "bierner.markdown-mermaid",
+    "davidanson.vscode-markdownlint",
+    "shd101wyy.markdown-preview-enhanced",
+    "bradlc.vscode-tailwindcss",
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "mylesmuphy.pretty-ts",
+    "yoavbles.pretty-ts-errors",
+    "oderwat.indent-rainbow",
+    "pkief.material-icon-theme",
+    "vitaliymaz.vscode-svg-previewer",
+    "streetsidesoftware.code-spell-checker",
+    "pixl-garden.bongocat"
+  ]
+}

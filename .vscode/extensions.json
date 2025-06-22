@@ -21,6 +21,7 @@
     "bradlc.vscode-tailwindcss",
     "dbaeumer.vscode-eslint",
     "esbenp.prettier-vscode",
+    "biomejs.biome",
     "mylesmuphy.pretty-ts",
     "yoavbles.pretty-ts-errors",
     "oderwat.indent-rainbow",

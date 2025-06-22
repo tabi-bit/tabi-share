@@ -1,0 +1,25 @@
+{
+  "name": "tabishare",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "dev": "concurrently --names \"FRONT,SERVER\" --prefix-colors \"cyan,yellow\" \"npm run dev:front\" \"npm run dev:server\"",
+    "dev:front": "cd front && npm run dev",
+    "dev:server": "cd server && python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload",
+    "install:all": "npm install && cd front && npm install",
+    "build": "cd front && npm run build",
+    "lint": "cd front && npm run lint",
+    "lint:fix": "cd front && npm run lint:fix",
+    "biome:check": "biome check .",
+    "biome:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
+    "check": "biome check . && cd front && npm run lint",
+    "fix": "biome check --write . && cd front && npm run lint:fix",
+    "preview": "cd front && npm run preview"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.0.6",
+    "concurrently": "^9.1.0"
+  }
+}

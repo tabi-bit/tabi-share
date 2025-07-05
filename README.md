@@ -8,6 +8,26 @@
 - **バックエンド**: Python + FastAPI (`server/`)
 - **開発環境**: devcontainer対応
 
+## セットアップ
+
+### 1. 依存関係のインストール
+
+```bash
+./scripts/setup.sh
+```
+
+### 2. 開発サーバーの起動
+
+```bash
+npm run dev
+```
+
+### 3. 各サービスのURL
+
+- **フロントエンド**: http://localhost:3000
+- **バックエンドAPI**: http://localhost:8000
+- **Storybook**: http://localhost:6006
+
 ## Windows/WSL環境でのSSH設定
 
 GitへのSSH接続ができない場合は、以下のスクリプトを実行してください：

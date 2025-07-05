@@ -3,9 +3,10 @@
   "private": true,
   "version": "0.0.0",
   "scripts": {
-    "dev": "concurrently --names \"FRONT,SERVER\" --prefix-colors \"cyan,yellow\" \"npm run dev:front\" \"npm run dev:server\"",
+    "dev": "concurrently --names \"FRONT,SERVER,STORYBOOK\" --prefix-colors \"cyan,yellow\" \"npm run dev:front\" \"npm run dev:server\" \"npm run dev:storybook\"",
     "dev:front": "cd front && npm run dev",
     "dev:server": "cd server && python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload",
+    "dev:storybook": "cd front && npm run storybook",
     "install:all": "npm install && cd front && npm install",
     "build": "cd front && npm run build",
     "lint": "cd front && npm run lint",

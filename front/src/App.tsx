@@ -70,6 +70,7 @@ function App() {
         <div className='bg-white rounded-lg shadow-md p-6 mb-8 border border-gray-200'>
           <h2 className='text-2xl font-semibold text-gray-800 mb-4 flex items-center'>🔧 API疎通確認</h2>
           <button
+            type='button'
             onClick={() => void testAPI()}
             disabled={loading}
             className={`px-6 py-2 rounded-lg font-medium transition-all duration-200 ${
@@ -123,6 +124,7 @@ function App() {
           )}
 
           <button
+            type='button'
             onClick={() => void fetchTrips()}
             disabled={loading}
             className={`px-6 py-2 rounded-lg font-medium transition-all duration-200 ${

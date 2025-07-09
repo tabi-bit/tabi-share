@@ -9,14 +9,10 @@
     "dev:storybook": "cd front && npm run storybook",
     "install:all": "npm install && cd front && npm install",
     "build": "cd front && npm run build",
-    "lint": "cd front && npm run lint",
-    "lint:fix": "cd front && npm run lint:fix",
-    "biome:check": "biome check .",
-    "biome:fix": "biome check --write .",
-    "format": "biome format --write .",
+    "lint:check": "biome check . && cd front && npm run lint",
+    "lint:fix": "biome check --write . && cd front && npm run lint:fix",
     "format:check": "biome format .",
-    "check": "biome check . && cd front && npm run lint",
-    "fix": "biome check --write . && cd front && npm run lint:fix",
+    "format:fix": "biome format --write .",
     "preview": "cd front && npm run preview"
   },
   "devDependencies": {

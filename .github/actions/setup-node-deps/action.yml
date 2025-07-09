@@ -1,0 +1,23 @@
+name: 'Setup Node.js and Dependencies'
+description: 'Common setup for Node.js, cache, and dependency installation'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+        cache: 'npm'
+    
+    - name: Restore dependencies cache
+      uses: actions/cache@v3
+      with:
+        path: |
+          node_modules
+          front/node_modules
+        key: ${{ runner.os }}-deps-${{ hashFiles('**/package-lock.json') }}
+    
+    - name: Install dependencies
+      run: npm run install:all
+      shell: bash

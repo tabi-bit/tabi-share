@@ -12,4 +12,4 @@ const preview: Preview = {
   },
 };
 
-export default preview;
+export { preview };

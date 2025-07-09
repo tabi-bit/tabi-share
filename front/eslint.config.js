@@ -4,6 +4,7 @@ import reactRefresh from 'eslint-plugin-react-refresh';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
+// biome-ignore lint/style/noDefaultExport: 'ESLint config is typically a default export'
 export default tseslint.config(
   { ignores: ['dist', 'node_modules'] },
   {

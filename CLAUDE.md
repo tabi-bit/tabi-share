@@ -21,3 +21,21 @@
 ## 共通コーディング規約
 
 [@docs/coding_standards.md](docs/coding_standards.md)
+
+## 開発コマンド
+
+### リンター・フォーマッター
+
+```bash
+# リンターチェック
+npm run lint:check
+
+# リンターエラーの自動修正
+npm run lint:fix
+
+# フォーマットチェック
+npm run format:check
+
+# フォーマットの自動修正
+npm run format:fix
+```

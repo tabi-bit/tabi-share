@@ -1,0 +1,20 @@
+{
+  "version": "0.2",
+  "language": "en,ja",
+  "words": [
+    "Tabishare",
+    "devcontainers",
+    "itsmechlark",
+    "anthropics",
+    "pylance",
+    "dbaeumer",
+    "bradlc",
+    "eamodio",
+    "uvicorn",
+    "Nonoctal",
+    "Tabi",
+    "autodocs"
+  ],
+  "ignoreWords": [],
+  "import": []
+}

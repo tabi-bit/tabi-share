@@ -31,7 +31,7 @@ const meta: Meta<typeof Button> = {
   },
 };
 
-export default meta;
+export { meta };
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {

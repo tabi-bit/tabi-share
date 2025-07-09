@@ -80,6 +80,7 @@
         "useYield": "error"
       },
       "style": {
+        "noDefaultExport": "error",
         "useConst": "error",
         "useDefaultParameterLast": "error",
         "useExponentiationOperator": "error",
@@ -93,7 +94,6 @@
         "noClassAssign": "error",
         "noCommentText": "error",
         "noCompareNegZero": "error",
-        "noConsole": "warn",
         "noDebugger": "error",
         "noDuplicateCase": "error",
         "noDuplicateClassMembers": "error",

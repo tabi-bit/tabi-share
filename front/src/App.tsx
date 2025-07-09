@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as string;
 
@@ -37,7 +37,7 @@ function App() {
     setLoading(false);
   };
 
-  const fetchTrips = async () => {
+  const fetchTrips = useCallback(async () => {
     setLoading(true);
     try {
       const response = await fetch(`${API_BASE_URL}/api/trips`);
@@ -51,11 +51,11 @@ function App() {
       console.error('旅行データ取得エラー:', errorMessage);
     }
     setLoading(false);
-  };
+  }, []);
 
   useEffect(() => {
     void fetchTrips();
-  }, []);
+  }, [fetchTrips]);
 
   return (
     <div className='min-h-screen bg-gradient-to-br from-blue-50 to-cyan-50 flex items-center justify-center p-4'>
@@ -141,4 +141,4 @@ function App() {
   );
 }
 
-export default App;
+export { App };

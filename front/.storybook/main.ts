@@ -1,5 +1,6 @@
 import path from 'node:path';
 import type { StorybookConfig } from '@storybook/react-vite';
+import tailwindcss from '@tailwindcss/postcss';
 import { mergeConfig } from 'vite';
 
 const config: StorybookConfig = {
@@ -24,8 +25,14 @@ const config: StorybookConfig = {
           '@': path.resolve(__dirname, '../src'),
         },
       },
+      css: {
+        postcss: {
+          plugins: [tailwindcss],
+        },
+      },
     });
   },
 };
 
-export { config };
+// biome-ignore lint/style/noDefaultExport: Storybook requires default export
+export default config;

@@ -1,6 +1,6 @@
+import path from 'node:path';
 import type { StorybookConfig } from '@storybook/react-vite';
 import { mergeConfig } from 'vite';
-import path from 'node:path';
 
 const config: StorybookConfig = {
   stories: ['../src/**/*.stories.@(js|jsx|mjs|ts|tsx)'],
@@ -28,4 +28,4 @@ const config: StorybookConfig = {
   },
 };
 
-export default config;
+export { config };

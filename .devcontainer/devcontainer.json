@@ -30,6 +30,6 @@
   },
   "remoteUser": "vscode",
   "mounts": ["source=claude-code-config,target=/home/vscode/.claude,type=volume"],
-  "postCreateCommand": "chown -R vscode:vscode ~",
+  "postCreateCommand": [".devcontainer/postCreateCommand.sh"],
   "forwardPorts": [3000, 8000, 5432]
 }

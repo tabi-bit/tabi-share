@@ -44,7 +44,7 @@ interface Props {
 
 export const UserProfile: React.FC<Props> = ({ userId, onUpdate }) => {
   const user = useUser(userId);
-  
+
   const handleUpdate = useCallback((updatedUser: User) => {
     // キャッシュ更新やサーバー同期はライブラリが管理
     onUpdate?.(updatedUser);

@@ -6,6 +6,9 @@
     "source.fixAll.eslint": "explicit",
     "source.organizeImports.biome": "never"
   },
+  "files.insertFinalNewline": true,
+  "files.trimFinalNewlines": true,
+  "files.trimTrailingWhitespace": true,
   "[javascript]": {
     "editor.defaultFormatter": "biomejs.biome"
   },

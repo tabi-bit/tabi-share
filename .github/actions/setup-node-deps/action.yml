@@ -9,15 +9,15 @@ runs:
       with:
         node-version: '22'
         cache: 'npm'
-    
+
     - name: Restore dependencies cache
       uses: actions/cache@v3
       with:
         path: |
           node_modules
-          front/node_modules
+          frontend/node_modules
         key: ${{ runner.os }}-deps-${{ hashFiles('**/package-lock.json') }}
-    
+
     - name: Install dependencies
       run: npm run install:all
       shell: bash

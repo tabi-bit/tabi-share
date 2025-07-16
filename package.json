@@ -4,16 +4,16 @@
   "version": "0.0.0",
   "scripts": {
     "dev": "concurrently --names \"FRONT,SERVER,STORYBOOK\" --prefix-colors \"cyan,yellow\" \"npm run dev:front\" \"npm run dev:server\" \"npm run dev:storybook\"",
-    "dev:front": "cd front && npm run dev",
+    "dev:front": "cd frontend && npm run dev",
     "dev:server": "cd server && python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload",
-    "dev:storybook": "cd front && npm run storybook",
-    "install:all": "npm install && cd front && npm install",
-    "build": "cd front && npm run build",
-    "lint:check": "biome check . && cd front && npm run lint",
-    "lint:fix": "biome check --write . && cd front && npm run lint:fix",
+    "dev:storybook": "cd frontend && npm run storybook",
+    "install:all": "npm ci && cd frontend && npm ci",
+    "build": "cd frontend && npm run build",
+    "lint:check": "biome check . && cd frontend && npm run lint",
+    "lint:fix": "biome check --write . && cd frontend && npm run lint:fix",
     "format:check": "biome format .",
     "format:fix": "biome format --write .",
-    "preview": "cd front && npm run preview"
+    "preview": "cd frontend && npm run preview"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.0.6",

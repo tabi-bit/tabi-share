@@ -4,7 +4,7 @@
 
 ## 開発環境
 
-- **フロントエンド**: React + TypeScript (`front/`)
+- **フロントエンド**: React + TypeScript (`frontend/`)
 - **バックエンド**: Python + FastAPI (`server/`)
 - **開発環境**: devcontainer対応
 

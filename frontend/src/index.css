@@ -7,9 +7,13 @@
   --card-foreground: oklch(0.1448 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.1448 0 0);
+  /* teal/500 */
   --primary: oklch(0.704 0.14 182.503);
+  /* white */
   --primary-foreground: oklch(1 0 0);
+  /* sky/500 */
   --secondary: oklch(0.685 0.169 237.323);
+  /* white */
   --secondary-foreground: oklch(1 0 0);
   --muted: oklch(0.97 0 0);
   --muted-foreground: oklch(0.556 0 0);
@@ -31,7 +35,7 @@
   --sidebar-primary-foreground: oklch(0.9851 0 0);
   --sidebar-accent: oklch(0.9702 0 0);
   --sidebar-accent-foreground: oklch(0.2046 0 0);
-  --sidebar-border: oklch(0.9219 0 0);
+  --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.709 0 0);
   --font-sans: Geist, sans-serif;
   --font-serif: Georgia, serif;

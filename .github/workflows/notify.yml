@@ -1,0 +1,109 @@
+name: Pull Request Discord Notification
+
+on:
+  # プルリクにコメントがついた時（イシューコメントも含む）
+  issue_comment:
+    types: [created]
+  # 差分にレビューコメントがついた時
+  pull_request_review_comment:
+    types: [created]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set Event Context Variables
+        id: set_context # ステップにIDを追加して、後続ステップで出力を参照できるようにする
+        run: |
+          # イベントの種類に応じて、コメント本文と関連情報を取得
+          COMMENT_BODY=""
+          NOTIFICATION_TITLE=""
+          NOTIFICATION_URL=""
+          NOTIFICATION_AUTHOR=""
+          NOTIFICATION_TYPE="" # 通知の種類を区別するための変数
+
+          if [ "${{ github.event_name }}" == "issue_comment" ]; then
+            # issue_comment イベントの場合
+            COMMENT_BODY="${{ github.event.comment.body }}"
+            NOTIFICATION_AUTHOR="${{ github.event.sender.login }}"
+
+            # コメントがプルリクエストに紐付いているかを確認
+            if [ -n "${{ github.event.issue.pull_request }}" ]; then
+              # プルリクエストへのコメントの場合
+              NOTIFICATION_TITLE="PR: ${{ github.event.issue.title }}"
+              NOTIFICATION_URL="${{ github.event.issue.html_url }}"
+              NOTIFICATION_TYPE="Pull Request Comment"
+            else
+              # 通常のIssueへのコメントの場合 (今回はスキップ)
+              echo "This is an issue comment, not a pull request comment. Skipping notification."
+              exit 0 # ワークフローをここで終了
+            fi
+          elif [ "${{ github.event_name }}" == "pull_request_review_comment" ]; then
+            # pull_request_review_comment イベントの場合
+            COMMENT_BODY="${{ github.event.comment.body }}"
+            NOTIFICATION_TITLE="PR Review: ${{ github.event.pull_request.title }}"
+            NOTIFICATION_URL="${{ github.event.comment.html_url }}" # レビューコメント自体のURL
+            NOTIFICATION_AUTHOR="${{ github.event.sender.login }}"
+            NOTIFICATION_TYPE="Pull Request Review Comment"
+          else
+            echo "Unsupported event type: ${{ github.event_name }}. Skipping notification."
+            exit 0
+          fi
+
+          # 取得した情報を次のステップで使えるように出力
+          echo "COMMENT_BODY=$COMMENT_BODY" >> "$GITHUB_OUTPUT"
+          echo "NOTIFICATION_TITLE=$NOTIFICATION_TITLE" >> "$GITHUB_OUTPUT"
+          echo "NOTIFICATION_URL=$NOTIFICATION_URL" >> "$GITHUB_OUTPUT"
+          echo "NOTIFICATION_AUTHOR=$NOTIFICATION_AUTHOR" >> "$GITHUB_OUTPUT"
+          echo "NOTIFICATION_TYPE=$NOTIFICATION_TYPE" >> "$GITHUB_OUTPUT"
+
+      - name: Check for Mentions and Send Discord Notification
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          DISCORD_MENTION_MEMBERS: ${{ secrets.DISCORD_MENTION_MEMBERS }}
+          # 前のステップで設定した変数を参照
+          COMMENT_BODY: ${{ steps.set_context.outputs.COMMENT_BODY }}
+          NOTIFICATION_TITLE: ${{ steps.set_context.outputs.NOTIFICATION_TITLE }}
+          NOTIFICATION_URL: ${{ steps.set_context.outputs.NOTIFICATION_URL }}
+          NOTIFICATION_AUTHOR: ${{ steps.set_context.outputs.NOTIFICATION_AUTHOR }}
+          NOTIFICATION_TYPE: ${{ steps.set_context.outputs.NOTIFICATION_TYPE }}
+        run: |
+          # Discordメンションマップを読み込む
+          MENTION_MAP=$(echo "$DISCORD_MENTION_MEMBERS")
+
+          # Discord用に変換されたメンションを格納する変数
+          DISCORD_MENTIONS=""
+
+          # コメント本文からメンションを検出
+          DETECTED_MENTIONS=$(echo "$COMMENT_BODY" | grep -oE '@[a-zA-Z0-9_-]+' | tr '\n' ' ')
+
+          if [ -n "$DETECTED_MENTIONS" ]; then # メンションが検出された場合
+            for github_mention in $DETECTED_MENTIONS; do
+              # 先頭の'@'を除去してGitHubのユーザー名/グループ名を取得
+              github_id="${github_mention#@}"
+
+              # jqを使ってマップから対応するDiscordユーザーIDを取得
+              discord_user_id=$(echo "$MENTION_MAP" | jq -r ".\"$github_id\" // \"\"")
+
+              if [ -n "$discord_user_id" ]; then # マップに対応するIDがあった場合
+                # Discordのユーザーメンション形式に変換
+                DISCORD_MENTIONS+="<@${discord_user_id}> "
+              else # マップに対応するIDがなかった場合、元のGitHubメンションをそのまま追加（またはスキップ）
+                DISCORD_MENTIONS+="${github_mention} (未登録) " # 未登録であることを示す例
+              fi
+            done
+
+            # 余分なスペースをトリム
+            DISCORD_MENTIONS=$(echo "$DISCORD_MENTIONS" | xargs)
+
+            MESSAGE="新しい${NOTIFICATION_TYPE}でメンションがあります！\n\n**タイトル:** ${NOTIFICATION_TITLE}\n**作成者:** ${NOTIFICATION_AUTHOR}\n**メンション:** ${DISCORD_MENTIONS}\n**URL:** ${NOTIFICATION_URL}\n\n**コメント内容:**\n${COMMENT_BODY}"
+          else
+            # メンションがない場合は、通常の通知メッセージ
+            MESSAGE="新しい${NOTIFICATION_TYPE}が作成されました！\n\n**タイトル:** ${NOTIFICATION_TITLE}\n**作成者:** ${NOTIFICATION_AUTHOR}\n**URL:** ${NOTIFICATION_URL}\n\n**コメント内容:**\n${COMMENT_BODY}"
+          fi
+
+          # Discordに送信するJSONペイロードを作成
+          PAYLOAD='{"content": "'"$MESSAGE"'"}'
+
+          # Discord Webhookに送信
+          curl -X POST -H "Content-Type: application/json" -d "$PAYLOAD" "$DISCORD_WEBHOOK_URL"

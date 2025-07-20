@@ -1,0 +1,34 @@
+name: Branch Protection
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  check-branch-policy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check branch policy for main
+        run: |
+          # PRのソースブランチを取得
+          SOURCE_BRANCH="${{ github.head_ref }}"
+          echo "ソースブランチ: $SOURCE_BRANCH"
+          
+          # mainブランチへのマージを許可するブランチパターン
+          if [[ "$SOURCE_BRANCH" == "develop" || "$SOURCE_BRANCH" =~ ^hotfix/ ]]; then
+            echo "✅ 許可されたブランチからのマージです"
+            echo "ブランチ: $SOURCE_BRANCH → main"
+          else
+            echo "❌ このブランチからmainへの直接マージは許可されていません"
+            echo "ブランチ: $SOURCE_BRANCH → main"
+            echo ""
+            echo "📋 正しい手順:"
+            echo "1. feature/* や bugfix/* ブランチは、まずdevelopブランチにマージしてください"
+            echo "2. developブランチから安定版をmainにマージしてください"
+            echo "3. 緊急修正の場合は、hotfix/* ブランチからmainに直接マージ可能です"
+            echo ""
+            echo "許可されるブランチパターン:"
+            echo "- develop"
+            echo "- hotfix/*"
+            exit 1
+          fi

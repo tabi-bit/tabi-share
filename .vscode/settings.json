@@ -40,5 +40,6 @@
   "tailwindCSS.experimental.classRegex": [
     ["cva\\(([^;]*)[\\);]", "[`'\"`]([^'\"`;]*)[`'\"`]"],
     ["(?:twMerge|twJoin)\\(([^;]*)[\\);]", "[`'\"`]([^'\"`;]*)[`'\"`]"]
-  ]
+  ],
+  "cSpell.words": ["shadcn"]
 }

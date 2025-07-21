@@ -1,10 +1,8 @@
 name: Pull Request Discord Notification
 
 on:
-  # プルリクにコメントがついた時（イシューコメントも含む）
   issue_comment:
     types: [created]
-  # 差分にレビューコメントがついた時
   pull_request_review_comment:
     types: [created]
 
@@ -13,14 +11,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Set Event Context Variables
-        id: set_context # ステップにIDを追加して、後続ステップで出力を参照できるようにする
+        id: set_context
         run: |
-          # イベントの種類に応じて、コメント本文と関連情報を取得
           COMMENT_BODY=""
           NOTIFICATION_TITLE=""
           NOTIFICATION_URL=""
           NOTIFICATION_AUTHOR=""
-          NOTIFICATION_TYPE="" # 通知の種類を区別するための変数
+          NOTIFICATION_TYPE=""
 
           if [ "${{ github.event_name }}" == "issue_comment" ]; then
             # issue_comment イベントの場合
@@ -34,9 +31,10 @@ jobs:
               NOTIFICATION_URL="${{ github.event.issue.html_url }}"
               NOTIFICATION_TYPE="Pull Request Comment"
             else
-              # 通常のIssueへのコメントの場合 (今回はスキップ)
-              echo "This is an issue comment, not a pull request comment. Skipping notification."
-              exit 0 # ワークフローをここで終了
+              # 通常のIssueへのコメントの場合
+              NOTIFICATION_TITLE="ISSUE: ${{ github.event.issue.title }}"
+              NOTIFICATION_URL="${{ github.event.issue.html_url }}"
+              NOTIFICATION_TYPE="Issue Comment"
             fi
           elif [ "${{ github.event_name }}" == "pull_request_review_comment" ]; then
             # pull_request_review_comment イベントの場合
@@ -61,7 +59,7 @@ jobs:
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           DISCORD_MENTION_MEMBERS: ${{ secrets.DISCORD_MENTION_MEMBERS }}
-          # 前のステップで設定した変数を参照
+
           COMMENT_BODY: ${{ steps.set_context.outputs.COMMENT_BODY }}
           NOTIFICATION_TITLE: ${{ steps.set_context.outputs.NOTIFICATION_TITLE }}
           NOTIFICATION_URL: ${{ steps.set_context.outputs.NOTIFICATION_URL }}

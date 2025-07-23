@@ -19,6 +19,8 @@ jobs:
           NOTIFICATION_AUTHOR=""
           NOTIFICATION_TYPE=""
 
+          DELIMITER="EOF"
+
           if [ "${{ github.event_name }}" == "issue_comment" ]; then
             # issue_comment イベントの場合
             COMMENT_BODY="${{ github.event.comment.body }}"
@@ -49,7 +51,9 @@ jobs:
           fi
 
           # 取得した情報を次のステップで使えるように出力
-          echo "COMMENT_BODY=$COMMENT_BODY" >> "$GITHUB_OUTPUT"
+          echo "COMMENT_BODY<<$DELIMITER" >> "$GITHUB_OUTPUT"
+          echo "$COMMENT_BODY" >> "$GITHUB_OUTPUT"
+          echo "$DELIMITER" >> "$GITHUB_OUTPUT"
           echo "NOTIFICATION_TITLE=$NOTIFICATION_TITLE" >> "$GITHUB_OUTPUT"
           echo "NOTIFICATION_URL=$NOTIFICATION_URL" >> "$GITHUB_OUTPUT"
           echo "NOTIFICATION_AUTHOR=$NOTIFICATION_AUTHOR" >> "$GITHUB_OUTPUT"

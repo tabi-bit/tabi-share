@@ -79,43 +79,35 @@ jobs:
           # コメント本文からメンションを検出
           DETECTED_MENTIONS=$(echo "$COMMENT_BODY" | grep -oE '@[a-zA-Z0-9_-]+' | tr '\n' ' ')
 
-          if [ -n "$DETECTED_MENTIONS" ]; then # メンションが検出された場合
-            for github_mention in $DETECTED_MENTIONS; do
-              # 先頭の'@'を除去してGitHubのユーザー名/グループ名を取得
-              github_id="${github_mention#@}"
-
-              # jqを使ってマップから対応するDiscordユーザーIDを取得
-              discord_user_id=$(echo "$MENTION_MAP" | jq -r ".\"$github_id\" // \"\"")
-
-              if [ -n "$discord_user_id" ]; then # マップに対応するIDがあった場合
-                # Discordのユーザーメンション形式に変換
-                DISCORD_MENTIONS+="<@${discord_user_id}> "
-              else # マップに対応するIDがなかった場合、元のGitHubメンションをそのまま追加（またはスキップ）
-                DISCORD_MENTIONS+="${github_mention} (未登録) " # 未登録であることを示す例
-              fi
-            done
-
-            # 余分なスペースをトリム
-            DISCORD_MENTIONS=$(echo "$DISCORD_MENTIONS" | xargs)
-
-            printf -v MESSAGE "新しい%sでメンションがあります！\n\n**タイトル:** %s\n**作成者:** %s\n**メンション:** %s\n**URL:** %s\n\n**コメント内容:**\n%s" \
-              "$NOTIFICATION_TYPE" \
-              "$NOTIFICATION_TITLE" \
-              "$NOTIFICATION_AUTHOR" \
-              "$DISCORD_MENTIONS" \
-              "$NOTIFICATION_URL" \
-              "$FORMATTED_COMMENT_BODY"
-          else
-            printf -v MESSAGE "新しい%sが作成されました！\n\n**タイトル:** %s\n**作成者:** %s\n**URL:** %s\n\n**コメント内容:**\n%s" \
-              "$NOTIFICATION_TYPE" \
-              "$NOTIFICATION_TITLE" \
-              "$NOTIFICATION_AUTHOR" \
-              "$NOTIFICATION_URL" \
-              "$FORMATTED_COMMENT_BODY"
+          if [ -z "$DETECTED_MENTIONS" ]; then
+            echo "メンションが検出されませんでした。Discord通知をスキップします。"
+            exit 0
           fi
 
-          # Discordに送信するJSONペイロードを作成
+          FORMATTED_COMMENT_BODY=$(echo "$COMMENT_BODY" | sed -E ':a;N;$!ba;s/\n/\n\n/g')
+
+          for github_mention in $DETECTED_MENTIONS; do
+            github_id="${github_mention#@}"
+
+            discord_user_id=$(echo "$MENTION_MAP" | jq -r ".\"$github_id\" // \"\"")
+
+            if [ -n "$discord_user_id" ]; then
+              DISCORD_MENTIONS+="<@${discord_user_id}> "
+            else
+              DISCORD_MENTIONS+="${github_mention} (未登録) "
+            fi
+          done
+
+          DISCORD_MENTIONS=$(echo "$DISCORD_MENTIONS" | xargs)
+
+          printf -v MESSAGE "新しい%sでメンションがあります！\n\n**タイトル:** %s\n**作成者:** %s\n**メンション:** %s\n**URL:** %s\n\n**コメント内容:**\n%s" \
+            "$NOTIFICATION_TYPE" \
+            "$NOTIFICATION_TITLE" \
+            "$NOTIFICATION_AUTHOR" \
+            "$DISCORD_MENTIONS" \
+            "$NOTIFICATION_URL" \
+            "$FORMATTED_COMMENT_BODY"
+
           PAYLOAD=$(jq -n --arg msg "$MESSAGE" '{"content": $msg}')
 
-          # Discord Webhookに送信
           curl -X POST -H "Content-Type: application/json" -d "$PAYLOAD" "$DISCORD_WEBHOOK_URL"

@@ -105,7 +105,7 @@ jobs:
           fi
 
           # Discordに送信するJSONペイロードを作成
-          PAYLOAD='{"content": "'"$MESSAGE"'"}'
+          PAYLOAD=$(jq -n --arg msg "$MESSAGE" '{"content": $msg}')
 
           # Discord Webhookに送信
           curl -X POST -H "Content-Type: application/json" -d "$PAYLOAD" "$DISCORD_WEBHOOK_URL"

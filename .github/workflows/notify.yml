@@ -98,10 +98,20 @@ jobs:
             # 余分なスペースをトリム
             DISCORD_MENTIONS=$(echo "$DISCORD_MENTIONS" | xargs)
 
-            MESSAGE="新しい${NOTIFICATION_TYPE}でメンションがあります！\n\n**タイトル:** ${NOTIFICATION_TITLE}\n**作成者:** ${NOTIFICATION_AUTHOR}\n**メンション:** ${DISCORD_MENTIONS}\n**URL:** ${NOTIFICATION_URL}\n\n**コメント内容:**\n${COMMENT_BODY}"
+            printf -v MESSAGE "新しい%sでメンションがあります！\n\n**タイトル:** %s\n**作成者:** %s\n**メンション:** %s\n**URL:** %s\n\n**コメント内容:**\n%s" \
+              "$NOTIFICATION_TYPE" \
+              "$NOTIFICATION_TITLE" \
+              "$NOTIFICATION_AUTHOR" \
+              "$DISCORD_MENTIONS" \
+              "$NOTIFICATION_URL" \
+              "$FORMATTED_COMMENT_BODY"
           else
-            # メンションがない場合は、通常の通知メッセージ
-            MESSAGE="新しい${NOTIFICATION_TYPE}が作成されました！\n\n**タイトル:** ${NOTIFICATION_TITLE}\n**作成者:** ${NOTIFICATION_AUTHOR}\n**URL:** ${NOTIFICATION_URL}\n\n**コメント内容:**\n${COMMENT_BODY}"
+            printf -v MESSAGE "新しい%sが作成されました！\n\n**タイトル:** %s\n**作成者:** %s\n**URL:** %s\n\n**コメント内容:**\n%s" \
+              "$NOTIFICATION_TYPE" \
+              "$NOTIFICATION_TITLE" \
+              "$NOTIFICATION_AUTHOR" \
+              "$NOTIFICATION_URL" \
+              "$FORMATTED_COMMENT_BODY"
           fi
 
           # Discordに送信するJSONペイロードを作成

@@ -34,6 +34,16 @@
     "enabled": true,
     "rules": {
       "recommended": true,
+      "nursery": {
+        "useSortedClasses": {
+          "level": "error",
+          "fix": "safe",
+          "options": {
+            "attributes": ["classList", "className"],
+            "functions": ["cva"]
+          }
+        }
+      },
       "complexity": {
         "noExcessiveCognitiveComplexity": "warn",
         "noExtraBooleanCast": "error",

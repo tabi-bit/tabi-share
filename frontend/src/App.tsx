@@ -58,25 +58,25 @@ function App() {
   }, [fetchTrips]);
 
   return (
-    <div className='min-h-screen bg-gradient-to-br from-blue-50 to-cyan-50 flex items-center justify-center p-4'>
-      <div className='w-full max-w-2xl mx-auto'>
+    <div className='flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-cyan-50 p-4'>
+      <div className='mx-auto w-full max-w-2xl'>
         {/* ヘッダー */}
-        <div className='text-center mb-8'>
-          <h1 className='text-4xl font-bold text-gray-800 mb-2'>🚗 TabiShare</h1>
-          <p className='text-lg text-gray-600'>車旅行計画アプリ</p>
+        <div className='mb-8 text-center'>
+          <h1 className='mb-2 font-bold text-4xl text-gray-800'>🚗 TabiShare</h1>
+          <p className='text-gray-600 text-lg'>車旅行計画アプリ</p>
         </div>
 
         {/* API疎通確認セクション */}
-        <div className='bg-white rounded-lg shadow-md p-6 mb-8 border border-gray-200'>
-          <h2 className='text-2xl font-semibold text-gray-800 mb-4 flex items-center'>🔧 API疎通確認</h2>
+        <div className='mb-8 rounded-lg border border-gray-200 bg-white p-6 shadow-md'>
+          <h2 className='mb-4 flex items-center font-semibold text-2xl text-gray-800'>🔧 API疎通確認</h2>
           <button
             type='button'
             onClick={() => void testAPI()}
             disabled={loading}
-            className={`px-6 py-2 rounded-lg font-medium transition-all duration-200 ${
+            className={`rounded-lg px-6 py-2 font-medium transition-all duration-200 ${
               loading
-                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                : 'bg-blue-500 hover:bg-blue-600 text-white shadow-sm hover:shadow-md'
+                ? 'cursor-not-allowed bg-gray-300 text-gray-500'
+                : 'bg-blue-500 text-white shadow-sm hover:bg-blue-600 hover:shadow-md'
             }`}
           >
             {loading ? '確認中...' : 'API疎通テスト'}
@@ -84,10 +84,10 @@ function App() {
           {testResult && (
             <div className='mt-4'>
               <p
-                className={`px-4 py-2 rounded-md ${
+                className={`rounded-md px-4 py-2 ${
                   testResult.includes('エラー')
-                    ? 'bg-red-100 text-red-800 border border-red-200'
-                    : 'bg-green-100 text-green-800 border border-green-200'
+                    ? 'border border-red-200 bg-red-100 text-red-800'
+                    : 'border border-green-200 bg-green-100 text-green-800'
                 }`}
               >
                 {testResult}
@@ -97,29 +97,29 @@ function App() {
         </div>
 
         {/* 旅行一覧セクション */}
-        <div className='bg-white rounded-lg shadow-md p-6 border border-gray-200'>
-          <h2 className='text-2xl font-semibold text-gray-800 mb-4 flex items-center'>✈️ 旅行一覧</h2>
+        <div className='rounded-lg border border-gray-200 bg-white p-6 shadow-md'>
+          <h2 className='mb-4 flex items-center font-semibold text-2xl text-gray-800'>✈️ 旅行一覧</h2>
 
           {loading ? (
             <div className='flex items-center justify-center py-8'>
-              <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500'></div>
+              <div className='h-8 w-8 animate-spin rounded-full border-blue-500 border-b-2'></div>
               <span className='ml-3 text-gray-600'>読み込み中...</span>
             </div>
           ) : trips.length > 0 ? (
-            <div className='space-y-4 mb-6'>
+            <div className='mb-6 space-y-4'>
               {trips.map(trip => (
                 <div
                   key={trip.id}
-                  className='bg-gradient-to-r from-cyan-50 to-blue-50 rounded-lg p-4 border border-cyan-200 hover:shadow-sm transition-shadow duration-200'
+                  className='rounded-lg border border-cyan-200 bg-gradient-to-r from-cyan-50 to-blue-50 p-4 transition-shadow duration-200 hover:shadow-sm'
                 >
-                  <h3 className='text-lg font-semibold text-gray-800 mb-1'>{trip.name}</h3>
+                  <h3 className='mb-1 font-semibold text-gray-800 text-lg'>{trip.name}</h3>
                   <p className='text-gray-600'>{trip.description}</p>
                 </div>
               ))}
             </div>
           ) : (
-            <div className='text-center py-8'>
-              <p className='text-gray-500 mb-4'>旅行データがありません</p>
+            <div className='py-8 text-center'>
+              <p className='mb-4 text-gray-500'>旅行データがありません</p>
             </div>
           )}
 
@@ -127,10 +127,10 @@ function App() {
             type='button'
             onClick={() => void fetchTrips()}
             disabled={loading}
-            className={`px-6 py-2 rounded-lg font-medium transition-all duration-200 ${
+            className={`rounded-lg px-6 py-2 font-medium transition-all duration-200 ${
               loading
-                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                : 'bg-cyan-500 hover:bg-cyan-600 text-white shadow-sm hover:shadow-md'
+                ? 'cursor-not-allowed bg-gray-300 text-gray-500'
+                : 'bg-cyan-500 text-white shadow-sm hover:bg-cyan-600 hover:shadow-md'
             }`}
           >
             旅行データを再取得

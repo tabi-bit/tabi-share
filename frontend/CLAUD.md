@@ -85,6 +85,18 @@ export const UserProfile: React.FC<Props> = ({ userId, onUpdate }) => {
 </div>
 ```
 
+### カスタムフォントサイズ
+- **text-*px**: 指定されたpx値を--spacingでremに変換
+- **利用可能サイズ**: 10, 11, 12, 13, 14, 15, 16, 18, 20, 24, 28, 32, 40, 48, 56, 64, 128px
+- **例**: `text-16px`, `text-24px`, `text-32px`
+
+```html
+<h1 className="text-32px font-bold">大見出し</h1>
+<h2 className="text-24px font-semibold">中見出し</h2>
+<p className="text-16px">本文テキスト</p>
+<small className="text-12px text-gray-600">キャプション</small>
+```
+
 ## パフォーマンス最適化
 
 ```typescript

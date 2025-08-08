@@ -11,9 +11,6 @@
     },
     "ghcr.io/itsmechlark/features/postgresql:1": {
       "version": "16"
-    },
-    "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {
-      "installAsUser": true
     }
   },
   "customizations": {

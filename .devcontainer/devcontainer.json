@@ -26,7 +26,10 @@
     }
   },
   "remoteUser": "vscode",
-  "mounts": ["source=claude-code-config,target=/home/vscode/.claude,type=volume"],
+  "mounts": [
+    "source=claude-code-config,target=/home/vscode/.claude,type=volume",
+    "source=gemini-cli-config,target=/home/vscode/.gemini,type=volume"
+  ],
   "postCreateCommand": [".devcontainer/postCreateCommand.sh"],
   "forwardPorts": [3000, 8000, 5432]
 }

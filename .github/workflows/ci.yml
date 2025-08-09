@@ -13,10 +13,10 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Setup Node.js and Dependencies
         uses: ./.github/actions/setup-node-deps
-      
+
       - name: Format check
         run: npm run format:check
 
@@ -25,10 +25,10 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Setup Node.js and Dependencies
         uses: ./.github/actions/setup-node-deps
-      
+
       - name: Lint check
         run: npm run lint:check
 
@@ -38,9 +38,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Setup Node.js and Dependencies
         uses: ./.github/actions/setup-node-deps
-      
+
       - name: Build
         run: npm run build

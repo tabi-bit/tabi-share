@@ -28,6 +28,23 @@ npm run dev
 - **バックエンドAPI**: http://localhost:8000
 - **Storybook**: http://localhost:6006
 
+## アーキテクチャ
+
+本アプリケーションは、フロントエンドとバックエンドが分離した構成を採用しています。
+
+-   **フロントエンド**: `frontend/`
+    -   React (Vite) を使用したSPA（Single Page Application）です。
+    -   UIコンポーネントは `shadcn/ui` と Storybook で管理されています。
+    -   詳細は [frontend/README.md](frontend/README.md) を参照してください。
+-   **バックエンド**: `server/`
+    -   Python (FastAPI) を使用したAPIサーバーです。
+    -   詳細は [server/README.md](server/README.md) を参照してください。
+
+## ドキュメント
+
+-   [**要件定義書** (docs/requirements.md)](docs/requirements.md): アプリケーションの機能要件や技術選定について記載しています。
+-   [**コーディング規約** (docs/coding_standards.md)](docs/coding_standards.md): コードの品質を保つための規約です。
+
 ## Windows/WSL環境でのSSH設定
 
 GitへのSSH接続ができない場合は、以下のスクリプトを実行してください：

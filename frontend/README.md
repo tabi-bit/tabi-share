@@ -1,54 +1,50 @@
-# React + TypeScript + Vite
+# Frontend Application
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This directory contains the frontend for the tabishare application, built with [React](https://react.dev/), [TypeScript](https://www.typescriptlang.org/), and [Vite](https://vitejs.dev/).
 
-Currently, two official plugins are available:
+## Development
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+All commands should be run from the **root** of the repository.
 
-## Expanding the ESLint configuration
+### Running the Development Server
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+To start the local development server with hot-reloading, run:
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-});
+```bash
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+The application will be available at `http://localhost:3000`.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x';
-import reactDom from 'eslint-plugin-react-dom';
+### Running Storybook
 
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-});
+We use [Storybook](https://storybook.js.org/) to develop and document UI components in isolation. To run Storybook, use:
+
+```bash
+npm run storybook
 ```
+
+Storybook will be available at `http://localhost:6006`.
+
+## Directory Structure
+
+-   `src/`: Main source code directory.
+    -   `components/`: Reusable UI components.
+        -   `ui/`: Components from [shadcn/ui](https://ui.shadcn.com/).
+    -   `lib/`: Utility functions and helper scripts.
+    -   `assets/`: Static assets like images and SVGs.
+    -   `App.tsx`: The main application component.
+    -   `main.tsx`: The entry point of the application.
+-   `tests/`: Contains all the test files.
+-   `public/`: Static assets that are not processed by Vite.
+-   `.storybook/`: Storybook configuration files.
+
+## Key Libraries
+
+-   **UI Framework**: [React](https://react.dev/)
+-   **Build Tool**: [Vite](https://vitejs.dev/)
+-   **UI Components**: [shadcn/ui](https://ui.shadcn.com/) & [Radix UI](https://www.radix-ui.com/)
+-   **Styling**: [Tailwind CSS](https://tailwindcss.com/)
+-   **Drag and Drop**: [@dnd-kit](https://dndkit.com/)
+-   **Linting**: [ESLint](https://eslint.org/)
+-   **Formatting**: [Prettier](https://prettier.io/)

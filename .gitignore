@@ -49,3 +49,6 @@ build/
 # Logs
 logs/
 *.log
+
+# Serena MCP
+.serena

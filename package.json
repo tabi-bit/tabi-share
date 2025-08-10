@@ -9,15 +9,14 @@
     "dev:storybook": "cd frontend && npm run storybook",
     "install:all": "npm ci && cd frontend && npm ci",
     "build": "cd frontend && npm run build",
-    "lint:check": "biome check . && cd frontend && npm run lint",
-    "lint:fix": "biome check --write . && cd frontend && npm run lint:fix",
-    "format:check": "biome format .",
-    "format:fix": "biome format --write .",
+    "lint:check": "cd frontend && npm run lint:check",
+    "lint:fix": "cd frontend && npm run lint:fix",
+    "format:check": "cd frontend && npm run format:check",
+    "format:fix": "cd frontend && npm run format:fix",
     "preview": "cd frontend && npm run preview",
     "db:connect": "npx dotenvx run -- sh -c 'psql -U $POSTGRES_USER -h $POSTGRES_HOST -d $POSTGRES_DB'"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.0.6",
     "@dotenvx/dotenvx": "^1.48.4",
     "concurrently": "^9.1.0"
   }

@@ -4,7 +4,7 @@
 # --- 権限設定 ---
 # ホームディレクトリ全体の所有権をコンテナ内の 'vscode' ユーザーに設定する
 echo "🔧 Setting ownership of home directory..."
-chown -R vscode:vscode ~
+sudo chown -R vscode:vscode ~
 
 # 'vscode' ユーザーがパスワード入力なしで 'sudo' コマンドを実行できるように設定する
 # これにより、コンテナ内でのパッケージインストールなどが対話なしで実行可能になる
@@ -38,5 +38,12 @@ sh .devcontainer/setup_database.sh
 # アプリケーション固有のセットアップ（依存関係のインストール、マイグレーションなど）を実行する
 echo "🚀 Starting application setup..."
 ./scripts/setup.sh
+# Claude Code
+npm install -g @anthropic-ai/claude-code
+uv tool install claude-monitor
+claude mcp add serena -- uvx --from git+https://github.com/oraios/serena serena start-mcp-server --context ide-assistant --project $(pwd)
+
+# Gemini CLI
+npm install -g @google/gemini-cli
 
 echo "🎉 All setup steps completed successfully!"

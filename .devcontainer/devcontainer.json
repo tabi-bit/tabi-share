@@ -14,9 +14,6 @@
     "ghcr.io/itsmechlark/features/postgresql:1": {
       "version": "16"
     },
-    "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {
-      "installAsUser": true
-    },
     "ghcr.io/va-h/devcontainers-features/uv:1": {}
   },
   "customizations": {
@@ -44,7 +41,10 @@
     }
   },
   "remoteUser": "vscode",
-  "mounts": ["source=claude-code-config,target=/home/vscode/.claude,type=volume"],
+  "mounts": [
+    "source=claude-code-config,target=/home/vscode/.claude,type=volume",
+    "source=gemini-cli-config,target=/home/vscode/.gemini,type=volume"
+  ],
   "postCreateCommand": [".devcontainer/postCreateCommand.sh"],
   "forwardPorts": [3000, 8000, 5432]
 }

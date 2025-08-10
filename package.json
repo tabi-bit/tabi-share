@@ -17,6 +17,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.0.6",
+    "@dotenvx/dotenvx": "^1.48.4",
     "concurrently": "^9.1.0"
   }
 }

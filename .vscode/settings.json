@@ -41,5 +41,6 @@
     ["cva\\(([^;]*)[\\);]", "[`'\"`]([^'\"`;]*)[`'\"`]"],
     ["(?:twMerge|twJoin)\\(([^;]*)[\\);]", "[`'\"`]([^'\"`;]*)[`'\"`]"]
   ],
-  "cSpell.words": ["shadcn"]
+  "cSpell.words": ["shadcn"],
+  "remote.localPortHost": "allInterfaces",
 }

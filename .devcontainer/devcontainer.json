@@ -32,5 +32,19 @@
     "source=gemini-cli-config,target=/home/vscode/.gemini,type=volume"
   ],
   "postCreateCommand": [".devcontainer/postCreateCommand.sh"],
-  "forwardPorts": [3000, 8000, 5432]
+  "forwardPorts": [3000, 8000, 5432, 5173],
+  "portsAttributes": {
+    "3000": {
+      "label": "Frontend",
+    },
+    "8000": {
+      "label": "Backend",
+    },
+    "5432": {
+      "label": "PostgreSQL",
+    },
+    "5173": {
+      "label": "Vite",
+    }
+  }
 }

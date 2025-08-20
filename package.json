@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "concurrently --names \"FRONT,SERVER,STORYBOOK\" --prefix-colors \"cyan,yellow\" \"npm run dev:front\" \"npm run dev:server\" \"npm run dev:storybook\"",
     "dev:front": "cd frontend && npm run dev",
-    "dev:server": "cd server && python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload",
+    "dev:server": "cd server && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload",
     "dev:storybook": "cd frontend && npm run storybook",
     "install:all": "npm ci && cd frontend && npm ci",
     "build": "cd frontend && npm run build",
@@ -13,9 +13,11 @@
     "lint:fix": "cd frontend && npm run lint:fix",
     "format:check": "cd frontend && npm run format:check",
     "format:fix": "cd frontend && npm run format:fix",
-    "preview": "cd frontend && npm run preview"
+    "preview": "cd frontend && npm run preview",
+    "db:connect": "npx dotenvx run -- sh -c 'psql -U $POSTGRES_USER -h $POSTGRES_HOST -d $POSTGRES_DB'"
   },
   "devDependencies": {
+    "@dotenvx/dotenvx": "^1.48.4",
     "concurrently": "^9.1.0"
   }
 }

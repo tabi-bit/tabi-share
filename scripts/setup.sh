@@ -1,5 +1,6 @@
 #!/bin/bash
 
+
 # TabiShare開発環境セットアップスクリプト
 echo "🚀 TabiShare開発環境をセットアップしています..."
 
@@ -20,7 +21,7 @@ npm run install:all
 # バックエンドディレクトリのPython依存関係をインストール
 echo "🐍 バックエンドのPython依存関係をインストール中..."
 cd "$ROOT_DIR/server"
-pip install -r requirements.txt
+uv sync
 
 echo "✅ セットアップが完了しました！"
 echo ""

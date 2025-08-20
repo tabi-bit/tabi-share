@@ -1,0 +1,27 @@
+[project]
+name = "server"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "alembic>=1.16.4",
+    "bcrypt>=4.3.0",
+    "fastapi>=0.116.1",
+    "passlib>=1.7.4",
+    "psycopg2-binary>=2.9.10",
+    "pydantic[email]>=2.11.7",
+    "python-dotenv>=1.1.1",
+    "sqlalchemy>=2.0.42",
+    "uvicorn>=0.35.0",
+]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "mypy>=1.17.1",
+    "pytest>=8.4.1",
+    "pytest-asyncio>=1.1.0",
+    "ruff>=0.12.7",
+    "types-passlib>=1.7.7.20250602",
+]

@@ -43,4 +43,14 @@
   ],
   "cSpell.words": ["shadcn"],
   "remote.localPortHost": "allInterfaces",
+  "editor.rulers": [88],
+  "python-envs.defaultEnvManager": "ms-python.python:system",
+  "python-envs.pythonProjects": [],
+  "python.analysis.extraPaths": [
+    "./server"
+  ],
+  "python.testing.unittestEnabled": false,
+  "python.testing.pytestEnabled": true,
+  "python.testing.pytestArgs": ["./server/tests"],
+  "python.testing.autoTestDiscoverOnSaveEnabled": true,
 }

@@ -1,7 +1,9 @@
 {
   "name": "Tabishare",
   "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
-
+  "containerEnv": {
+    "UV_PROJECT_ENVIRONMENT": "/usr/local/python/current/"
+  },
   "features": {
     "ghcr.io/devcontainers/features/python:1": {
       "version": "3.13"
@@ -22,8 +24,20 @@
         "dbaeumer.vscode-eslint",
         "biomejs.biome",
         "bradlc.vscode-tailwindcss",
-        "eamodio.gitlens"
-      ]
+        "eamodio.gitlens",
+        "charliermarsh.ruff",
+        "dotenv.dotenvx-vscode"
+      ],
+      "settings": {
+        "[python]": {
+          "editor.formatOnSave": true,
+          "editor.codeActionsOnSave": {
+            "source.fixAll": "explicit",
+            "source.organizeImports": "explicit"
+          },
+          "editor.defaultFormatter": "charliermarsh.ruff"
+        }
+      }
     }
   },
   "remoteUser": "vscode",

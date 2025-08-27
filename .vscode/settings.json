@@ -36,7 +36,7 @@
   "[markdown]": {
     "editor.defaultFormatter": "vscode.markdown-language-features"
   },
-  "biome.lsp.bin": "frontend/node_modules/@biomejs/cli-linux-x64/biome",
+  "biome.lsp.bin": "frontend/node_modules/@biomejs/biome/bin/biome",
   "tailwindCSS.experimental.classRegex": [
     ["cva\\(([^;]*)[\\);]", "[`'\"`]([^'\"`;]*)[`'\"`]"],
     ["(?:twMerge|twJoin)\\(([^;]*)[\\);]", "[`'\"`]([^'\"`;]*)[`'\"`]"]

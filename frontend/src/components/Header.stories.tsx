@@ -1,0 +1,199 @@
+import type { Meta, StoryObj } from '@storybook/react';
+import type { Page } from '@/types';
+import type { Trip } from '@/types/trip';
+import { Header } from './Header';
+
+const demoTrip: Trip = {
+  id: 'trip-1',
+  title: '北海道旅行',
+};
+
+const demoPages: Page[] = [
+  {
+    id: 'one-day',
+    title: '1日目',
+  },
+  {
+    id: 'two-day',
+    title: '2日目',
+  },
+  {
+    id: 'three-day',
+    title: '3日目',
+  },
+];
+
+const singlePage: Page[] = [
+  {
+    id: 'day-trip',
+    title: '日帰り旅行',
+  },
+];
+
+const meta = {
+  title: 'Components/Header',
+  component: Header,
+  parameters: {
+    layout: 'fullscreen',
+    docs: {
+      description: {
+        component:
+          'アプリケーションのヘッダーコンポーネント。旅行タイトル、ページ選択、モード切り替えボタンを含みます。',
+      },
+    },
+  },
+  argTypes: {
+    mode: {
+      control: { type: 'radio' },
+      options: ['view', 'edit'],
+      description: '表示モード（閲覧モード / 編集モード）',
+    },
+    trip: {
+      description: '旅行情報オブジェクト',
+    },
+    pages: {
+      description: 'ページ一覧配列',
+    },
+    selectedPageId: {
+      control: { type: 'text' },
+      description: '選択中ページID（スクロール時のBadge表示用）',
+    },
+    className: {
+      control: { type: 'text' },
+      description: '追加のCSSクラス',
+    },
+  },
+  tags: ['autodocs'],
+} satisfies Meta<typeof Header>;
+
+// biome-ignore lint/style/noDefaultExport: Storybook requires default export for meta
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+export const Default: Story = {
+  args: {
+    trip: demoTrip,
+    pages: demoPages,
+    mode: 'view',
+    selectedPageId: 'one-day',
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: 'デフォルトの閲覧モード表示。基本的な旅行情報とページ選択が可能です。',
+      },
+    },
+  },
+};
+
+export const EditMode: Story = {
+  args: {
+    trip: demoTrip,
+    pages: demoPages,
+    mode: 'edit',
+    selectedPageId: 'two-day',
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: '編集モード表示。ページ情報編集ボタンが表示されます。',
+      },
+    },
+  },
+};
+
+export const SinglePage: Story = {
+  args: {
+    trip: {
+      id: 'day-trip',
+      title: '日帰り温泉ツアー',
+    },
+    pages: singlePage,
+    mode: 'view',
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: 'ページが1つだけの日帰り旅行の例です。',
+      },
+    },
+  },
+};
+
+export const EmptyPages: Story = {
+  args: {
+    trip: {
+      id: 'new-trip',
+      title: '新しい旅行計画',
+    },
+    pages: [],
+    mode: 'edit',
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: 'ページが未作成の状態。新規旅行作成時の表示例です。',
+      },
+    },
+  },
+};
+
+export const WithCustomClass: Story = {
+  args: {
+    trip: demoTrip,
+    pages: demoPages,
+    mode: 'view',
+    selectedPageId: 'two-day',
+    className: 'border-b-2 border-blue-500',
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: 'カスタムCSSクラスを適用した例。下部に青い境界線が追加されます。',
+      },
+    },
+  },
+};
+
+export const ScrolledState: Story = {
+  args: {
+    trip: demoTrip,
+    pages: demoPages,
+    mode: 'view',
+    selectedPageId: 'one-day',
+  },
+  parameters: {
+    layout: 'fullscreen',
+    docs: {
+      description: {
+        story:
+          'スクロール状態をシミュレートした表示。文字サイズが小さくなり、SelectがBadgeに変わり、ボタンが非表示になります。スクロールして動作を確認してください。',
+      },
+    },
+  },
+  decorators: [
+    Story => (
+      <div style={{ height: '200vh' }}>
+        <Story />
+        <div style={{ padding: '2rem', marginTop: '2rem' }}>
+          <h2>スクロールしてヘッダーの変化を確認</h2>
+          <p>
+            このページを下にスクロールすると、ヘッダーの文字サイズが小さくなり、SelectがBadgeに変わり、ボタンが非表示になります。
+          </p>
+          <div
+            style={{
+              height: '1000px',
+              background: 'linear-gradient(to bottom, #f0f9ff, #e0f2fe)',
+              padding: '2rem',
+              borderRadius: '8px',
+              marginTop: '1rem',
+            }}
+          >
+            <h3>コンテンツエリア</h3>
+            <p>ここはメインコンテンツです。スクロールしてヘッダーの動作を確認してください。</p>
+          </div>
+        </div>
+      </div>
+    ),
+  ],
+};

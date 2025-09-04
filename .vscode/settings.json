@@ -36,12 +36,13 @@
   "[markdown]": {
     "editor.defaultFormatter": "vscode.markdown-language-features"
   },
-  "biome.lsp.bin": "frontend/node_modules/@biomejs/cli-linux-x64/biome",
+  "biome.lsp.bin": "frontend/node_modules/@biomejs/biome/bin/biome",
   "tailwindCSS.experimental.classRegex": [
     ["cva\\(([^;]*)[\\);]", "[`'\"`]([^'\"`;]*)[`'\"`]"],
     ["(?:twMerge|twJoin)\\(([^;]*)[\\);]", "[`'\"`]([^'\"`;]*)[`'\"`]"]
   ],
   "cSpell.words": ["shadcn"],
+  "remote.localPortHost": "allInterfaces",
   "editor.rulers": [88],
   "python-envs.defaultEnvManager": "ms-python.python:system",
   "python-envs.pythonProjects": [],

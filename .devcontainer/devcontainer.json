@@ -21,7 +21,6 @@
       "extensions": [
         "ms-python.python",
         "ms-python.vscode-pylance",
-        "dbaeumer.vscode-eslint",
         "biomejs.biome",
         "bradlc.vscode-tailwindcss",
         "eamodio.gitlens",

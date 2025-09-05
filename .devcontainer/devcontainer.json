@@ -25,7 +25,8 @@
         "bradlc.vscode-tailwindcss",
         "eamodio.gitlens",
         "charliermarsh.ruff",
-        "dotenv.dotenvx-vscode"
+        "dotenv.dotenvx-vscode",
+        "ms-vsliveshare.vsliveshare"
       ],
       "settings": {
         "[python]": {

@@ -8,7 +8,6 @@ const meta: Meta<typeof BlockScheduleView> = {
   tags: ['autodocs'],
 };
 
-// biome-ignore lint/style/noDefaultExport: Storybook requires default export for meta
 export default meta;
 type Story = StoryObj<typeof meta>;
 

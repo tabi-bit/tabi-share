@@ -90,7 +90,6 @@
         "useYield": "error"
       },
       "style": {
-        "noDefaultExport": "error",
         "useConst": "error",
         "useDefaultParameterLast": "error",
         "useExponentiationOperator": "error",

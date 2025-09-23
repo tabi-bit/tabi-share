@@ -13,5 +13,7 @@ export type ScheduleBlock = Block & {
 
 export type TransportationBlock = Block & {
   type: 'transportation';
-  transportationType: 'car' | 'bus' | 'train' | 'flight';
+  transportationType: TransportationType;
 };
+
+export type TransportationType = 'car' | 'bicycle' | 'walk' | 'ship' | 'train' | 'bus' | 'flight';

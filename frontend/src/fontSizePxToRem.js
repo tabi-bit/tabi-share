@@ -20,5 +20,4 @@ const customPlugin = plugin(({ matchUtilities }) => {
   );
 });
 
-// biome-ignore lint/style/noDefaultExport: Allow default export for plugin
 export default customPlugin;

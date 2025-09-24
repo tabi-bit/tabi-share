@@ -1,4 +1,4 @@
-export type Block = {
+type BaseBlock = {
   id: string;
   type: 'schedule' | 'transportation';
   title: string;
@@ -7,11 +7,15 @@ export type Block = {
   details?: string;
 };
 
-export type ScheduleBlock = Block & {
+export type Block = ScheduleBlock | TransportationBlock;
+
+export type ScheduleBlock = BaseBlock & {
   type: 'schedule';
 };
 
-export type TransportationBlock = Block & {
+export type TransportationBlock = BaseBlock & {
   type: 'transportation';
-  transportationType: 'car' | 'bus' | 'train' | 'flight';
+  transportationType: TransportationType;
 };
+
+export type TransportationType = 'car' | 'bicycle' | 'walk' | 'ship' | 'train' | 'bus' | 'flight';

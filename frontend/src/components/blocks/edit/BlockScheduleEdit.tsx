@@ -1,11 +1,9 @@
 import dayjs from 'dayjs';
 import circleInfoIcon from '@/assets/icons/circle-info.svg';
 import gripVerticalIcon from '@/assets/icons/grip-vertical-white.svg';
-import type { ScheduleBlock } from '@/types';
+import type { ScheduleBlockComponentProps } from '../types';
 
-interface BlockScheduleEditProps {
-  block: ScheduleBlock;
-}
+interface BlockScheduleEditProps extends ScheduleBlockComponentProps {}
 
 export function BlockScheduleEdit({ block }: BlockScheduleEditProps) {
   return (

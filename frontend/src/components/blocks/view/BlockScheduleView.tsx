@@ -2,11 +2,9 @@ import { useRef, useState } from 'react';
 import angleDownIcon from '@/assets/icons/angle-down-white.svg';
 import { useResizeObserver } from '@/hooks/useResizeObserver';
 import { cn } from '@/lib/utils';
-import type { ScheduleBlock } from '@/types/block';
+import type { ScheduleBlockComponentProps } from '../types';
 
-interface BlockScheduleViewProps {
-  block: ScheduleBlock;
-}
+interface BlockScheduleViewProps extends ScheduleBlockComponentProps {}
 
 const MAX_DETAIL_HEIGHT = 72;
 

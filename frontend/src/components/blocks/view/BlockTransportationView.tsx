@@ -2,12 +2,10 @@ import { useRef, useState } from 'react';
 import angleDownIcon from '@/assets/icons/angle-down.svg';
 import { useResizeObserver } from '@/hooks/useResizeObserver';
 import { cn } from '@/lib/utils';
-import type { TransportationBlock } from '@/types/block';
 import { TransportationIcon } from '../TransportationIcon';
+import type { TransportationBlockComponentProps } from '../types';
 
-interface BlockTransportationViewProps {
-  block: TransportationBlock;
-}
+interface BlockTransportationViewProps extends TransportationBlockComponentProps {}
 
 const MAX_DETAIL_HEIGHT = 72;
 

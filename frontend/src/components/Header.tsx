@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import type { Page } from '@/types';
 import type { Trip } from '@/types/trip';
@@ -12,27 +12,43 @@ type HeaderProps = {
   pages: Page[];
   mode?: 'view' | 'edit';
   selectedPageId?: string;
+  onSelectPage: (pageId: string) => void;
+  scrollContainerRef: React.RefObject<HTMLDivElement | null>;
   className?: string;
 };
 
-export function Header({ pages, trip, mode = 'view', selectedPageId, className }: HeaderProps) {
+export function Header({
+  pages,
+  trip,
+  mode = 'view',
+  selectedPageId,
+  onSelectPage,
+  className,
+  scrollContainerRef,
+}: HeaderProps) {
   const [isScrolled, setIsScrolled] = useState(false);
 
-  useEffect(() => {
-    const handleScroll = () => {
-      const scrollTop = window.scrollY;
-      // ヘッダーの大きさを考慮して間を空ける
-      if (!isScrolled && scrollTop > 100) {
-        setIsScrolled(true);
-        return;
-      } else if (isScrolled && scrollTop <= 50) {
-        setIsScrolled(false);
-      }
-    };
+  const handleScroll = useCallback(() => {
+    const container = scrollContainerRef?.current;
+    if (!container) return;
 
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [isScrolled]);
+    const scrollTop = container.scrollTop;
+    // ヘッダーの大きさを考慮して間を空ける
+    if (!isScrolled && scrollTop > 100) {
+      setIsScrolled(true);
+      return;
+    } else if (isScrolled && scrollTop <= 50) {
+      setIsScrolled(false);
+    }
+  }, [isScrolled, scrollContainerRef]);
+
+  useEffect(() => {
+    const container = scrollContainerRef?.current;
+    if (!container) return;
+
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [handleScroll, scrollContainerRef]);
 
   const selectedPage = selectedPageId ? pages.find(page => page.id === selectedPageId) : pages[0];
 
@@ -40,7 +56,7 @@ export function Header({ pages, trip, mode = 'view', selectedPageId, className }
     <div
       data-component='header'
       className={cn(
-        'sticky top-0 right-0 left-0 z-10 flex flex-col justify-center gap-1 bg-teal-50/80 px-6 py-2 backdrop-blur-sm transition-all duration-300 ease-in-out',
+        'sticky top-0 right-0 left-0 z-10 flex w-full flex-col justify-center gap-1 bg-teal-50/80 px-6 py-2 backdrop-blur-sm transition-all duration-300 ease-in-out',
         className
       )}
     >
@@ -56,9 +72,9 @@ export function Header({ pages, trip, mode = 'view', selectedPageId, className }
             </Badge>
           )
         ) : (
-          <Select>
+          <Select value={selectedPageId} onValueChange={v => onSelectPage(v)}>
             <SelectTrigger className='bg-white transition-all duration-300 ease-in-out'>
-              <SelectValue placeholder='ページ選択' defaultValue={selectedPageId} />
+              <SelectValue placeholder='ページ選択' />
             </SelectTrigger>
             <SelectContent>
               {pages.map(page => (

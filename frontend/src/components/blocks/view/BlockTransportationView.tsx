@@ -9,7 +9,7 @@ interface BlockTransportationViewProps extends TransportationBlockComponentProps
 
 const MAX_DETAIL_HEIGHT = 72;
 
-export function BlockTransportationView({ block }: BlockTransportationViewProps) {
+export function BlockTransportationView({ block, className }: BlockTransportationViewProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [isOverflowDetail, setIsOverflowDetail] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -44,7 +44,8 @@ export function BlockTransportationView({ block }: BlockTransportationViewProps)
       className={cn(
         'flex w-full flex-col gap-2 rounded-lg bg-gradient-to-r from-sky-50 px-4 py-2',
         isHovered ? 'to-sky-50' : 'to-sky-100',
-        isHovered ? 'drop-shadow-xl' : 'drop-shadow-lg'
+        isHovered ? 'drop-shadow-xl' : 'drop-shadow-lg',
+        className
       )}
     >
       <div className='flex items-center gap-2'>

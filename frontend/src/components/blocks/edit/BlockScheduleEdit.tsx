@@ -1,13 +1,19 @@
 import dayjs from 'dayjs';
 import circleInfoIcon from '@/assets/icons/circle-info.svg';
 import gripVerticalIcon from '@/assets/icons/grip-vertical-white.svg';
+import { cn } from '@/lib/utils';
 import type { ScheduleBlockComponentProps } from '../types';
 
 interface BlockScheduleEditProps extends ScheduleBlockComponentProps {}
 
-export function BlockScheduleEdit({ block }: BlockScheduleEditProps) {
+export function BlockScheduleEdit({ block, className }: BlockScheduleEditProps) {
   return (
-    <div className='flex w-full flex-row items-center gap-2 rounded-lg bg-linear-to-r from-teal-400 to-teal-500 px-4 py-2'>
+    <div
+      className={cn(
+        'flex w-full flex-row items-center gap-2 rounded-lg bg-linear-to-r from-teal-400 to-teal-500 px-4 py-2',
+        className
+      )}
+    >
       <div className='flex h-12 shrink-0 flex-col justify-center hover:cursor-grab'>
         <img src={gripVerticalIcon} alt='test' className='h-6 w-6' />
       </div>

@@ -1,11 +1,14 @@
 import paperPlaneIcon from '@/assets/icons/paper-plane.svg';
 import { cn } from '@/lib/utils';
 
-export function Logo(props: { size?: 'medium' | 'small' }) {
-  const { size = 'medium' } = props;
+interface LogoProps {
+  size?: 'medium' | 'small';
+  className?: string;
+}
 
+export function Logo({ size = 'medium', className }: LogoProps) {
   return (
-    <div data-component='Logo' className='flex flex-row items-center justify-center gap-1'>
+    <div data-component='Logo' className={cn('flex flex-row items-center justify-center gap-1', className)}>
       <img
         src={paperPlaneIcon}
         alt=''

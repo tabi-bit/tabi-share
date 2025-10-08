@@ -5,6 +5,7 @@ import { BlockTransportationView } from '../blocks/view/BlockTransportationView'
 
 interface ViewTimelineProps {
   blocks: Block[];
+  className?: string;
 }
 
 interface TimelineItem {
@@ -14,7 +15,7 @@ interface TimelineItem {
   block?: Block;
 }
 
-export function ViewTimeline({ blocks }: ViewTimelineProps) {
+export function ViewTimeline({ blocks, className }: ViewTimelineProps) {
   // ブロックを時間順にソート
   const sortedBlocks = [...blocks].sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
 
@@ -43,7 +44,7 @@ export function ViewTimeline({ blocks }: ViewTimelineProps) {
   }
 
   return (
-    <div className='grid grid-cols-[auto_1fr] gap-x-4'>
+    <div className={cn('grid grid-cols-[auto_1fr] gap-x-4', className)}>
       {timelineItems.map(item => (
         <ViewTimelineBlock key={item.id} item={item} />
       ))}

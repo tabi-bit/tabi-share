@@ -8,7 +8,7 @@ interface BlockScheduleViewProps extends ScheduleBlockComponentProps {}
 
 const MAX_DETAIL_HEIGHT = 72;
 
-export function BlockScheduleView({ block }: BlockScheduleViewProps) {
+export function BlockScheduleView({ block, className }: BlockScheduleViewProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [isOverflowDetail, setIsOverflowDetail] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -43,7 +43,8 @@ export function BlockScheduleView({ block }: BlockScheduleViewProps) {
       className={cn(
         'flex w-full flex-col gap-2 rounded-lg bg-linear-to-r from-teal-400 px-4 py-2',
         isHovered ? 'to-teal-400' : 'to-teal-500',
-        isHovered ? 'drop-shadow-xl' : 'drop-shadow-lg'
+        isHovered ? 'drop-shadow-xl' : 'drop-shadow-lg',
+        className
       )}
     >
       <div className='font-bold text-16px text-white'>{block.title}</div>

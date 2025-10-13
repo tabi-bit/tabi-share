@@ -55,8 +55,8 @@ export function BlockTransportationView({ block, className }: BlockTransportatio
       {block.details && (
         <div
           className={cn(
-            'ml-8 transition-[max-height] duration-300',
-            isExpanded ? 'max-h-[80vh] overflow-auto' : 'max-h-18 overflow-hidden'
+            'ml-8 overflow-hidden transition-[max-height] duration-300',
+            isExpanded ? 'max-h-[80vh]' : 'max-h-18'
           )}
           ref={detailDivRef}
         >

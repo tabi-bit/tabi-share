@@ -51,8 +51,8 @@ export function BlockScheduleView({ block, className }: BlockScheduleViewProps) 
       {block.details && (
         <div
           className={cn(
-            'transition-[max-height] duration-300',
-            isExpanded ? 'max-h-[80vh] overflow-auto' : 'max-h-18 overflow-hidden'
+            'overflow-hidden transition-[max-height] duration-300',
+            isExpanded ? 'max-h-[80vh]' : 'max-h-18'
           )}
           ref={detailDivRef}
         >

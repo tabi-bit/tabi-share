@@ -101,9 +101,9 @@ function ViewTimelineBlock({ item }: ViewTimelineBlockProps) {
         </div>
       )}
       {item.type === 'gap' && (
-        <div className='flex h-8 flex-row border-neutral-800'>
-          <div className='grow border-neutral-800 border-r-2 border-dashed' />
-          <div className='w-4 border-neutral-800 border-l-2 border-dashed'></div>
+        <div className='flex h-8 flex-row'>
+          <div className='grow border-neutral-600 border-r-2 border-dashed' />
+          <div className='w-4 border-neutral-600 border-l-2 border-dashed'></div>
         </div>
       )}
 

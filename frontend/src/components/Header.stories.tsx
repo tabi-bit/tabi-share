@@ -1,7 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/react';
+import { useRef } from 'react';
 import type { Page } from '@/types';
 import type { Trip } from '@/types/trip';
 import { Header } from './Header';
+
+const onSelectPage = (pageId: string) => {
+  console.log('Selected page ID:', pageId);
+};
 
 const demoTrip: Trip = {
   id: 'trip-1',
@@ -75,6 +80,8 @@ export const Default: Story = {
     pages: demoPages,
     mode: 'view',
     selectedPageId: 'one-day',
+    onSelectPage,
+    scrollContainerRef: { current: null },
   },
   parameters: {
     docs: {
@@ -91,6 +98,8 @@ export const EditMode: Story = {
     pages: demoPages,
     mode: 'edit',
     selectedPageId: 'two-day',
+    onSelectPage,
+    scrollContainerRef: { current: null },
   },
   parameters: {
     docs: {
@@ -109,6 +118,8 @@ export const SinglePage: Story = {
     },
     pages: singlePage,
     mode: 'view',
+    onSelectPage,
+    scrollContainerRef: { current: null },
   },
   parameters: {
     docs: {
@@ -127,6 +138,8 @@ export const EmptyPages: Story = {
     },
     pages: [],
     mode: 'edit',
+    onSelectPage,
+    scrollContainerRef: { current: null },
   },
   parameters: {
     docs: {
@@ -144,6 +157,8 @@ export const WithCustomClass: Story = {
     mode: 'view',
     selectedPageId: 'two-day',
     className: 'border-b-2 border-blue-500',
+    onSelectPage,
+    scrollContainerRef: { current: null },
   },
   parameters: {
     docs: {
@@ -160,6 +175,8 @@ export const ScrolledState: Story = {
     pages: demoPages,
     mode: 'view',
     selectedPageId: 'one-day',
+    onSelectPage,
+    scrollContainerRef: { current: null },
   },
   parameters: {
     layout: 'fullscreen',
@@ -171,28 +188,31 @@ export const ScrolledState: Story = {
     },
   },
   decorators: [
-    Story => (
-      <div style={{ height: '200vh' }}>
-        <Story />
-        <div style={{ padding: '2rem', marginTop: '2rem' }}>
-          <h2>スクロールしてヘッダーの変化を確認</h2>
-          <p>
-            このページを下にスクロールすると、ヘッダーの文字サイズが小さくなり、SelectがBadgeに変わり、ボタンが非表示になります。
-          </p>
-          <div
-            style={{
-              height: '1000px',
-              background: 'linear-gradient(to bottom, #f0f9ff, #e0f2fe)',
-              padding: '2rem',
-              borderRadius: '8px',
-              marginTop: '1rem',
-            }}
-          >
-            <h3>コンテンツエリア</h3>
-            <p>ここはメインコンテンツです。スクロールしてヘッダーの動作を確認してください。</p>
+    Story => {
+      const scrollContainerRef = useRef<HTMLDivElement>(null);
+      return (
+        <div ref={scrollContainerRef} style={{ height: '200vh', overflow: 'auto' }}>
+          <Story args={{ scrollContainerRef }} />
+          <div style={{ padding: '2rem', marginTop: '2rem' }}>
+            <h2>スクロールしてヘッダーの変化を確認</h2>
+            <p>
+              このページを下にスクロールすると、ヘッダーの文字サイズが小さくなり、SelectがBadgeに変わり、ボタンが非表示になります。
+            </p>
+            <div
+              style={{
+                height: '1000px',
+                background: 'linear-gradient(to bottom, #f0f9ff, #e0f2fe)',
+                padding: '2rem',
+                borderRadius: '8px',
+                marginTop: '1rem',
+              }}
+            >
+              <h3>コンテンツエリア</h3>
+              <p>ここはメインコンテンツです。スクロールしてヘッダーの動作を確認してください。</p>
+            </div>
           </div>
         </div>
-      </div>
-    ),
+      );
+    },
   ],
 };

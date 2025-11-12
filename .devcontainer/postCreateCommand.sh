@@ -47,3 +47,6 @@ claude mcp add serena -- uvx --from git+https://github.com/oraios/serena serena 
 # Gemini CLI
 npm install -g @google/gemini-cli
 echo "🎉 All setup steps completed successfully!"
+
+# Firebase CLI Tools
+npm install -g firebase-tools

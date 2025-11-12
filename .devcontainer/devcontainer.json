@@ -27,7 +27,8 @@
         "charliermarsh.ruff",
         "dotenv.dotenvx-vscode",
         "ms-vsliveshare.vsliveshare",
-        "corschenzi.mermaid-graphical-editor"
+        "corschenzi.mermaid-graphical-editor",
+        "anthropic.claude-code"
       ],
       "settings": {
         "[python]": {

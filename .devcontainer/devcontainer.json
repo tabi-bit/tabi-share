@@ -26,7 +26,8 @@
         "eamodio.gitlens",
         "charliermarsh.ruff",
         "dotenv.dotenvx-vscode",
-        "ms-vsliveshare.vsliveshare"
+        "ms-vsliveshare.vsliveshare",
+        "corschenzi.mermaid-graphical-editor"
       ],
       "settings": {
         "[python]": {

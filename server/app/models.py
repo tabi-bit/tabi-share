@@ -1,9 +1,9 @@
 """
 Add Trip, Page, and Block models with relationships.
 """
-from typing import Optional
+
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 
 from sqlalchemy import ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship

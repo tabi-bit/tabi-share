@@ -14,6 +14,7 @@ if config.config_file_name is not None:
 
 load_dotenv()
 
+# --- 開発データベース (devdb) の設定 ---
 DEV_DB_USER = os.getenv("POSTGRES_USER")
 DEV_DB_PASSWORD = os.getenv("POSTGRES_PASSWORD")
 DEV_DB_HOST = os.getenv("POSTGRES_HOST", "localhost")
@@ -21,7 +22,18 @@ DEV_DB_PORT = os.getenv("POSTGRES_PORT", "5432")
 DEV_DB_NAME = os.getenv("POSTGRES_DB")
 DEV_DATABASE_URL = f"postgresql+psycopg2://{DEV_DB_USER}:{DEV_DB_PASSWORD}@{DEV_DB_HOST}:{DEV_DB_PORT}/{DEV_DB_NAME}"
 
+# --- テストデータベース (testdb) の設定 ---
+TEST_DB_USER = os.getenv("TEST_POSTGRES_USER", DEV_DB_USER)
+TEST_DB_PASSWORD = os.getenv("TEST_POSTGRES_PASSWORD", DEV_DB_PASSWORD)
+TEST_DB_HOST = os.getenv("TEST_POSTGRES_HOST", DEV_DB_HOST)
+TEST_DB_PORT = os.getenv("TEST_POSTGRES_PORT", DEV_DB_PORT)
+TEST_DB_NAME = os.getenv("TEST_POSTGRES_DB")
+TEST_DATABASE_URL = f"postgresql+psycopg2://{TEST_DB_USER}:{TEST_DB_PASSWORD}@{TEST_DB_HOST}:{TEST_DB_PORT}/{TEST_DB_NAME}"
+
+# Alembicの設定にデータベースURLをセット
+config.set_section_option("testdb", "sqlalchemy.url", TEST_DATABASE_URL)
 config.set_section_option("devdb", "sqlalchemy.url", DEV_DATABASE_URL)
+
 target_metadata = Base.metadata
 
 

@@ -28,47 +28,16 @@ else
 fi
 
 
-# --- データベースのセットアップ ---
-# データベースの起動、ユーザー作成、データベース作成を行うスクリプトを実行する
-echo "🚀 Starting database setup..."
-sh .devcontainer/setup_database.sh
-
-
 # --- アプリケーションのセットアップ ---
 # アプリケーション固有のセットアップ（依存関係のインストール、マイグレーションなど）を実行する
 echo "🚀 Starting application setup..."
 ./scripts/setup.sh
 
 
-# --- データベースマイグレーション ---
-# Alembicを使用してデータベースを最新バージョンにマイグレーションする
-echo "🔄 Running database migrations..."
-cd server
-
-# 開発用データベースのマイグレーション
-echo "📦 Migrating development database..."
-if npx dotenvx run --env-file ../.env -- alembic -n devdb upgrade head; then
-  echo "✅ Development database migration completed successfully!"
-else
-  echo "❌ Error: Development database migration failed!"
-  echo "Please check the migration files and database connection."
-  cd ..
-  exit 1
-fi
-
-# テスト用データベースのマイグレーション
-echo "📦 Migrating test database..."
-if npx dotenvx run --env-file ../.env -- alembic -n testdb upgrade head; then
-  echo "✅ Test database migration completed successfully!"
-else
-  echo "❌ Error: Test database migration failed!"
-  echo "Please check the migration files and database connection."
-  cd ..
-  exit 1
-fi
-
-cd ..
-
+# --- データベースのセットアップ ---
+# データベースの起動、ユーザー作成、データベース作成、マイグレーションを行うスクリプトを実行する
+echo "🚀 Starting database setup..."
+sh ./scripts/setup_database.sh
 
 # Claude Code
 npm install -g @anthropic-ai/claude-code

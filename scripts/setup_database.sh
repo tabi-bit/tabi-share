@@ -52,4 +52,31 @@ create_database_and_role_if_not_exist "$POSTGRES_DB" "$POSTGRES_USER" "$POSTGRES
 # テスト用データベースのセットアップを実行
 create_database_and_role_if_not_exist "$TEST_POSTGRES_DB" "$TEST_POSTGRES_USER" "$TEST_POSTGRES_PASSWORD"
 
+
+# --- データベースマイグレーション ---
+# Alembicを使用してデータベースを最新バージョンにマイグレーションする
+
+# データベースのマイグレーション用のヘルパー関数
+run_migration() {
+  local db_name=$1
+  local db_type=$2
+  echo "📦 Migrating ${db_type} database..."
+  if npx dotenvx run --env-file ../.env -- alembic -n "${db_name}" upgrade head; then
+    echo "✅ ${db_type} database migration completed successfully!"
+    return 0
+  else
+    echo "❌ Error: ${db_type} database migration failed!"
+    echo "Please check the migration files and database connection."
+    return 1
+  fi
+}
+
+# 開発用とテスト用のデータベースのマイグレーションの実行
+echo "🔄 Running database migrations..."
+cd server
+run_migration "devdb" "development" || { cd ..; exit 1; }
+run_migration "testdb" "test" || { cd ..; exit 1; }
+cd ..
+echo "✅ database migrations completed."
+
 echo "🐘 All database setups are complete."

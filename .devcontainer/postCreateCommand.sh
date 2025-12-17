@@ -28,16 +28,16 @@ else
 fi
 
 
-# --- データベースのセットアップ ---
-# データベースの起動、ユーザー作成、データベース作成を行うスクリプトを実行する
-echo "🚀 Starting database setup..."
-sh .devcontainer/setup_database.sh
-
-
 # --- アプリケーションのセットアップ ---
 # アプリケーション固有のセットアップ（依存関係のインストール、マイグレーションなど）を実行する
 echo "🚀 Starting application setup..."
 ./scripts/setup.sh
+
+
+# --- データベースのセットアップ ---
+# データベースの起動、ユーザー作成、データベース作成、マイグレーションを行うスクリプトを実行する
+echo "🚀 Starting database setup..."
+sh ./scripts/setup_database.sh
 
 # Claude Code
 npm install -g @anthropic-ai/claude-code

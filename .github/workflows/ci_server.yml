@@ -1,0 +1,107 @@
+name: Python CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+env:
+  PYTHON_VERSION: '3.13'
+  POSTGRES_VERSION: '16'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    env:
+      DOTENV_PRIVATE_KEY: ${{ secrets.DOTENV_PRIVATE_KEY }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js and Dependencies
+        uses: ./.github/actions/setup-node-deps
+
+      - name: Install dotenvx
+        run: curl -sfS https://dotenvx.sh/install.sh | sh
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache uv
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/uv
+          key: ${{ runner.os }}-uv-${{ hashFiles('**/uv.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-
+
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Start PostgreSQL with dotenvx
+        run: |
+          dotenvx run --env-file .env -- sh -c 'docker run -d \
+            --name postgres_db \
+            -p 5432:5432 \
+            -e POSTGRES_USER=$TEST_POSTGRES_USER \
+            -e POSTGRES_PASSWORD=$TEST_POSTGRES_PASSWORD \
+            -e POSTGRES_DB=$TEST_POSTGRES_DB \
+            postgres:${{ env.POSTGRES_VERSION }}'
+
+      - name: Wait for PostgreSQL
+        run: |
+          echo "Waiting for PostgreSQL to be ready..."
+          for i in {1..30}; do
+            if docker exec postgres_db pg_isready -U "${TEST_POSTGRES_USER:-postgres}" > /dev/null 2>&1; then
+              echo "✓ PostgreSQL is ready!"
+              exit 0
+            fi
+            if [ "$(docker inspect -f '{{.State.Running}}' postgres_db 2>/dev/null)" != "true" ]; then
+              echo "✗ Container stopped unexpectedly"
+              docker logs postgres_db
+              exit 1
+            fi
+            echo "  Attempt $i/30..."
+            sleep 2
+          done
+          echo "✗ PostgreSQL startup timeout"
+          docker logs postgres_db
+          exit 1
+        env:
+          TEST_POSTGRES_USER: $(dotenvx get TEST_POSTGRES_USER --env-file .env)
+
+      - name: Cache Python dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/uv
+            server/.venv
+          key: ${{ runner.os }}-python-${{ env.PYTHON_VERSION }}-${{ hashFiles('server/pyproject.toml', 'server/uv.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-python-${{ env.PYTHON_VERSION }}-
+
+      - name: Install dependencies
+        working-directory: ./server
+        run: uv sync
+
+      - name: Run Alembic migrations
+        working-directory: ./server
+        run: dotenvx run --env-file ../.env -- uv run alembic -n testdb upgrade head
+
+      - name: Run tests with pytest
+        working-directory: ./server
+        run: dotenvx run --env-file ../.env -- uv run pytest -svvv tests/
+
+      - name: Debug on failure
+        if: failure()
+        run: |
+          echo "=== Docker Containers ==="
+          docker ps -a
+          echo ""
+          echo "=== PostgreSQL Logs ==="
+          docker logs postgres_db 2>&1 || echo "Could not retrieve logs"

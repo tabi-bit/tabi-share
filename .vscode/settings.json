@@ -44,13 +44,14 @@
   "cSpell.words": ["shadcn"],
   "remote.localPortHost": "allInterfaces",
   "editor.rulers": [88],
-  "python-envs.defaultEnvManager": "ms-python.python:system",
+  "python-envs.defaultEnvManager": "ms-python.python:venv",
   "python-envs.pythonProjects": [],
   "python.analysis.extraPaths": [
     "./server"
   ],
   "python.testing.unittestEnabled": false,
   "python.testing.pytestEnabled": true,
-  "python.testing.pytestArgs": ["./server/tests"],
+  "python.testing.pytestArgs": ["./server/tests", "-svvv"],
   "python.testing.autoTestDiscoverOnSaveEnabled": true,
+  "python.defaultInterpreterPath": "${workspaceFolder}/server/.venv/bin/python"
 }

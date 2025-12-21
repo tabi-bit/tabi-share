@@ -2,9 +2,13 @@ from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.errors import ErrorResponseException, error_response_exception_handler, validation_exception_handler
+from app.errors import (
+    ErrorResponseException,
+    error_response_exception_handler,
+    validation_exception_handler,
+)
 
-from .routers import example, users
+from .routers import blocks, pages, trips
 
 app = FastAPI()
 
@@ -16,8 +20,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(example.router, prefix="/api/example", tags=["example"])
-app.include_router(users.router, prefix="/api/users", tags=["users"])
+app.include_router(trips.router)
+app.include_router(pages.router)
+app.include_router(blocks.router)
+
 
 app.add_exception_handler(ErrorResponseException, error_response_exception_handler)
 app.add_exception_handler(RequestValidationError, validation_exception_handler)

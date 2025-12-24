@@ -44,7 +44,7 @@ async def get_blocks(
 
     - 特定のページに関連するすべてのブロックを取得する
     """
-    return await blocks_cruds.find_blocks(db=db, page_id=page_id) # type: ignore
+    return await blocks_cruds.find_blocks(db=db, page_id=page_id)  # type: ignore
 
 
 @router.get(

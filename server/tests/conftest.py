@@ -68,7 +68,7 @@ async def test_create_trip(db_session: Session) -> Trip:
     trip_id = await trips_cruds.create_trip(
         db=db_session, trip=trip_in, url_id="test_url_id_fixture"
     )
-    return await trips_cruds.get_trip(db=db_session, trip_id=trip_id) # type: ignore
+    return await trips_cruds.get_trip(db=db_session, trip_id=trip_id)  # type: ignore
 
 
 @pytest_asyncio.fixture
@@ -78,4 +78,4 @@ async def test_create_page(db_session: Session, test_create_trip: Trip) -> Page:
     db_page = await pages_cruds.create_page(
         db=db_session, page=page_in, trip_id=test_create_trip.id
     )
-    return await pages_cruds.get_page(db=db_session, page_id=db_page.id) # type: ignore
+    return await pages_cruds.get_page(db=db_session, page_id=db_page.id)  # type: ignore

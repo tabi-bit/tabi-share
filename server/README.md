@@ -5,12 +5,14 @@ FastAPI + PostgreSQL + Alembicを使用したバックエンドAPI
 ## 開発環境手順
 
 ### 前提条件
+
 - Docker Desktopがインストールされている
 - VS Code + Dev Containers拡張機能がインストールされている
 
 ### devcontainer環境でのセットアップ
 
 1. **devcontainer起動**
+
     ```bash
     cd tabi-share
     # VS Codeでプロジェクトを開く
@@ -18,6 +20,7 @@ FastAPI + PostgreSQL + Alembicを使用したバックエンドAPI
     ```
 
 2. **データベースマイグレーション**
+
     ```bash
     cd server
 
@@ -26,22 +29,24 @@ FastAPI + PostgreSQL + Alembicを使用したバックエンドAPI
     ```
 
 3. **開発サーバー起動**
+
     ```bash
     npm run dev
     ```
 
-
 ### アクセス先
-- フロントエンド: http://localhost:3000 (または5173)
-- バックエンドAPI: http://localhost:8000
-- API自動ドキュメント: http://localhost:8000/docs
-- 代替ドキュメント: http://localhost:8000/redoc
+
+- フロントエンド: <http://localhost:3000> (または5173)
+- バックエンドAPI: <http://localhost:8000>
+- API自動ドキュメント: <http://localhost:8000/docs>
+- 代替ドキュメント: <http://localhost:8000/redoc>
 
 ## 開発ワークフロー（devcontainer環境）
 
 ### 環境変数の変更手順
 
 1. **環境変数の復号化**
+
     ```bash
     cd tabi-share
 
@@ -51,11 +56,13 @@ FastAPI + PostgreSQL + Alembicを使用したバックエンドAPI
 2. **.envファイルをIDEで編集する**
 
 3. **環境変数の暗号化**
+
     ```bash
-    npx detenvx encrypt
+    npx dotenvx encrypt
     ```
 
 ### パッケージの追加手順
+
 ```bash
 cd server
 
@@ -71,12 +78,14 @@ uv add --dev pytest
 1. **server/app/models.pyにモデルを追加する**
 
 2. **マイグレーションファイルを生成する**
+
     ```bash
     cd server
     npx dotenvx run --env-file ../.env -- alembic -n devdb revision --autogenerate -m "file_name"
     ```
 
 3. **マイグレーションファイルをDBに適用する**
+
     ```bash
     # 現在のバージョンを確認する
     npx dotenvx run --env-file ../.env -- alembic -n devdb current
@@ -98,13 +107,17 @@ uv add --dev pytest
     ```
 
 ### DBに直接アクセスする方法
+
 - 環境変数の値を使ってアクセスする
+
   ```bash
   cd tabi-share
 
   npx dotenvx run -- sh -c 'psql -U $POSTGRES_USER -h $POSTGRES_HOST -d $POSTGRES_DB'
   ```
+
 - よく使用するコマンド
+
   ```bash
   \l # List Databases
   \dt # List Tables
@@ -114,12 +127,15 @@ uv add --dev pytest
   ```
 
 ### 新機能開発
+
 1. **機能ブランチ作成**
+
     ```bash
     git switch -c feature/your-feature-name
     ```
 
 2. **モデル定義** (`app/models.py`)
+
     ```python
     class YourModel(Base):
         __tablename__ = "your_table"
@@ -128,6 +144,7 @@ uv add --dev pytest
     ```
 
 3. **マイグレーション生成・適用**
+
     ```bash
     cd server
     npx dotenvx run --env-file ../.env -- alembic -n devdb revision --autogenerate -m "file_name"
@@ -135,6 +152,7 @@ uv add --dev pytest
     ```
 
 4. **スキーマ定義** (`app/schemas.py`)
+
     ```python
     class YourModelCreate(BaseModel):
         # 作成用スキーマ
@@ -146,12 +164,14 @@ uv add --dev pytest
     ```
 
 5. **CRUD操作実装** (`app/cruds/your_model.py`)
+
     ```python
     async def create_your_model(db: Session, model_data: YourModelCreate):
         # CRUD実装
     ```
 
 6. **APIルーター実装** (`app/routers/your_model.py`)
+
     ```python
     @router.post("/", response_model=YourModelResponse)
     async def create_endpoint(
@@ -162,9 +182,12 @@ uv add --dev pytest
     ```
 
 ### テスト実行
+
 #### VScodeのテスト機能を使った実行方法
+
 - アクティビティバーのテストを押し、対象のテストファイルを実行する場合
 - Terminalから実行する場合
+
     ```bash
     cd server
     # 全テスト実行
@@ -192,11 +215,11 @@ uv add --dev pytest
 
 ## よく使用するコマンド（devcontainer環境）
 
-
 ## API設計パターン
 
 ### 標準的なCRUDエンドポイント
-```
+
+```text
 GET    /api/v1/users/          # ユーザー一覧取得
 POST   /api/v1/users/          # ユーザー作成
 GET    /api/v1/users/{id}      # 特定ユーザー取得
@@ -205,6 +228,7 @@ DELETE /api/v1/users/{id}      # ユーザー削除
 ```
 
 ### レスポンス形式
+
 ```json
 {
   "data": {...},
@@ -222,6 +246,7 @@ DELETE /api/v1/users/{id}      # ユーザー削除
 ## 開発ツール設定
 
 ### mypy設定
+
 - 設定内容を整理して記述する
 プロジェクトルートに`mypy.ini`または`pyproject.toml`で型チェック設定：
 
@@ -244,6 +269,7 @@ ignore_errors = true
 ``` -->
 
 ### pytest設定
+
 - 設定内容を整理して記述する
 <!-- ```toml
 # pyproject.toml内
@@ -267,7 +293,8 @@ markers = [
 
 ## トラブルシューティング
 
-**依存関係エラー**
+### 依存関係エラー
+
 ```bash
 # devcontainer内でキャッシュクリア
 uv cache clean
@@ -280,6 +307,7 @@ uv sync
 ## 品質管理
 
 ### 開発前チェックリスト
+
 ```bash
 cd server
 

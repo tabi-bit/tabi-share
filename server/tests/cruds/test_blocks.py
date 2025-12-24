@@ -1,3 +1,4 @@
+from app.schemas.block import BlockType
 from datetime import datetime
 
 import pytest
@@ -20,7 +21,7 @@ async def test_create_block(db_session: Session, test_create_page: Page):
         start_time=datetime(2023, 1, 1, 10, 0),
         end_time=datetime(2023, 1, 1, 12, 0),
         detail="test detail",
-        block_type="event",
+        block_type=BlockType.EVENT,
         transportation_type="car",
     )
 
@@ -53,7 +54,7 @@ async def test_create_block_non_existent_page_id(db_session: Session):
         start_time=datetime(2023, 1, 1, 10, 0),
         end_time=datetime(2023, 1, 1, 12, 0),
         detail="test detail",
-        block_type="event",
+        block_type=BlockType.EVENT,
     )
     non_existent_page_id = 999
 
@@ -75,7 +76,7 @@ async def test_get_block(db_session: Session, test_create_page: Page):
         start_time=datetime(2023, 1, 1, 10, 0),
         end_time=datetime(2023, 1, 1, 12, 0),
         detail="test detail",
-        block_type="event",
+        block_type=BlockType.EVENT,
         transportation_type="car",
     )
     created_block = await blocks_cruds.create_block(
@@ -118,7 +119,7 @@ async def test_find_blocks(db_session: Session, test_create_page: Page):
             title="b1",
             start_time=datetime(2023, 1, 1, 10, 0),
             detail="d",
-            block_type="event",
+            block_type=BlockType.EVENT,
         ),
         page_id=test_create_page.id,
     )
@@ -128,7 +129,7 @@ async def test_find_blocks(db_session: Session, test_create_page: Page):
             title="b2",
             start_time=datetime(2023, 1, 1, 11, 0),
             detail="d",
-            block_type="event",
+            block_type=BlockType.EVENT,
         ),
         page_id=test_create_page.id,
     )
@@ -152,7 +153,7 @@ async def test_update_block(db_session: Session, test_create_page: Page):
         title="before",
         start_time=datetime(2023, 1, 1, 10, 0),
         detail="d",
-        block_type="event",
+        block_type=BlockType.EVENT,
     )
     created_block = await blocks_cruds.create_block(
         db=db_session, block=block_in, page_id=test_create_page.id
@@ -161,7 +162,7 @@ async def test_update_block(db_session: Session, test_create_page: Page):
         title="after",
         start_time=datetime(2023, 1, 1, 10, 0),
         detail="d",
-        block_type="event",
+        block_type=BlockType.EVENT,
     )
 
     # act
@@ -192,7 +193,7 @@ async def test_delete_block(db_session: Session, test_create_page: Page):
         title="delete",
         start_time=datetime(2023, 1, 1, 10, 0),
         detail="d",
-        block_type="event",
+        block_type=BlockType.EVENT,
     )
     created_block = await blocks_cruds.create_block(
         db=db_session, block=block_in, page_id=test_create_page.id

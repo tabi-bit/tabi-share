@@ -38,7 +38,7 @@ async def test_create_page_invalid_input(
     POST /trips/{trip_id}/pages で不正な入力が与えられた場合に 422 が返ることを検証
     """
     # title が欠落している不正なデータ
-    invalid_page_data = {}
+    invalid_page_data: dict = {}
     response = client.post(
         f"/trips/{test_create_trip.id}/pages", json=invalid_page_data
     )

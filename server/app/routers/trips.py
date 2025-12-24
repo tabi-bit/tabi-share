@@ -44,7 +44,7 @@ async def list_trips(db: Session = Depends(get_db_session)) -> list[Trip]:
 
     - すべての旅行プランを取得する
     """
-    return await trips_cruds.list_trips(db=db)
+    return await trips_cruds.list_trips(db=db)  # type: ignore
 
 
 @router.get(

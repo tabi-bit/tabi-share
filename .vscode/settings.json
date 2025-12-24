@@ -34,7 +34,9 @@
     "editor.defaultFormatter": "vscode.html-language-features"
   },
   "[markdown]": {
-    "editor.defaultFormatter": "vscode.markdown-language-features"
+    "editor.formatOnSave": true,
+    "editor.formatOnPaste": true,
+    "editor.defaultFormatter": "DavidAnson.vscode-markdownlint"
   },
   "biome.lsp.bin": "frontend/node_modules/@biomejs/biome/bin/biome",
   "tailwindCSS.experimental.classRegex": [
@@ -53,5 +55,12 @@
   "python.testing.pytestEnabled": true,
   "python.testing.pytestArgs": ["./server/tests", "-svvv"],
   "python.testing.autoTestDiscoverOnSaveEnabled": true,
-  "python.defaultInterpreterPath": "${workspaceFolder}/server/.venv/bin/python"
+  "python.defaultInterpreterPath": "${workspaceFolder}/server/.venv/bin/python",
+  "mypy-type-checker.reportingScope": "workspace",
+  "mypy-type-checker.importStrategy": "fromEnvironment",
+  "mypy-type-checker.args": [
+    "--ignore-missing-imports",
+    "--follow-imports=silent"
+  ],
+  "python.analysis.typeCheckingMode": "off"
 }

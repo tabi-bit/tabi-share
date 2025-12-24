@@ -28,7 +28,8 @@
         "dotenv.dotenvx-vscode",
         "ms-vsliveshare.vsliveshare",
         "corschenzi.mermaid-graphical-editor",
-        "anthropic.claude-code"
+        "anthropic.claude-code",
+        "ms-python.mypy-type-checker"
       ],
       "settings": {
         "[python]": {

@@ -31,7 +31,7 @@ fi
 # --- アプリケーションのセットアップ ---
 # アプリケーション固有のセットアップ（依存関係のインストール、マイグレーションなど）を実行する
 echo "🚀 Starting application setup..."
-./scripts/setup.sh
+sh ./scripts/setup_application.sh
 
 
 # --- データベースのセットアップ ---

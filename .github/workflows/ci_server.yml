@@ -89,6 +89,18 @@ jobs:
         working-directory: ./server
         run: uv sync
 
+      - name: Run Ruff check (Linter)
+        working-directory: ./server
+        run: uv run ruff check .
+
+      - name: Run Ruff format check (Formatter)
+        working-directory: ./server
+        run: uv run ruff format --check .
+
+      - name: Run mypy (Type check)
+        working-directory: ./server
+        run: uv run mypy .
+
       - name: Run Alembic migrations
         working-directory: ./server
         run: dotenvx run --env-file ../.env -- uv run alembic -n testdb upgrade head

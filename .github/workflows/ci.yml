@@ -17,7 +17,7 @@ jobs:
         uses: ./.github/actions/setup-node-deps
 
       - name: Format check
-        run: npm run format:check
+        run: npm run format:check:front
 
   lint-check:
     runs-on: ubuntu-latest
@@ -29,7 +29,7 @@ jobs:
         uses: ./.github/actions/setup-node-deps
 
       - name: Lint check
-        run: npm run lint:check
+        run: npm run lint:check:front
 
   build:
     runs-on: ubuntu-latest
@@ -42,4 +42,4 @@ jobs:
         uses: ./.github/actions/setup-node-deps
 
       - name: Build
-        run: npm run build
+        run: npm run build:front

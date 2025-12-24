@@ -131,6 +131,7 @@ export const demoPages: Page[] = [
 ];
 
 export const demoTrip: Trip = {
-  id: 'trip1',
+  id: 1,
+  urlId: 'trip1',
   title: 'サンプル旅行',
 };

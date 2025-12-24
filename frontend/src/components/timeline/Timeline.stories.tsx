@@ -23,7 +23,7 @@ type Story = StoryObj<typeof meta>;
 
 const sampleBlocks: Block[] = [
   {
-    id: '1',
+    id: 1,
     type: 'schedule',
     title: '予定のタイトル（テンプレート）',
     startTime: new Date(2024, 0, 1, 12, 0),
@@ -31,32 +31,36 @@ const sampleBlocks: Block[] = [
     details: `detail detail
 • detail detail
 リンク`.repeat(20),
+    pageId: 1,
   },
   {
-    id: '2',
+    id: 2,
     type: 'transportation',
     transportationType: 'car',
     title: '車移動',
     startTime: new Date(2024, 0, 1, 15, 0),
     endTime: new Date(2024, 0, 1, 16, 0),
+    pageId: 1,
   },
   {
-    id: '3',
+    id: 3,
     type: 'schedule',
     title: '予定のタイトル（テンプレート）',
     startTime: new Date(2024, 0, 1, 17, 0),
     endTime: new Date(2024, 0, 1, 19, 0),
+    pageId: 1,
   },
   {
-    id: '4',
+    id: 4,
     type: 'transportation',
     transportationType: 'car',
     title: '車移動',
     startTime: new Date(2024, 0, 1, 19, 0),
     endTime: new Date(2024, 0, 1, 20, 0),
     details: `detail detail
-• detail detail
-リンク`.repeat(20),
+    • detail detail
+    リンク`.repeat(20),
+    pageId: 1,
   },
 ];
 

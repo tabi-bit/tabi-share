@@ -7,7 +7,7 @@ const App = () => {
   return (
     <Routes>
       <Route path='/' element={<HomePage />} />
-      <Route path='/trip/:tripId' element={<TripPage />} />
+      <Route path='/trip/:urlId' element={<TripPage />} />
       <Route path='*' element={<NotFoundPage />} />
     </Routes>
   );

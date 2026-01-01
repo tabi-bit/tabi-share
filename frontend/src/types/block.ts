@@ -22,7 +22,7 @@ const AppBaseBlockSchema = z.object({
   title: z.string(),
   startTime: z.date(),
   endTime: z.date().nullable(),
-  details: z.string().nullish(),
+  detail: z.string().nullish(),
   pageId: z.number(),
 });
 
@@ -51,7 +51,7 @@ const ApiDefinitionSchema = z.object({
   pageId: z.number(),
   startTime: z.string(), // APIからは文字列で返却
   endTime: z.string().nullish(),
-  details: z.string().nullish(),
+  detail: z.string().nullish(),
   title: z.string(),
 });
 

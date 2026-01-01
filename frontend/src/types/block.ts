@@ -21,7 +21,7 @@ const AppBaseBlockSchema = z.object({
   id: z.number(),
   title: z.string(),
   startTime: z.date(),
-  endTime: z.date(),
+  endTime: z.date().nullable(),
   details: z.string().nullish(),
   pageId: z.number(),
 });
@@ -50,7 +50,7 @@ const ApiDefinitionSchema = z.object({
   id: z.number(),
   pageId: z.number(),
   startTime: z.string(), // APIからは文字列で返却
-  endTime: z.string(),
+  endTime: z.string().nullish(),
   details: z.string().nullish(),
   title: z.string(),
 });
@@ -81,7 +81,7 @@ export const AppDataSchema = ApiBlockSchema.transform(apiData => {
   const common = {
     ...rest,
     startTime: new Date(startTime),
-    endTime: new Date(endTime),
+    endTime: endTime != null ? new Date(endTime) : null,
   };
 
   if (common.blockType === 'move') {

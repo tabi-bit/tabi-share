@@ -40,21 +40,21 @@ export const Default: Story = {
   },
 };
 
-export const WithDetails: Story = {
+export const WithDetail: Story = {
   args: {
     block: {
       ...baseBlock,
-      details: '高速道路を使用して移動します。ETCカードを忘れずに。',
+      detail: '高速道路を使用して移動します。ETCカードを忘れずに。',
     },
   },
 };
 
-export const WithLongDetails: Story = {
+export const WithLongDetail: Story = {
   args: {
     block: {
       ...baseBlock,
       title: '新宿駅 → 草津温泉',
-      details: `detail detail
+      detail: `detail detail
 • detail detail
 リンク
 詳細詳細

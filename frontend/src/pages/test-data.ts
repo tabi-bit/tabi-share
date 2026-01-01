@@ -8,7 +8,7 @@ export const demoBlocks2: Block[] = [
     title: '予定のタイトル（テンプレート）',
     startTime: new Date(2024, 0, 1, 12, 0),
     endTime: new Date(2024, 0, 1, 14, 0),
-    details: `detail detail
+    detail: `detail detail
 • detail detail
 リンク`.repeat(20),
     pageId: 2,
@@ -37,7 +37,7 @@ export const demoBlocks2: Block[] = [
     title: '車移動',
     startTime: new Date(2024, 0, 1, 19, 0),
     endTime: new Date(2024, 0, 1, 20, 0),
-    details: `detail detail
+    detail: `detail detail
   • detail detail
   リンク`.repeat(20),
     pageId: 2,
@@ -51,7 +51,7 @@ export const demoBlocks1: Block[] = [
     title: '予定のタイトル（テンプレート）',
     startTime: new Date(2024, 0, 1, 12, 0),
     endTime: new Date(2024, 0, 1, 14, 0),
-    details: `detail detail
+    detail: `detail detail
     • detail detail
     リンク`.repeat(20),
     pageId: 1,
@@ -80,7 +80,7 @@ export const demoBlocks1: Block[] = [
     title: '車移動',
     startTime: new Date(2024, 0, 1, 19, 0),
     endTime: new Date(2024, 0, 1, 20, 0),
-    details: `detail detail
+    detail: `detail detail
     • detail detail
     リンク`.repeat(20),
     pageId: 1,
@@ -91,7 +91,7 @@ export const demoBlocks1: Block[] = [
     title: '予定のタイトル（テンプレート）',
     startTime: new Date(2024, 0, 1, 20, 0),
     endTime: new Date(2024, 0, 1, 22, 0),
-    details: `detail detail
+    detail: `detail detail
     • detail detail
     リンク`.repeat(20),
     pageId: 1,
@@ -120,7 +120,7 @@ export const demoBlocks1: Block[] = [
     title: '車移動',
     startTime: new Date(2024, 0, 2, 1, 0),
     endTime: new Date(2024, 0, 2, 2, 0),
-    details: `detail detail
+    detail: `detail detail
     • detail detail
     リンク`.repeat(20),
     pageId: 1,

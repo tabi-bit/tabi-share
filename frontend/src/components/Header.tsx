@@ -11,8 +11,8 @@ type HeaderProps = {
   trip: Trip;
   pages: Page[];
   mode?: 'view' | 'edit';
-  selectedPageId?: string;
-  onSelectPage: (pageId: string) => void;
+  selectedPageId?: Page['id'];
+  onSelectPage: (pageId: Page['id']) => void;
   scrollContainerRef: React.RefObject<HTMLDivElement | null>;
   className?: string;
 };
@@ -72,13 +72,13 @@ export function Header({
             </Badge>
           )
         ) : (
-          <Select value={selectedPageId} onValueChange={v => onSelectPage(v)}>
+          <Select value={String(selectedPageId)} onValueChange={v => onSelectPage(Number(v))}>
             <SelectTrigger className='bg-white transition-all duration-300 ease-in-out'>
               <SelectValue placeholder='ページ選択' />
             </SelectTrigger>
             <SelectContent>
               {pages.map(page => (
-                <SelectItem key={page.id} value={page.id}>
+                <SelectItem key={page.id} value={String(page.id)}>
                   {page.title}
                 </SelectItem>
               ))}

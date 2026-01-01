@@ -4,34 +4,39 @@ import type { Page } from '@/types';
 import type { Trip } from '@/types/trip';
 import { Header } from './Header';
 
-const onSelectPage = (pageId: string) => {
+const onSelectPage = (pageId: Page['id']) => {
   console.log('Selected page ID:', pageId);
 };
 
 const demoTrip: Trip = {
-  id: 'trip-1',
+  id: 1,
   title: '北海道旅行',
+  urlId: 'trip1',
 };
 
 const demoPages: Page[] = [
   {
-    id: 'one-day',
+    id: 1,
     title: '1日目',
+    tripId: 1,
   },
   {
-    id: 'two-day',
+    id: 2,
     title: '2日目',
+    tripId: 1,
   },
   {
-    id: 'three-day',
+    id: 3,
     title: '3日目',
+    tripId: 1,
   },
 ];
 
 const singlePage: Page[] = [
   {
-    id: 'day-trip',
+    id: 1,
     title: '日帰り旅行',
+    tripId: 1,
   },
 ];
 
@@ -79,7 +84,7 @@ export const Default: Story = {
     trip: demoTrip,
     pages: demoPages,
     mode: 'view',
-    selectedPageId: 'one-day',
+    selectedPageId: 1,
     onSelectPage,
     scrollContainerRef: { current: null },
   },
@@ -97,7 +102,7 @@ export const EditMode: Story = {
     trip: demoTrip,
     pages: demoPages,
     mode: 'edit',
-    selectedPageId: 'two-day',
+    selectedPageId: 2,
     onSelectPage,
     scrollContainerRef: { current: null },
   },
@@ -113,8 +118,9 @@ export const EditMode: Story = {
 export const SinglePage: Story = {
   args: {
     trip: {
-      id: 'day-trip',
+      id: 1,
       title: '日帰り温泉ツアー',
+      urlId: 'trip1',
     },
     pages: singlePage,
     mode: 'view',
@@ -133,8 +139,9 @@ export const SinglePage: Story = {
 export const EmptyPages: Story = {
   args: {
     trip: {
-      id: 'new-trip',
+      id: 1,
       title: '新しい旅行計画',
+      urlId: 'trip1',
     },
     pages: [],
     mode: 'edit',
@@ -155,7 +162,7 @@ export const WithCustomClass: Story = {
     trip: demoTrip,
     pages: demoPages,
     mode: 'view',
-    selectedPageId: 'two-day',
+    selectedPageId: 2,
     className: 'border-b-2 border-blue-500',
     onSelectPage,
     scrollContainerRef: { current: null },
@@ -174,7 +181,7 @@ export const ScrolledState: Story = {
     trip: demoTrip,
     pages: demoPages,
     mode: 'view',
-    selectedPageId: 'one-day',
+    selectedPageId: 1,
     onSelectPage,
     scrollContainerRef: { current: null },
   },

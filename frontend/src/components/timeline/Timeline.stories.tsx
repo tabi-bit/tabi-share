@@ -62,6 +62,14 @@ const sampleBlocks: Block[] = [
     リンク`.repeat(20),
     pageId: 1,
   },
+  {
+    id: 5,
+    type: 'schedule',
+    title: '点の予定',
+    startTime: new Date(2024, 0, 1, 22, 0),
+    endTime: null,
+    pageId: 1,
+  },
 ];
 
 export const ViewMode: Story = {

@@ -38,7 +38,7 @@ export function ViewTimeline({ blocks, className }: ViewTimelineProps) {
     timelineItems.push({
       type: 'block',
       block: currentBlock,
-      id: currentBlock.id,
+      id: String(currentBlock.id),
       isConnectedWithNextBlock: nextBlock ? nextBlock.startTime.getTime() === currentBlock.endTime.getTime() : false,
     });
   }

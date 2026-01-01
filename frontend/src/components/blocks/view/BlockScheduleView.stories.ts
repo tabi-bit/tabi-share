@@ -12,10 +12,11 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 const baseScheduleBlock = {
-  id: '1',
+  id: 1,
   type: 'schedule' as const,
   startTime: new Date(2024, 0, 1, 9, 0),
   endTime: new Date(2024, 0, 1, 11, 30),
+  pageId: 1,
 };
 
 export const Default: Story = {

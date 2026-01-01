@@ -117,16 +117,19 @@ export const demoBlocks1: Block[] = [
 
 export const demoPages: Page[] = [
   {
-    id: 'page1',
+    id: 1,
     title: '1日目',
+    tripId: 1,
   },
   {
-    id: 'page2',
+    id: 2,
     title: '2日目',
+    tripId: 1,
   },
   {
-    id: 'page3',
+    id: 3,
     title: '3日目',
+    tripId: 1,
   },
 ];
 

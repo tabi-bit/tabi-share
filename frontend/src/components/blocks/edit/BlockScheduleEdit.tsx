@@ -10,7 +10,7 @@ export function BlockScheduleEdit({ block, className }: BlockScheduleEditProps) 
   return (
     <div
       className={cn(
-        'flex w-full flex-row items-center gap-2 rounded-lg bg-linear-to-r from-teal-400 to-teal-500 px-4 py-2',
+        'flex h-full w-full flex-row items-center gap-2 rounded-lg bg-linear-to-r from-teal-400 to-teal-500 px-4 py-2',
         className
       )}
     >

@@ -13,7 +13,7 @@ const TRIPS_BASE_PATH = '/trips';
  */
 export const useTrips = () => {
   const { data, error, isLoading } = useSWR<Trip[]>(TRIPS_BASE_PATH, async (url: string) => {
-    const res = await fetcher(url);
+    const res = await fetcher(`${url}/`);
     return z.array(TripSchema).parse(res);
   });
 

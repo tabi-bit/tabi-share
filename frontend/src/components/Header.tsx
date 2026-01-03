@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { type Dispatch, type SetStateAction, useCallback, useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import type { Page } from '@/types';
 import type { Trip } from '@/types/trip';
@@ -14,6 +14,7 @@ type HeaderProps = {
   selectedPageId?: Page['id'];
   onSelectPage: (pageId: Page['id']) => void;
   scrollContainerRef: React.RefObject<HTMLDivElement | null>;
+  setMode: Dispatch<SetStateAction<'view' | 'edit'>>;
   className?: string;
 };
 
@@ -23,6 +24,7 @@ export function Header({
   mode = 'view',
   selectedPageId,
   onSelectPage,
+  setMode,
   className,
   scrollContainerRef,
 }: HeaderProps) {
@@ -86,11 +88,18 @@ export function Header({
           </Select>
         )}
         {!isScrolled && (
-          <div className='transition-all duration-300 ease-in-out'>
+          <div className='flex flex-row gap-x-4 transition-all duration-300 ease-in-out'>
             {mode === 'edit' ? (
-              <Button variant='secondary'>ページ情報編集</Button>
+              <>
+                <Button variant='default' onClick={() => setMode('view')}>
+                  閲覧モード
+                </Button>
+                <Button variant='secondary'>ページ情報編集</Button>
+              </>
             ) : (
-              <Button variant='default'>編集モード</Button>
+              <Button variant='default' onClick={() => setMode('edit')}>
+                編集モード
+              </Button>
             )}
           </div>
         )}

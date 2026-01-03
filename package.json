@@ -9,6 +9,7 @@
     "dev:storybook": "cd frontend && npm run storybook",
     "install:all": "npm ci && cd frontend && npm ci",
     "build": "cd frontend && npm run build",
+    "type-check": "cd frontend && npm run type-check",
     "lint:check": "cd frontend && npm run lint:check",
     "lint:fix": "cd frontend && npm run lint:fix",
     "format:check": "cd frontend && npm run format:check",

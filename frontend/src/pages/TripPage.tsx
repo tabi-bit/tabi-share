@@ -4,11 +4,13 @@ import { Header } from '@/components/Header';
 import { usePages } from '@/hooks/usePages';
 import { useTripByUrlId } from '@/hooks/useTrips';
 import type { Page } from '@/types';
+import { EditTripLayout } from './TripPage/EditTripLayout';
 import { ViewTripLayout } from './TripPage/ViewTripLayout';
 
 const TripPage = () => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [selectedPageId, setSelectedPageId] = useState<Page['id']>();
+  const [mode, setMode] = useState<'view' | 'edit'>('view');
   const { urlId } = useParams<{ urlId: string }>();
 
   const { trip, error: tripError, isLoading: isTripLoading } = useTripByUrlId(urlId ?? null);
@@ -48,12 +50,14 @@ const TripPage = () => {
               selectedPageId={selectedPageId}
               pages={pages}
               onSelectPage={setSelectedPageId}
+              setMode={setMode}
               trip={trip}
-              mode='view'
+              mode={mode}
               scrollContainerRef={scrollContainerRef}
             />
           )}
-          {selectedPageId != null && <ViewTripLayout selectedPageId={selectedPageId} />}
+          {selectedPageId != null && mode === 'view' && <ViewTripLayout selectedPageId={selectedPageId} />}
+          {selectedPageId != null && mode === 'edit' && <EditTripLayout selectedPageId={selectedPageId} />}
         </div>
       )}
     </>

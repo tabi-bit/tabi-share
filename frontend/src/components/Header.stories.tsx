@@ -87,6 +87,9 @@ export const Default: Story = {
     selectedPageId: 1,
     onSelectPage,
     scrollContainerRef: { current: null },
+    setMode: () => {
+      /* noop */
+    },
   },
   parameters: {
     docs: {
@@ -105,6 +108,9 @@ export const EditMode: Story = {
     selectedPageId: 2,
     onSelectPage,
     scrollContainerRef: { current: null },
+    setMode: () => {
+      /* noop */
+    },
   },
   parameters: {
     docs: {
@@ -126,6 +132,9 @@ export const SinglePage: Story = {
     mode: 'view',
     onSelectPage,
     scrollContainerRef: { current: null },
+    setMode: () => {
+      /* noop */
+    },
   },
   parameters: {
     docs: {
@@ -147,6 +156,9 @@ export const EmptyPages: Story = {
     mode: 'edit',
     onSelectPage,
     scrollContainerRef: { current: null },
+    setMode: () => {
+      /* noop */
+    },
   },
   parameters: {
     docs: {
@@ -166,6 +178,9 @@ export const WithCustomClass: Story = {
     className: 'border-b-2 border-blue-500',
     onSelectPage,
     scrollContainerRef: { current: null },
+    setMode: () => {
+      /* noop */
+    },
   },
   parameters: {
     docs: {
@@ -184,6 +199,9 @@ export const ScrolledState: Story = {
     selectedPageId: 1,
     onSelectPage,
     scrollContainerRef: { current: null },
+    setMode: () => {
+      /* noop */
+    },
   },
   parameters: {
     layout: 'fullscreen',

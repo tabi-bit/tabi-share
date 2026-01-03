@@ -151,6 +151,21 @@
   --shadow-2xl: var(--shadow-2xl);
 }
 
+/* FullCalendarの時刻表示部分のボーダーを消す */
+.fc {
+  .fc-scroller-harness {
+    overflow: visible !important;
+  }
+
+  .fc-timegrid-slot-label {
+    border-width: 0px !important;
+  }
+
+  .fc-scrollgrid {
+    border-width: 0px !important;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

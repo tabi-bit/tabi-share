@@ -15,7 +15,8 @@
     "build-storybook": "storybook build",
     "test": "vitest run",
     "test:watch": "vitest --watch",
-    "test:ui": "vitest --ui"
+    "test:ui": "vitest --ui",
+    "type-check": "tsc -b"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

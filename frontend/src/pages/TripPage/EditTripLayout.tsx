@@ -1,4 +1,4 @@
-import type { DateSelectArg, EventContentArg, EventInput, EventMountArg, ViewMountArg } from '@fullcalendar/core';
+import type { DateSelectArg, EventContentArg, EventInput, ViewMountArg } from '@fullcalendar/core';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import FullCalendar from '@fullcalendar/react';

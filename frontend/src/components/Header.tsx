@@ -1,4 +1,4 @@
-import { type Dispatch, type SetStateAction, useCallback, useEffect, useState } from 'react';
+import { type Dispatch, type SetStateAction, useCallback, useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import type { Page } from '@/types';
 import type { Trip } from '@/types/trip';
@@ -29,18 +29,37 @@ export function Header({
   scrollContainerRef,
 }: HeaderProps) {
   const [isScrolled, setIsScrolled] = useState(false);
+  const scrollY = useRef(0);
 
   const handleScroll = useCallback(() => {
     const container = scrollContainerRef?.current;
     if (!container) return;
 
     const scrollTop = container.scrollTop;
-    // ヘッダーの大きさを考慮して間を空ける
-    if (!isScrolled && scrollTop > 100) {
-      setIsScrolled(true);
-      return;
-    } else if (isScrolled && scrollTop <= 50) {
-      setIsScrolled(false);
+    const deltaY = scrollTop - scrollY.current;
+
+    // isScrolledの次の状態を計算する
+    let nextIsScrolled = isScrolled;
+
+    if (scrollTop < 50) {
+      // ページ最上部では常に表示
+      nextIsScrolled = false;
+    } else if (Math.abs(deltaY) > 10) {
+      if (deltaY < 0 && isScrolled) {
+        // 上スクロール and ヘッダーが非表示中 -> 表示させる
+        nextIsScrolled = false;
+      } else if (deltaY > 0 && !isScrolled) {
+        // 下スクロール and ヘッダーが表示中 -> 非表示にさせる
+        nextIsScrolled = true;
+      }
+    }
+
+    if (nextIsScrolled !== isScrolled) {
+      setIsScrolled(nextIsScrolled);
+    } else {
+      // 状態が変化しなかった場合のみ、スクロール位置の基準を更新
+      // レイアウトシフトによる誤作動を防ぐ
+      scrollY.current = scrollTop;
     }
   }, [isScrolled, scrollContainerRef]);
 

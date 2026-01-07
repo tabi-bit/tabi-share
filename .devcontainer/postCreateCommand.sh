@@ -49,3 +49,8 @@ echo "🎉 All setup steps completed successfully!"
 
 # Firebase CLI Tools
 npm install -g firebase-tools
+
+# AI検索用にripgrepをインストール
+sudo apt-get update
+sudo apt-get install -y ripgrep
+echo "🔍 ripgrep installed for AI search functionality."

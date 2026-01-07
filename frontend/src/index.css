@@ -164,7 +164,12 @@
   .fc-scrollgrid {
     border-width: 0px !important;
   }
+
+  .fc-event {
+    box-shadow: none !important;
+  }
 }
+
 
 @layer base {
   * {

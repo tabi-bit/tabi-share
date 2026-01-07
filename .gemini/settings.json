@@ -2,17 +2,5 @@
   "context": {
     "fileName": "AGENTS.md"
   },
-  "mcpServers": {
-    "serena": {
-      "command": "uvx",
-      "args": [
-        "--from",
-        "git+https://github.com/oraios/serena",
-        "serena",
-        "start-mcp-server",
-        "--project",
-        "$PWD"
-      ]
-    }
-  }
+  "mcpServers": {}
 }

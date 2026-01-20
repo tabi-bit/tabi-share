@@ -1,5 +1,6 @@
-import type { DateSelectArg, EventContentArg, EventInput, ViewMountArg } from '@fullcalendar/core';
+import type { DateSelectArg, EventContentArg, EventDropArg, ViewMountArg } from '@fullcalendar/core';
 import dayGridPlugin from '@fullcalendar/daygrid';
+import type { EventResizeDoneArg } from '@fullcalendar/interaction';
 import interactionPlugin from '@fullcalendar/interaction';
 import FullCalendar from '@fullcalendar/react';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -18,7 +19,6 @@ export const EditTripLayout = ({ selectedPageId }: EditTripLayoutProps) => {
   const [blocks, setBlocks] = useState<Block[] | null>();
   const calendarRef = useRef<FullCalendar>(null);
   const isFirstEventMount = useRef(true);
-  const [events, setEvents] = useState<EventInput[]>([]);
 
   useEffect(() => {
     if (blocks == null) {
@@ -41,19 +41,17 @@ export const EditTripLayout = ({ selectedPageId }: EditTripLayoutProps) => {
     };
   }, []);
 
-  const initialEvents = useMemo(() => {
+  const events = useMemo(() => {
     if (!blocks) return [];
-
     return blocks.map(block => createEvent(block));
   }, [blocks, createEvent]);
 
   useEffect(() => {
-    if (initialEvents.length > 0 && calendarRef.current) {
-      setEvents(initialEvents);
-      const calendarApi = calendarRef.current?.getApi();
-      calendarApi?.gotoDate(initialEvents[0].start);
+    if (blocks && blocks.length > 0 && calendarRef.current) {
+      const calendarApi = calendarRef.current.getApi();
+      calendarApi.gotoDate(blocks[0].startTime);
     }
-  }, [initialEvents]);
+  }, [blocks]);
 
   const handleSelect = (selectInfo: DateSelectArg) => {
     const title = prompt('イベントのタイトルを入力してください');
@@ -62,16 +60,47 @@ export const EditTripLayout = ({ selectedPageId }: EditTripLayoutProps) => {
 
     if (title) {
       const newBlock: Block = {
-        id: 0,
+        id: Date.now(), // 仮ID（将来的にはAPI経由で取得）
         type: 'schedule',
         title: title,
         startTime: new Date(selectInfo.startStr),
         endTime: new Date(selectInfo.endStr),
         pageId: selectedPageId,
       };
-      const newEvent = createEvent(newBlock);
-      setEvents(prev => [...prev, newEvent]);
+      setBlocks(prev => [...(prev ?? []), newBlock]);
     }
+  };
+
+  const handleEventDrop = (dropInfo: EventDropArg) => {
+    const blockId = Number(dropInfo.event.id);
+    setBlocks(
+      prev =>
+        prev?.map(block =>
+          block.id === blockId
+            ? {
+                ...block,
+                startTime: dropInfo.event.start ? new Date(dropInfo.event.start) : block.startTime,
+                endTime: dropInfo.event.end ? new Date(dropInfo.event.end) : block.endTime,
+              }
+            : block
+        ) ?? null
+    );
+  };
+
+  const handleEventResize = (resizeInfo: EventResizeDoneArg) => {
+    const blockId = Number(resizeInfo.event.id);
+    setBlocks(
+      prev =>
+        prev?.map(block =>
+          block.id === blockId
+            ? {
+                ...block,
+                startTime: resizeInfo.event.start ? new Date(resizeInfo.event.start) : block.startTime,
+                endTime: resizeInfo.event.end ? new Date(resizeInfo.event.end) : block.endTime,
+              }
+            : block
+        ) ?? null
+    );
   };
 
   /**
@@ -117,6 +146,8 @@ export const EditTripLayout = ({ selectedPageId }: EditTripLayoutProps) => {
         // データとイベントハンドラ
         events={events}
         select={handleSelect}
+        eventDrop={handleEventDrop}
+        eventResize={handleEventResize}
         eventContent={renderEventContent}
         eventDidMount={handleEventMount}
         // スロットと時間軸の設定

@@ -4,27 +4,22 @@ import type { EventResizeDoneArg } from '@fullcalendar/interaction';
 import interactionPlugin from '@fullcalendar/interaction';
 import FullCalendar from '@fullcalendar/react';
 import timeGridPlugin from '@fullcalendar/timegrid';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { BlockScheduleEdit } from '@/components/blocks/edit/BlockScheduleEdit';
 import { BlockTransportationEdit } from '@/components/blocks/edit/BlockTransportationEdit';
-import { useBlocks } from '@/hooks/useBlocks';
-import type { Block, Page, ScheduleBlock, TransportationBlock } from '@/types';
+import { useBlocks, useCreateBlock, useUpdateBlock } from '@/hooks/useBlocks';
+import type { Block, Page } from '@/types';
 
 interface EditTripLayoutProps {
   selectedPageId: Page['id'];
 }
 
 export const EditTripLayout = ({ selectedPageId }: EditTripLayoutProps) => {
-  const { blocks: initialBlocks } = useBlocks(selectedPageId);
-  const [blocks, setBlocks] = useState<Block[] | null>();
+  const { blocks } = useBlocks(selectedPageId);
+  const { createBlock } = useCreateBlock(selectedPageId);
+  const { updateBlock } = useUpdateBlock(selectedPageId);
   const calendarRef = useRef<FullCalendar>(null);
   const isFirstEventMount = useRef(true);
-
-  useEffect(() => {
-    if (blocks == null) {
-      setBlocks(initialBlocks);
-    }
-  }, [initialBlocks, blocks]);
 
   const createEvent = useCallback((block: Block) => {
     return {
@@ -53,7 +48,7 @@ export const EditTripLayout = ({ selectedPageId }: EditTripLayoutProps) => {
     }
   }, [blocks]);
 
-  const handleSelect = (selectInfo: DateSelectArg) => {
+  const handleSelect = async (selectInfo: DateSelectArg) => {
     const title = prompt('イベントのタイトルを入力してください');
     const type = prompt('イベントの種類を入力してください (schedule または transportation)', 'schedule');
     const detail = prompt('イベントの詳細を入力してください', '');
@@ -62,9 +57,8 @@ export const EditTripLayout = ({ selectedPageId }: EditTripLayoutProps) => {
 
     if (title && type && (type === 'schedule' || type === 'transportation')) {
       if (type === 'transportation') {
-        const newBlock: TransportationBlock = {
-          id: Date.now(),
-          type: 'transportation',
+        const newBlock = {
+          type: 'transportation' as const,
           transportationType: 'car',
           title,
           startTime: new Date(selectInfo.startStr),
@@ -72,52 +66,44 @@ export const EditTripLayout = ({ selectedPageId }: EditTripLayoutProps) => {
           pageId: selectedPageId,
           detail: detail ?? '',
         };
-        setBlocks(prev => [...(prev ?? []), newBlock]);
+        await createBlock(newBlock);
       } else {
-        const newBlock: ScheduleBlock = {
-          id: Date.now(),
-          type: 'schedule',
+        const newBlock = {
+          type: 'schedule' as const,
           title,
           startTime: new Date(selectInfo.startStr),
           endTime: new Date(selectInfo.endStr),
           pageId: selectedPageId,
           detail: detail ?? '',
         };
-        setBlocks(prev => [...(prev ?? []), newBlock]);
+        await createBlock(newBlock);
       }
+      selectInfo.view.calendar.unselect();
     }
   };
 
-  const handleEventDrop = (dropInfo: EventDropArg) => {
-    const blockId = Number(dropInfo.event.id);
-    setBlocks(
-      prev =>
-        prev?.map(block =>
-          block.id === blockId
-            ? {
-                ...block,
-                startTime: dropInfo.event.start ? new Date(dropInfo.event.start) : block.startTime,
-                endTime: dropInfo.event.end ? new Date(dropInfo.event.end) : block.endTime,
-              }
-            : block
-        ) ?? null
-    );
+  const handleEventDrop = async (dropInfo: EventDropArg) => {
+    const blockData = dropInfo.event.extendedProps.blockData as Block;
+    await updateBlock({
+      id: blockData.id,
+      data: {
+        ...blockData,
+        startTime: dropInfo.event.start ?? blockData.startTime,
+        endTime: dropInfo.event.end ?? blockData.endTime,
+      },
+    });
   };
 
-  const handleEventResize = (resizeInfo: EventResizeDoneArg) => {
-    const blockId = Number(resizeInfo.event.id);
-    setBlocks(
-      prev =>
-        prev?.map(block =>
-          block.id === blockId
-            ? {
-                ...block,
-                startTime: resizeInfo.event.start ? new Date(resizeInfo.event.start) : block.startTime,
-                endTime: resizeInfo.event.end ? new Date(resizeInfo.event.end) : block.endTime,
-              }
-            : block
-        ) ?? null
-    );
+  const handleEventResize = async (resizeInfo: EventResizeDoneArg) => {
+    const blockData = resizeInfo.event.extendedProps.blockData as Block;
+    await updateBlock({
+      id: blockData.id,
+      data: {
+        ...blockData,
+        startTime: resizeInfo.event.start ?? blockData.startTime,
+        endTime: resizeInfo.event.end ?? blockData.endTime,
+      },
+    });
   };
 
   /**

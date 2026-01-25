@@ -4,7 +4,7 @@ import useSWR, { useSWRConfig } from 'swr';
 import useSWRMutation from 'swr/mutation';
 import { z } from 'zod';
 import { apiClient, fetcher } from '@/lib/apiClient';
-import { AppResponseBlockSchema, type Block, BlockSchema, createOmittedApiBlockSchema } from '@/types/block';
+import { AppRequestBlockSchema, AppResponseBlockSchema, type Block, BlockSchema } from '@/types/block';
 
 const PAGES_BASE_PATH = '/pages';
 const BLOCKS_BASE_PATH = '/blocks';
@@ -45,7 +45,6 @@ export const useBlock = (id: number | null) => {
 };
 
 type CreateBlockArg = Omit<Block, 'id'>;
-const CreateBlockSchema = createOmittedApiBlockSchema(['id']);
 
 /**
  * 新しいBlockを作成する
@@ -56,9 +55,11 @@ export const useCreateBlock = (pageId: number | null) => {
 
   const createBlockFetcher = useCallback(
     async (_key: string | null, { arg: blockData }: { arg: CreateBlockArg }) => {
-      CreateBlockSchema.parse(blockData);
-      const response = await apiClient.post<Block>(`${PAGES_BASE_PATH}/${pageId}/blocks`, blockData);
-      return response.data;
+      // アプリ層→API層に変換してからバリデーション・送信
+      const apiData = AppRequestBlockSchema.parse({ ...blockData, id: 0 }); // idは仮値
+      const { id: _, ...payload } = apiData; // idを除外
+      const response = await apiClient.post<Block>(`${PAGES_BASE_PATH}/${pageId}/blocks`, payload);
+      return AppResponseBlockSchema.parse(response.data);
     },
     [pageId]
   );
@@ -88,7 +89,6 @@ export const useCreateBlock = (pageId: number | null) => {
 };
 
 type UpdateBlockArg = { id: number; data: Omit<Block, 'id'> };
-const UpdateBlockSchema = createOmittedApiBlockSchema(['id']);
 
 /**
  * Blockを更新するためのフック
@@ -99,9 +99,11 @@ export const useUpdateBlock = (pageId: number | null) => {
 
   const updateBlockFetcher = useCallback(async (_key: string | null, { arg }: { arg: UpdateBlockArg }) => {
     const { id, data } = arg;
-    UpdateBlockSchema.parse(data);
-    const response = await apiClient.put<Block>(`${BLOCKS_BASE_PATH}/${id}`, data);
-    return response.data;
+    // アプリ層→API層に変換してからバリデーション・送信
+    const apiData = AppRequestBlockSchema.parse({ ...data, id });
+    const { id: _, ...payload } = apiData; // idを除外（URLパスで指定）
+    const response = await apiClient.put<Block>(`${BLOCKS_BASE_PATH}/${id}`, payload);
+    return AppResponseBlockSchema.parse(response.data);
   }, []);
 
   const { trigger, isMutating, error, data } = useSWRMutation(listKey, updateBlockFetcher, {

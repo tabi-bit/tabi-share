@@ -48,30 +48,30 @@ export type BlockType = Block['type'];
 
 const ApiDefinitionSchema = z.object({
   id: z.number(),
-  pageId: z.number(),
-  startTime: z.string(), // APIからは文字列で返却
-  endTime: z.string().nullable(), // nullish() -> nullable() に変更して undefined を排除し明確化
+  page_id: z.number(),
+  start_time: z.string(), // APIからは文字列で返却
+  end_time: z.string().nullable(), // nullish() -> nullable() に変更して undefined を排除し明確化
   detail: z.string().nullish(),
   title: z.string(),
 });
 
 const ApiMoveSchema = ApiDefinitionSchema.extend({
-  blockType: z.literal('move'),
-  transportationType: TransportationTypeEnum,
+  block_type: z.literal('move'),
+  transportation_type: TransportationTypeEnum,
 });
 
 const ApiEventSchema = ApiDefinitionSchema.extend({
-  blockType: z.literal('event'),
+  block_type: z.literal('event'),
 });
 
 const ApiStaySchema = ApiDefinitionSchema.extend({
-  blockType: z.literal('stay'),
+  block_type: z.literal('stay'),
 });
 
 /**
  * APIから返ってくる生のデータ形式を表すスキーマユニオン
  */
-const ApiBlockSchema = z.discriminatedUnion('blockType', [ApiMoveSchema, ApiEventSchema, ApiStaySchema]);
+const ApiBlockSchema = z.discriminatedUnion('block_type', [ApiMoveSchema, ApiEventSchema, ApiStaySchema]);
 // API送信用の型定義もエクスポートしておく（必要であれば）
 export type ApiBlock = z.infer<typeof ApiBlockSchema>;
 
@@ -79,26 +79,24 @@ export type ApiBlock = z.infer<typeof ApiBlockSchema>;
 // ApiBlockSchemaをBlockSchemaに変換するロジック
 
 export const AppResponseBlockSchema = ApiBlockSchema.transform(apiData => {
-  const { startTime, endTime, ...rest } = apiData;
+  const { start_time, end_time, page_id, block_type, ...rest } = apiData;
   const common = {
     ...rest,
-    startTime: new Date(startTime),
-    endTime: endTime != null ? new Date(endTime) : null,
+    startTime: new Date(start_time),
+    endTime: end_time != null ? new Date(end_time) : null,
+    pageId: page_id,
   };
 
-  if (common.blockType === 'move') {
-    // biome-ignore lint/correctness/noUnusedVariables: delete key
-    const { blockType, ...moveData } = common;
+  if (block_type === 'move') {
     return {
-      ...moveData,
+      ...common,
       type: 'transportation' as const,
+      transportationType: apiData.transportation_type,
     };
   }
 
-  // biome-ignore lint/correctness/noUnusedVariables: delete key
-  const { blockType, ...scheduleData } = common;
   return {
-    ...scheduleData,
+    ...common,
     type: 'schedule' as const,
   };
 }).pipe(BlockSchema);
@@ -106,28 +104,29 @@ export const AppResponseBlockSchema = ApiBlockSchema.transform(apiData => {
 // --- 変換スキーマ (アプリケーション -> API) ---
 // BlockSchemaをApiBlockSchemaの形に変換するロジック
 export const AppRequestBlockSchema = BlockSchema.transform((appData): ApiBlock => {
-  const { startTime, endTime, type, ...rest } = appData;
+  const { startTime, endTime, pageId, type, ...rest } = appData;
 
   const common = {
     ...rest,
-    startTime: startTime.toISOString(),
-    endTime: endTime?.toISOString() ?? null,
+    start_time: startTime.toISOString(),
+    end_time: endTime?.toISOString() ?? null,
+    page_id: pageId,
   };
 
   if (type === 'transportation') {
     return {
       ...common,
-      blockType: 'move',
-      transportationType: (appData as TransportationBlock).transportationType,
+      block_type: 'move',
+      transportation_type: (appData as TransportationBlock).transportationType,
     };
   }
 
   // schedule の場合は一律 event として扱う
   return {
     ...common,
-    blockType: 'event',
+    block_type: 'event',
   };
-}).pipe(ApiBlockSchema);
+});
 
 /**
  * API送信時に一部プロパティを省略したApiBlockスキーマを生成します。

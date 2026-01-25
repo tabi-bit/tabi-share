@@ -50,7 +50,7 @@ const ApiDefinitionSchema = z.object({
   id: z.number(),
   pageId: z.number(),
   startTime: z.string(), // APIからは文字列で返却
-  endTime: z.string().nullish(),
+  endTime: z.string().nullable(), // nullish() -> nullable() に変更して undefined を排除し明確化
   detail: z.string().nullish(),
   title: z.string(),
 });
@@ -72,11 +72,13 @@ const ApiStaySchema = ApiDefinitionSchema.extend({
  * APIから返ってくる生のデータ形式を表すスキーマユニオン
  */
 const ApiBlockSchema = z.discriminatedUnion('blockType', [ApiMoveSchema, ApiEventSchema, ApiStaySchema]);
+// API送信用の型定義もエクスポートしておく（必要であれば）
+export type ApiBlock = z.infer<typeof ApiBlockSchema>;
 
 // --- 変換スキーマ (API -> アプリケーション) ---
 // ApiBlockSchemaをBlockSchemaに変換するロジック
 
-export const AppDataSchema = ApiBlockSchema.transform(apiData => {
+export const AppResponseBlockSchema = ApiBlockSchema.transform(apiData => {
   const { startTime, endTime, ...rest } = apiData;
   const common = {
     ...rest,
@@ -100,6 +102,32 @@ export const AppDataSchema = ApiBlockSchema.transform(apiData => {
     type: 'schedule' as const,
   };
 }).pipe(BlockSchema);
+
+// --- 変換スキーマ (アプリケーション -> API) ---
+// BlockSchemaをApiBlockSchemaの形に変換するロジック
+export const AppRequestBlockSchema = BlockSchema.transform((appData): ApiBlock => {
+  const { startTime, endTime, type, ...rest } = appData;
+
+  const common = {
+    ...rest,
+    startTime: startTime.toISOString(),
+    endTime: endTime?.toISOString() ?? null,
+  };
+
+  if (type === 'transportation') {
+    return {
+      ...common,
+      blockType: 'move',
+      transportationType: (appData as TransportationBlock).transportationType,
+    };
+  }
+
+  // schedule の場合は一律 event として扱う
+  return {
+    ...common,
+    blockType: 'event',
+  };
+}).pipe(ApiBlockSchema);
 
 /**
  * API送信時に一部プロパティを省略したApiBlockスキーマを生成します。

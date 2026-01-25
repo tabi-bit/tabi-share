@@ -4,7 +4,7 @@ import useSWR, { useSWRConfig } from 'swr';
 import useSWRMutation from 'swr/mutation';
 import { z } from 'zod';
 import { apiClient, fetcher } from '@/lib/apiClient';
-import { AppDataSchema, type Block, BlockSchema, createOmittedApiBlockSchema } from '@/types/block';
+import { AppResponseBlockSchema, type Block, BlockSchema, createOmittedApiBlockSchema } from '@/types/block';
 
 const PAGES_BASE_PATH = '/pages';
 const BLOCKS_BASE_PATH = '/blocks';
@@ -17,7 +17,7 @@ export const useBlocks = (pageId: number | null) => {
     pageId ? `${PAGES_BASE_PATH}/${pageId}/blocks` : null,
     async (url: string) => {
       const res = await fetcher(url);
-      return z.array(AppDataSchema).parse(res);
+      return z.array(AppResponseBlockSchema).parse(res);
     }
   );
 
@@ -34,7 +34,7 @@ export const useBlocks = (pageId: number | null) => {
 export const useBlock = (id: number | null) => {
   const { data, error, isLoading } = useSWR<Block>(id ? `${BLOCKS_BASE_PATH}/${id}` : null, async (url: string) => {
     const res = await fetcher(url);
-    return AppDataSchema.parse(res);
+    return AppResponseBlockSchema.parse(res);
   });
 
   return {

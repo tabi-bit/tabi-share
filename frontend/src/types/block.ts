@@ -78,12 +78,26 @@ export type ApiBlock = z.infer<typeof ApiBlockSchema>;
 // --- 変換スキーマ (API -> アプリケーション) ---
 // ApiBlockSchemaをBlockSchemaに変換するロジック
 
+/**
+ * サーバーから返ってきた日時文字列をUTCとして解釈してDateオブジェクトに変換
+ * サーバーが naive datetime を使用しているため、レスポンスに Z が付かない場合がある
+ * その場合はローカルタイムゾーンとして解釈されてしまうため、Z を付けてUTCとして扱う
+ */
+const parseUtcDate = (dateStr: string): Date => {
+  // すでに Z が付いている、またはタイムゾーン情報がある場合はそのまま
+  if (dateStr.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(dateStr)) {
+    return new Date(dateStr);
+  }
+  // Z がない場合は UTC として扱う
+  return new Date(`${dateStr}Z`);
+};
+
 export const AppResponseBlockSchema = ApiBlockSchema.transform(apiData => {
   const { start_time, end_time, page_id, block_type, ...rest } = apiData;
   const common = {
     ...rest,
-    startTime: new Date(start_time),
-    endTime: end_time != null ? new Date(end_time) : null,
+    startTime: parseUtcDate(start_time),
+    endTime: end_time != null ? parseUtcDate(end_time) : null,
     pageId: page_id,
   };
 

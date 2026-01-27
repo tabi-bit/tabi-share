@@ -25,6 +25,12 @@ const TripPage = () => {
     }
   }, [pages, selectedPageId]);
 
+  useEffect(() => {
+    if (mode === 'view') {
+      scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [mode]);
+
   if (isLoading) {
     return <div>Loading Trip ...</div>;
   }

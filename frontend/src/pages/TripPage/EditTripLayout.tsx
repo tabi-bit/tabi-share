@@ -48,6 +48,12 @@ export const EditTripLayout = ({ selectedPageId }: EditTripLayoutProps) => {
     }
   }, [blocks]);
 
+  // selectedPageId変更時にスクロールフラグをリセット
+  // biome-ignore lint/correctness/useExhaustiveDependencies: selectedPageId変更を検知してrefをリセットするための意図的な依存配列
+  useEffect(() => {
+    isFirstEventMount.current = true;
+  }, [selectedPageId]);
+
   const handleSelect = async (selectInfo: DateSelectArg) => {
     const title = prompt('イベントのタイトルを入力してください');
     const type = prompt('イベントの種類を入力してください (schedule または transportation)', 'schedule');

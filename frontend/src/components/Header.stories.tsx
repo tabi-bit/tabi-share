@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { useRef } from 'react';
+import { MemoryRouter } from 'react-router-dom';
 import type { Page } from '@/types';
 import type { Trip } from '@/types/trip';
 import { Header } from './Header';
@@ -52,6 +53,13 @@ const meta = {
       },
     },
   },
+  decorators: [
+    Story => (
+      <MemoryRouter>
+        <Story />
+      </MemoryRouter>
+    ),
+  ],
   argTypes: {
     mode: {
       control: { type: 'radio' },

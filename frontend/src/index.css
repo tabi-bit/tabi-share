@@ -6,6 +6,12 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
+  interpolate-size: allow-keywords;
+  /* autoのアニメーション有効化
+  Chrome, Edge 129- のみ対応 */
+}
+
+:root {
   --background: oklch(1 0 0);
   --foreground: oklch(0.1448 0 0);
   --card: oklch(1 0 0);

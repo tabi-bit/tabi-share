@@ -1,4 +1,7 @@
 import { type Dispatch, type SetStateAction, useCallback, useEffect, useRef, useState } from 'react';
+import editScheduleIcon from '@/assets/icons/edit-schedule-white.svg';
+import eyeSolidIcon from '@/assets/icons/eye-solid-white.svg';
+import penToSquareSolidIcon from '@/assets/icons/pen-to-square-solid-white.svg';
 import { cn } from '@/lib/utils';
 import type { Page } from '@/types';
 import type { Trip } from '@/types/trip';
@@ -17,6 +20,8 @@ type HeaderProps = {
   setMode: Dispatch<SetStateAction<'view' | 'edit'>>;
   className?: string;
 };
+
+const transitionClassNames = 'duration-300 ease-in-out';
 
 export function Header({
   pages,
@@ -77,24 +82,24 @@ export function Header({
     <div
       data-component='header'
       className={cn(
-        'sticky top-0 right-0 left-0 z-10 flex w-full flex-col justify-center gap-1 bg-teal-50/80 px-6 py-2 backdrop-blur-sm transition-all duration-300 ease-in-out',
+        'sticky top-0 right-0 left-0 z-10 flex w-full flex-col justify-center gap-1 bg-teal-50/80 px-6 py-2 backdrop-blur-sm',
         className
       )}
     >
       <Logo size={isScrolled ? 'small' : 'medium'} />
       <div className='flex flex-row items-center justify-center gap-4'>
-        <div className={cn('transition-all duration-300 ease-in-out', isScrolled ? 'text-16px' : 'text-20px')}>
+        <div className={cn('transition-[font-size]', transitionClassNames, isScrolled ? 'text-16px' : 'text-20px')}>
           {trip.title}
         </div>
         {isScrolled ? (
           selectedPage && (
-            <Badge variant='outline' className='bg-white transition-all duration-300 ease-in-out'>
+            <Badge variant='outline' className='bg-white'>
               {selectedPage.title}
             </Badge>
           )
         ) : (
           <Select value={String(selectedPageId)} onValueChange={v => onSelectPage(Number(v))}>
-            <SelectTrigger className='bg-white transition-all duration-300 ease-in-out'>
+            <SelectTrigger className='bg-white'>
               <SelectValue placeholder='ページ選択' />
             </SelectTrigger>
             <SelectContent>
@@ -106,23 +111,92 @@ export function Header({
             </SelectContent>
           </Select>
         )}
-        {!isScrolled && (
-          <div className='flex flex-row gap-x-4 transition-all duration-300 ease-in-out'>
-            {mode === 'edit' ? (
-              <>
-                <Button variant='default' onClick={() => setMode('view')}>
-                  閲覧モード
-                </Button>
-                <Button variant='secondary'>ページ情報編集</Button>
-              </>
-            ) : (
-              <Button variant='default' onClick={() => setMode('edit')}>
-                編集モード
-              </Button>
-            )}
-          </div>
-        )}
+        <div className={cn('flex flex-row', isScrolled ? 'gap-x-2' : 'gap-x-4')}>
+          {mode === 'edit' ? (
+            <>
+              <ViewModeButton isScrolled={isScrolled} setMode={setMode} />
+              <PageInfoEditButton isScrolled={isScrolled} />
+            </>
+          ) : (
+            <EditModeButton isScrolled={isScrolled} setMode={setMode} />
+          )}
+        </div>
       </div>
     </div>
   );
 }
+
+type HeaderButtonBaseProps = React.ComponentProps<typeof Button> & {
+  isScrolled: boolean;
+  iconSrc: string;
+  iconAlt?: string;
+};
+
+const HeaderButtonBase = ({
+  isScrolled,
+  iconSrc,
+  iconAlt,
+  className,
+  children,
+  ...buttonProps
+}: HeaderButtonBaseProps) => {
+  return (
+    <Button
+      className={cn('gap-0 transition-[padding]', transitionClassNames, isScrolled ? 'px-2' : 'px-3', className)}
+      {...buttonProps}
+    >
+      <img src={iconSrc} alt={iconAlt ?? ''} className='size-5' />
+      <span
+        className={cn(
+          'overflow-hidden transition-[width,opacity]',
+          transitionClassNames,
+          isScrolled ? 'w-0 opacity-0' : 'ml-2 w-auto opacity-100'
+        )}
+      >
+        {children}
+      </span>
+    </Button>
+  );
+};
+
+const EditModeButton = ({
+  isScrolled,
+  setMode,
+}: {
+  isScrolled: boolean;
+  setMode: Dispatch<SetStateAction<'view' | 'edit'>>;
+}) => (
+  <HeaderButtonBase
+    variant='default'
+    isScrolled={isScrolled}
+    iconSrc={editScheduleIcon}
+    iconAlt='編集モード'
+    onClick={() => setMode('edit')}
+  >
+    編集モード
+  </HeaderButtonBase>
+);
+
+const ViewModeButton = ({
+  isScrolled,
+  setMode,
+}: {
+  isScrolled: boolean;
+  setMode: Dispatch<SetStateAction<'view' | 'edit'>>;
+}) => (
+  <HeaderButtonBase
+    variant='default'
+    isScrolled={isScrolled}
+    iconSrc={eyeSolidIcon}
+    iconAlt='閲覧モード'
+    onClick={() => setMode('view')}
+  >
+    閲覧モード
+  </HeaderButtonBase>
+);
+
+const PageInfoEditButton = ({ isScrolled }: { isScrolled: boolean }) => (
+  <HeaderButtonBase variant='secondary' isScrolled={isScrolled} iconSrc={penToSquareSolidIcon} iconAlt='ページ情報編集'>
+    ページ情報編集
+  </HeaderButtonBase>
+);

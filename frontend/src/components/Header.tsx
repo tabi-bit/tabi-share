@@ -87,10 +87,19 @@ export function Header({
       )}
     >
       <Logo size={isScrolled ? 'small' : 'medium'} />
-      <div className='flex flex-row items-center justify-center gap-4'>
-        <div className={cn('transition-[font-size]', transitionClassNames, isScrolled ? 'text-16px' : 'text-20px')}>
+      <div className='grid grid-cols-[1fr_auto_1fr] items-center gap-4'>
+        {/* 左カラム */}
+        <div
+          className={cn(
+            'flex justify-end transition-[font-size]',
+            transitionClassNames,
+            isScrolled ? 'text-16px' : 'text-20px'
+          )}
+        >
           {trip.title}
         </div>
+
+        {/* 中央カラム */}
         {isScrolled ? (
           selectedPage && (
             <Badge variant='outline' className='bg-white'>
@@ -111,7 +120,9 @@ export function Header({
             </SelectContent>
           </Select>
         )}
-        <div className={cn('flex flex-row', isScrolled ? 'gap-x-2' : 'gap-x-4')}>
+
+        {/* 右カラム */}
+        <div className={cn('flex flex-row justify-start', isScrolled ? 'gap-x-2' : 'gap-x-4')}>
           {mode === 'edit' ? (
             <>
               <ViewModeButton isScrolled={isScrolled} setMode={setMode} />

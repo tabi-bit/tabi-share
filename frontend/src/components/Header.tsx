@@ -2,6 +2,7 @@ import { type Dispatch, type SetStateAction, useCallback, useEffect, useRef, use
 import editScheduleIcon from '@/assets/icons/edit-schedule-white.svg';
 import eyeSolidIcon from '@/assets/icons/eye-solid-white.svg';
 import penToSquareSolidIcon from '@/assets/icons/pen-to-square-solid-white.svg';
+import { AddPageDialog } from '@/dialogs/AddPageDialog';
 import { EditPageDialog } from '@/dialogs/EditPageDialog';
 import { cn } from '@/lib/utils';
 import type { Page } from '@/types';
@@ -36,6 +37,7 @@ export function Header({
 }: HeaderProps) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [editPageDialogOpen, setEditPageDialogOpen] = useState(false);
+  const [addPageDialogOpen, setAddPageDialogOpen] = useState(false);
   const scrollY = useRef(0);
 
   const handleScroll = useCallback(() => {
@@ -109,7 +111,16 @@ export function Header({
             </Badge>
           )
         ) : (
-          <Select value={String(selectedPageId)} onValueChange={v => onSelectPage(Number(v))}>
+          <Select
+            value={String(selectedPageId)}
+            onValueChange={v => {
+              if (v === 'add-new') {
+                setAddPageDialogOpen(true);
+              } else {
+                onSelectPage(Number(v));
+              }
+            }}
+          >
             <SelectTrigger className='bg-white'>
               <SelectValue placeholder='ページ選択' />
             </SelectTrigger>
@@ -119,6 +130,11 @@ export function Header({
                   {page.title}
                 </SelectItem>
               ))}
+              {mode === 'edit' && (
+                <SelectItem value='add-new' className='text-primary'>
+                  + ページを追加
+                </SelectItem>
+              )}
             </SelectContent>
           </Select>
         )}
@@ -135,6 +151,16 @@ export function Header({
           )}
         </div>
       </div>
+
+      {/* ページ追加ダイアログ */}
+      <AddPageDialog
+        open={addPageDialogOpen}
+        onOpenChange={setAddPageDialogOpen}
+        tripId={trip.id}
+        onCreated={page => {
+          onSelectPage(page.id);
+        }}
+      />
 
       {/* ページ情報編集ダイアログ */}
       {selectedPage && (

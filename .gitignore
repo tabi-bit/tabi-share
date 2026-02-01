@@ -50,8 +50,5 @@ build/
 logs/
 *.log
 
-# Serena MCP
-.serena
-
 # firebase
 .firebase

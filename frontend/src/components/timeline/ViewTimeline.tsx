@@ -28,7 +28,7 @@ export function ViewTimeline({ blocks, className }: ViewTimelineProps) {
     const nextBlock = i < sortedBlocks.length - 1 ? sortedBlocks[i + 1] : null;
 
     // 前のブロックとの間に時間間隔がある場合、破線ブロックを追加
-    if (previousBlock && previousBlock.endTime.getTime() !== currentBlock.startTime.getTime()) {
+    if (previousBlock && previousBlock.endTime?.getTime() !== currentBlock.startTime.getTime()) {
       timelineItems.push({
         type: 'gap',
         id: `gap-${previousBlock.id}-${currentBlock.id}`,
@@ -38,8 +38,8 @@ export function ViewTimeline({ blocks, className }: ViewTimelineProps) {
     timelineItems.push({
       type: 'block',
       block: currentBlock,
-      id: currentBlock.id,
-      isConnectedWithNextBlock: nextBlock ? nextBlock.startTime.getTime() === currentBlock.endTime.getTime() : false,
+      id: String(currentBlock.id),
+      isConnectedWithNextBlock: nextBlock ? nextBlock.startTime.getTime() === currentBlock.endTime?.getTime() : false,
     });
   }
 
@@ -87,7 +87,7 @@ function ViewTimelineBlock({ item }: ViewTimelineBlockProps) {
             <div className='flex h-8 flex-row items-center font-medium text-18px text-gray-700'>
               {formatTime(item.block.startTime)}
             </div>
-            {!item.isConnectedWithNextBlock && (
+            {!item.isConnectedWithNextBlock && item.block.endTime && (
               <div className='flex h-8 flex-row items-center font-medium text-18px text-gray-700'>
                 {formatTime(item.block.endTime)}
               </div>

@@ -45,7 +45,6 @@
         }
       },
       "complexity": {
-        "noExcessiveCognitiveComplexity": "warn",
         "noExtraBooleanCast": "error",
         "noStaticOnlyClass": "error",
         "noUselessCatch": "error",

@@ -52,7 +52,7 @@ export function BlockTransportationView({ block, className }: BlockTransportatio
         <TransportationIcon type={block.transportationType} />
         <div className='font-bold text-16px text-neutral-800'>{block.title}</div>
       </div>
-      {block.details && (
+      {block.detail && (
         <div
           className={cn(
             'ml-8 overflow-hidden transition-[max-height] duration-300',
@@ -60,10 +60,10 @@ export function BlockTransportationView({ block, className }: BlockTransportatio
           )}
           ref={detailDivRef}
         >
-          {block.details}
+          {block.detail}
         </div>
       )}
-      {block.details && isOverflowDetail && (
+      {block.detail && isOverflowDetail && (
         <button
           type='button'
           className='flex items-center self-end text-neutral-800 hover:cursor-pointer'

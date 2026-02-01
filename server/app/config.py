@@ -52,10 +52,13 @@ class Settings(BaseSettings):
         2. 個別の POSTGRES_* 環境変数から構築 (ローカル開発用)
         """
         if self.database_url:
-            # asyncpg用のURLに変換
-            return self.database_url.replace(
+            # asyncpg用のURLに変換し、psycopg2固有のパラメータを削除
+            # (sslmode, channel_bindingなどはasyncpgで非対応)
+            url = self.database_url.replace(
                 "postgresql://", "postgresql+asyncpg://"
             )
+            # クエリパラメータを削除（asyncpgは自動的にSSLを使用）
+            return url.split("?")[0]
 
         if not all([
             self.postgres_user,

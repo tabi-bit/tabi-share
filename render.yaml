@@ -6,7 +6,7 @@ services:
     plan: free
     region: oregon
     buildCommand: pip install -r server/requirements.txt
-    startCommand: cd server && alembic -n devdb upgrade head && gunicorn -w 1 -k uvicorn.workers.UvicornWorker app.main:app --bind 0.0.0.0:$PORT
+    startCommand: cd server && alembic -n production upgrade head && gunicorn -w 1 -k uvicorn.workers.UvicornWorker app.main:app --bind 0.0.0.0:$PORT
     envVars:
       - key: PYTHON_VERSION
         value: 3.13.0

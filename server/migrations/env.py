@@ -21,24 +21,31 @@ load_dotenv()
 
 settings = get_settings()
 
-# --- 開発データベース (devdb) の設定 ---
-# Neon本番環境では DATABASE_URL を使用
-# ローカル開発では POSTGRES_* から構築
+# --- 本番環境 (production) の設定 ---
+# DATABASE_URLが存在する場合は本番環境として設定
 if os.getenv("DATABASE_URL"):
-    # Neon本番環境用
-    dev_database_url = os.getenv("DATABASE_URL").replace(
+    production_database_url = os.getenv("DATABASE_URL").replace(
         "postgresql://", "postgresql+asyncpg://"
     )
-else:
-    # ローカル開発用
+    config.set_section_option("production", "sqlalchemy.url", production_database_url)
+
+# --- 開発データベース (devdb) の設定 ---
+# ローカル開発用（POSTGRES_* 環境変数から構築）
+try:
     dev_database_url = settings.get_database_url()
+    config.set_section_option("devdb", "sqlalchemy.url", dev_database_url)
+except ValueError:
+    # DATABASE_URL のみの環境（本番環境）ではスキップ
+    pass
 
 # --- テストデータベース (testdb) の設定 ---
-test_database_url = settings.get_test_database_url()
-
-# Alembicの設定にデータベースURLをセット
-config.set_section_option("devdb", "sqlalchemy.url", dev_database_url)
-config.set_section_option("testdb", "sqlalchemy.url", test_database_url)
+# テスト用環境変数がある場合のみ設定
+try:
+    test_database_url = settings.get_test_database_url()
+    config.set_section_option("testdb", "sqlalchemy.url", test_database_url)
+except ValueError:
+    # テストデータベースの環境変数がない場合はスキップ
+    pass
 
 target_metadata = Base.metadata
 

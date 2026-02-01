@@ -1,4 +1,4 @@
-import type { DateSelectArg, EventContentArg, EventDropArg, ViewMountArg } from '@fullcalendar/core';
+import type { DateSelectArg, EventClickArg, EventContentArg, EventDropArg, ViewMountArg } from '@fullcalendar/core';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import type { EventResizeDoneArg } from '@fullcalendar/interaction';
 import interactionPlugin from '@fullcalendar/interaction';
@@ -7,8 +7,8 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BlockScheduleEdit } from '@/components/blocks/edit/BlockScheduleEdit';
 import { BlockTransportationEdit } from '@/components/blocks/edit/BlockTransportationEdit';
-import { AddBlockDialog } from '@/dialogs';
-import { useBlocks, useCreateBlock, useUpdateBlock } from '@/hooks/useBlocks';
+import { AddBlockDialog, EditBlockDialog } from '@/dialogs';
+import { useBlocks, useCreateBlock, useDeleteBlock, useUpdateBlock } from '@/hooks/useBlocks';
 import type { Block, Page } from '@/types';
 
 interface EditTripLayoutProps {
@@ -19,12 +19,17 @@ export const EditTripLayout = ({ selectedPageId }: EditTripLayoutProps) => {
   const { blocks } = useBlocks(selectedPageId);
   const { createBlock } = useCreateBlock(selectedPageId);
   const { updateBlock } = useUpdateBlock(selectedPageId);
+  const { deleteBlock } = useDeleteBlock(selectedPageId);
   const calendarRef = useRef<FullCalendar>(null);
   const isFirstEventMount = useRef(true);
 
   // AddBlockDialog用のstate
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [addDialogSelectInfo, setAddDialogSelectInfo] = useState<DateSelectArg | null>(null);
+
+  // EditBlockDialog用のstate
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingBlock, setEditingBlock] = useState<Block | null>(null);
 
   const createEvent = useCallback((block: Block) => {
     return {
@@ -74,6 +79,27 @@ export const EditTripLayout = ({ selectedPageId }: EditTripLayoutProps) => {
 
   const handleDialogSubmit = async (block: Omit<Block, 'id'>) => {
     await createBlock(block);
+  };
+
+  const handleEventClick = (clickInfo: EventClickArg) => {
+    const blockData = clickInfo.event.extendedProps.blockData as Block;
+    setEditingBlock(blockData);
+    setEditDialogOpen(true);
+  };
+
+  const handleEditDialogOpenChange = (open: boolean) => {
+    setEditDialogOpen(open);
+    if (!open) {
+      setEditingBlock(null);
+    }
+  };
+
+  const handleEditDialogSubmit = async (block: Block) => {
+    await updateBlock({ id: block.id, data: block });
+  };
+
+  const handleEditDialogDelete = async (blockId: number) => {
+    await deleteBlock(blockId);
   };
 
   const handleEventDrop = async (dropInfo: EventDropArg) => {
@@ -144,6 +170,7 @@ export const EditTripLayout = ({ selectedPageId }: EditTripLayoutProps) => {
         // データとイベントハンドラ
         events={events}
         select={handleSelect}
+        eventClick={handleEventClick}
         eventDrop={handleEventDrop}
         eventResize={handleEventResize}
         eventContent={renderEventContent}
@@ -169,6 +196,16 @@ export const EditTripLayout = ({ selectedPageId }: EditTripLayoutProps) => {
           initialEndTime={new Date(addDialogSelectInfo.endStr)}
           pageId={selectedPageId}
           onSubmit={handleDialogSubmit}
+        />
+      )}
+
+      {editingBlock && (
+        <EditBlockDialog
+          open={editDialogOpen}
+          onOpenChange={handleEditDialogOpenChange}
+          block={editingBlock}
+          onSubmit={handleEditDialogSubmit}
+          onDelete={handleEditDialogDelete}
         />
       )}
     </main>

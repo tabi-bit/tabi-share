@@ -11,6 +11,19 @@ export const TransportationTypeEnum = z.enum(['car', 'bicycle', 'walk', 'ship', 
  */
 export type TransportationType = z.infer<typeof TransportationTypeEnum>;
 
+/**
+ * 交通手段の選択肢
+ */
+export const TRANSPORTATION_OPTIONS = [
+  { value: 'car', label: '車' },
+  { value: 'train', label: '電車' },
+  { value: 'bus', label: 'バス' },
+  { value: 'walk', label: '徒歩' },
+  { value: 'bicycle', label: '自転車' },
+  { value: 'ship', label: '船' },
+  { value: 'flight', label: '飛行機' },
+] as const satisfies readonly { value: TransportationType; label: string }[];
+
 // --- アプリケーション層のスキーマ ---
 
 /**

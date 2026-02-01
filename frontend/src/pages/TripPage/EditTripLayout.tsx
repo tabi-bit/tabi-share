@@ -4,9 +4,10 @@ import type { EventResizeDoneArg } from '@fullcalendar/interaction';
 import interactionPlugin from '@fullcalendar/interaction';
 import FullCalendar from '@fullcalendar/react';
 import timeGridPlugin from '@fullcalendar/timegrid';
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BlockScheduleEdit } from '@/components/blocks/edit/BlockScheduleEdit';
 import { BlockTransportationEdit } from '@/components/blocks/edit/BlockTransportationEdit';
+import { AddBlockDialog } from '@/dialogs';
 import { useBlocks, useCreateBlock, useUpdateBlock } from '@/hooks/useBlocks';
 import type { Block, Page } from '@/types';
 
@@ -20,6 +21,10 @@ export const EditTripLayout = ({ selectedPageId }: EditTripLayoutProps) => {
   const { updateBlock } = useUpdateBlock(selectedPageId);
   const calendarRef = useRef<FullCalendar>(null);
   const isFirstEventMount = useRef(true);
+
+  // AddBlockDialog用のstate
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [addDialogSelectInfo, setAddDialogSelectInfo] = useState<DateSelectArg | null>(null);
 
   const createEvent = useCallback((block: Block) => {
     return {
@@ -54,38 +59,21 @@ export const EditTripLayout = ({ selectedPageId }: EditTripLayoutProps) => {
     isFirstEventMount.current = true;
   }, [selectedPageId]);
 
-  const handleSelect = async (selectInfo: DateSelectArg) => {
-    const title = prompt('イベントのタイトルを入力してください');
-    const type = prompt('イベントの種類を入力してください (schedule または transportation)', 'schedule');
-    const detail = prompt('イベントの詳細を入力してください', '');
-    const calendarApi = selectInfo.view.calendar;
-    calendarApi.unselect(); // 選択をクリア
+  const handleSelect = (selectInfo: DateSelectArg) => {
+    setAddDialogSelectInfo(selectInfo);
+    setAddDialogOpen(true);
+  };
 
-    if (title && type && (type === 'schedule' || type === 'transportation')) {
-      if (type === 'transportation') {
-        const newBlock = {
-          type: 'transportation' as const,
-          transportationType: 'car',
-          title,
-          startTime: new Date(selectInfo.startStr),
-          endTime: new Date(selectInfo.endStr),
-          pageId: selectedPageId,
-          detail: detail ?? '',
-        };
-        await createBlock(newBlock);
-      } else {
-        const newBlock = {
-          type: 'schedule' as const,
-          title,
-          startTime: new Date(selectInfo.startStr),
-          endTime: new Date(selectInfo.endStr),
-          pageId: selectedPageId,
-          detail: detail ?? '',
-        };
-        await createBlock(newBlock);
-      }
-      selectInfo.view.calendar.unselect();
+  const handleAddDialogOpenChange = (open: boolean) => {
+    setAddDialogOpen(open);
+    // ダイアログが閉じられたときに選択を解除
+    if (!open && addDialogSelectInfo) {
+      addDialogSelectInfo.view.calendar.unselect();
     }
+  };
+
+  const handleDialogSubmit = async (block: Omit<Block, 'id'>) => {
+    await createBlock(block);
   };
 
   const handleEventDrop = async (dropInfo: EventDropArg) => {
@@ -152,6 +140,7 @@ export const EditTripLayout = ({ selectedPageId }: EditTripLayoutProps) => {
         selectable
         editable
         longPressDelay={100}
+        unselectAuto={false}
         // データとイベントハンドラ
         events={events}
         select={handleSelect}
@@ -171,6 +160,17 @@ export const EditTripLayout = ({ selectedPageId }: EditTripLayoutProps) => {
         // Ref
         ref={calendarRef}
       />
+
+      {addDialogSelectInfo && (
+        <AddBlockDialog
+          open={addDialogOpen}
+          onOpenChange={handleAddDialogOpenChange}
+          initialStartTime={new Date(addDialogSelectInfo.startStr)}
+          initialEndTime={new Date(addDialogSelectInfo.endStr)}
+          pageId={selectedPageId}
+          onSubmit={handleDialogSubmit}
+        />
+      )}
     </main>
   );
 };

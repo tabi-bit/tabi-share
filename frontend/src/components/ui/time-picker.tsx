@@ -1,14 +1,12 @@
 'use client';
 
-import * as React from 'react';
 import { ClockIcon } from '@radix-ui/react-icons';
-
-import { cn } from '@/lib/utils';
+import * as React from 'react';
 import { Button } from '@/components/ui/button';
-
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import type { CarouselApi } from '@/components/ui/carousel';
 import { Carousel, CarouselContent, CarouselItem } from '@/components/ui/carousel';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
 
 function TimePicker() {
   const [date, setDate] = React.useState<Date>(new Date());
@@ -91,7 +89,7 @@ function TimePicker() {
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className='w-auto p-0 fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2'>
+      <PopoverContent className='-translate-x-1/2 -translate-y-1/2 fixed top-1/2 left-1/2 w-auto p-0'>
         <div className='flex items-center justify-center p-4'>
           <Carousel
             setApi={setHourApi}
@@ -114,12 +112,12 @@ function TimePicker() {
             <CarouselContent className='h-32'>
               {hours.map(hour => (
                 <CarouselItem key={hour} className='basis-1/3'>
-                  <div className='flex items-center justify-center h-full text-lg select-none'>{hour}</div>
+                  <div className='flex h-full select-none items-center justify-center text-lg'>{hour}</div>
                 </CarouselItem>
               ))}
             </CarouselContent>
           </Carousel>
-          <span className='text-lg mx-2'>:</span>
+          <span className='mx-2 text-lg'>:</span>
           <Carousel
             setApi={setMinuteApi}
             opts={{
@@ -141,14 +139,14 @@ function TimePicker() {
             <CarouselContent className='h-32'>
               {minutes.map(minute => (
                 <CarouselItem key={minute} className='basis-1/3'>
-                  <div className='flex items-center justify-center h-full text-lg select-none'>
+                  <div className='flex h-full select-none items-center justify-center text-lg'>
                     {minute.toString().padStart(2, '0')}
                   </div>
                 </CarouselItem>
               ))}
             </CarouselContent>
           </Carousel>
-          <div className='flex items-center justify-center ml-4'>
+          <div className='ml-4 flex items-center justify-center'>
             <Button variant='ghost' onClick={() => handleTimeChange('ampm', date.getHours() >= 12 ? 'AM' : 'PM')}>
               {date.getHours() >= 12 ? '午後' : '午前'}
             </Button>

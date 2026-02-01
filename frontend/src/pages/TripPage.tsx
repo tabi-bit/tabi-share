@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Header } from '@/components/Header';
+import { HeaderSkeleton } from '@/components/HeaderSkeleton';
+import { TimelineSkeleton } from '@/components/timeline';
 import { usePages } from '@/hooks/usePages';
 import { useTripByUrlId } from '@/hooks/useTrips';
 import type { Page } from '@/types';
@@ -11,13 +13,22 @@ const TripPage = () => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [selectedPageId, setSelectedPageId] = useState<Page['id']>();
   const [mode, setMode] = useState<'view' | 'edit'>('view');
+  const [minLoadingComplete, setMinLoadingComplete] = useState(false);
   const { urlId } = useParams<{ urlId: string }>();
 
   const { trip, error: tripError, isLoading: isTripLoading } = useTripByUrlId(urlId ?? null);
   const { pages, error: pagesError, isLoading: isPagesLoading } = usePages(trip?.id ?? null);
 
-  const isLoading = isTripLoading || isPagesLoading || trip == null || pages == null;
+  const isLoading = isTripLoading || isPagesLoading || trip == null || pages == null || !minLoadingComplete;
   const isError = tripError || pagesError;
+
+  // 1秒間の最小ローディング表示を管理
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setMinLoadingComplete(true);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     if (selectedPageId == null && pages != null && pages.length > 0) {
@@ -32,7 +43,12 @@ const TripPage = () => {
   }, [mode]);
 
   if (isLoading) {
-    return <div>Loading Trip ...</div>;
+    return (
+      <div className='flex h-screen w-full flex-col items-center overflow-auto'>
+        <HeaderSkeleton />
+        <TimelineSkeleton className='w-full max-w-3xl p-4' />
+      </div>
+    );
   }
 
   if (isError) {
@@ -61,6 +77,9 @@ const TripPage = () => {
               mode={mode}
               scrollContainerRef={scrollContainerRef}
             />
+          )}
+          {pages.length === 0 && (
+            <div className='flex h-full items-center justify-center text-gray-500'>ページを追加してください</div>
           )}
           {selectedPageId != null && mode === 'view' && <ViewTripLayout selectedPageId={selectedPageId} />}
           {selectedPageId != null && mode === 'edit' && <EditTripLayout selectedPageId={selectedPageId} />}

@@ -1,11 +1,10 @@
 'use client';
 
-import * as React from 'react';
 import { ClockIcon } from '@radix-ui/react-icons';
-
-import { cn } from '@/lib/utils';
+import * as React from 'react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
 
 const CLOCK_SIZE = 200;
 const CLOCK_CENTER = CLOCK_SIZE / 2;
@@ -121,10 +120,10 @@ function ClockTimePicker() {
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className='w-auto p-0 fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2'>
+      <PopoverContent className='-translate-x-1/2 -translate-y-1/2 fixed top-1/2 left-1/2 w-auto p-0'>
         <div className='p-4'>
           {/* Header: Selected time and mode toggle */}
-          <div className='flex items-end justify-center mb-4'>
+          <div className='mb-4 flex items-end justify-center'>
             <Button variant={mode === 'hour' ? 'default' : 'ghost'} onClick={() => setMode('hour')}>
               {date.getHours() % 12 || 12}
             </Button>
@@ -133,7 +132,7 @@ function ClockTimePicker() {
               {date.getMinutes().toString().padStart(2, '0')}
             </Button>
             {/* AM/PM toggle */}
-            <div className='flex flex-col ml-4'>
+            <div className='ml-4 flex flex-col'>
               <Button variant='ghost' onClick={() => handleChangeAMPM(date.getHours() > 12 ? 'AM' : 'PM')}>
                 {date.getHours() >= 12 ? '午後' : '午前'}
               </Button>
@@ -142,8 +141,14 @@ function ClockTimePicker() {
 
           {/* Clock face */}
           <div
+            role='slider'
+            aria-valuemin={0}
+            aria-valuemax={mode === 'hour' ? 12 : 59}
+            aria-valuenow={mode === 'hour' ? date.getHours() % 12 || 12 : date.getMinutes()}
+            aria-label={mode === 'hour' ? 'Select hour' : 'Select minute'}
+            tabIndex={0}
             ref={clockRef}
-            className='relative bg-blue-50 rounded-full cursor-pointer select-none'
+            className='relative cursor-pointer select-none rounded-full bg-blue-50'
             style={{ width: CLOCK_SIZE, height: CLOCK_SIZE }}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
@@ -164,7 +169,7 @@ function ClockTimePicker() {
                 <div
                   key={value}
                   className={cn(
-                    'absolute flex items-center justify-center w-8 h-8 rounded-full',
+                    'absolute flex h-8 w-8 items-center justify-center rounded-full',
                     isSelected ? 'bg-blue-500 text-white' : 'bg-transparent'
                   )}
                   style={{
@@ -179,7 +184,7 @@ function ClockTimePicker() {
 
             {/* Hour hand */}
             <div
-              className='absolute bg-blue-500 rounded-full'
+              className='absolute rounded-full bg-blue-500'
               style={{
                 width: '3px',
                 height: CLOCK_CENTER * 0.6, // 時針の長さ
@@ -192,7 +197,7 @@ function ClockTimePicker() {
 
             {/* Minute hand */}
             <div
-              className='absolute bg-blue-500 rounded-full'
+              className='absolute rounded-full bg-blue-500'
               style={{
                 width: '3px',
                 height: CLOCK_CENTER * 0.7, // 分針の長さ
@@ -205,7 +210,7 @@ function ClockTimePicker() {
 
             {/* Center dot */}
             <div
-              className='absolute bg-blue-700 rounded-full'
+              className='absolute rounded-full bg-blue-700'
               style={{
                 width: '8px',
                 height: '8px',

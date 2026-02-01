@@ -28,7 +28,6 @@ shadcn/uiコンポーネント「$ARGUMENTS」を追加し、包括的なStorybo
 ## 既存のStorybookパターンの踏襲
 
 - タイトル形式: `title: 'UI/ComponentName'`
-- biome-ignore コメント: `// biome-ignore lint/style/noDefaultExport: Storybook requires default export for meta`
 - 基本的なargTypes設定（variant、size、disabled等）
 - AllVariants ストーリーでの一覧表示
 - 日本語コメント対応

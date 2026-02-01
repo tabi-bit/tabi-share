@@ -52,3 +52,6 @@ logs/
 
 # Serena MCP
 .serena
+
+# firebase
+.firebase

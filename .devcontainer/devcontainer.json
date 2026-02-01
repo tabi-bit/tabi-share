@@ -21,12 +21,14 @@
       "extensions": [
         "ms-python.python",
         "ms-python.vscode-pylance",
-        "dbaeumer.vscode-eslint",
         "biomejs.biome",
         "bradlc.vscode-tailwindcss",
         "eamodio.gitlens",
         "charliermarsh.ruff",
-        "dotenv.dotenvx-vscode"
+        "dotenv.dotenvx-vscode",
+        "ms-vsliveshare.vsliveshare",
+        "corschenzi.mermaid-graphical-editor",
+        "anthropic.claude-code"
       ],
       "settings": {
         "[python]": {

@@ -52,7 +52,7 @@ from pydantic import AfterValidator
         ),
     ],
 )
-async def test_invalid_param_exception_hanlder(kwargs, expected):
+async def test_invalid_param_exception_handler(kwargs, expected):
     """InvalidParamが発生した場合に期待通りのレスポンスが返却されることを確認する"""
     # arrange
     app = fastapi.FastAPI()
@@ -100,21 +100,6 @@ def test_validation_exception_handler():
 
     # assert
     assert res.status_code == 422
-    print(res.json())
-    print(
-        {
-            "message": "Validation failed",
-            "code": "validation_error",
-            "detail": [
-                {
-                    "type": "missing",
-                    "loc": ["quety", "required_param"],
-                    "input": None,
-                    "msg": "Field required",
-                }
-            ],
-        }
-    )
     assert res.json() == {
         "message": "Validation failed",
         "code": "validation_error",

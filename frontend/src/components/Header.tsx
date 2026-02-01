@@ -2,6 +2,7 @@ import { type Dispatch, type SetStateAction, useCallback, useEffect, useRef, use
 import editScheduleIcon from '@/assets/icons/edit-schedule-white.svg';
 import eyeSolidIcon from '@/assets/icons/eye-solid-white.svg';
 import penToSquareSolidIcon from '@/assets/icons/pen-to-square-solid-white.svg';
+import { EditPageDialog } from '@/dialogs/EditPageDialog';
 import { cn } from '@/lib/utils';
 import type { Page } from '@/types';
 import type { Trip } from '@/types/trip';
@@ -34,6 +35,7 @@ export function Header({
   scrollContainerRef,
 }: HeaderProps) {
   const [isScrolled, setIsScrolled] = useState(false);
+  const [editPageDialogOpen, setEditPageDialogOpen] = useState(false);
   const scrollY = useRef(0);
 
   const handleScroll = useCallback(() => {
@@ -126,13 +128,28 @@ export function Header({
           {mode === 'edit' ? (
             <>
               <ViewModeButton isScrolled={isScrolled} setMode={setMode} />
-              <PageInfoEditButton isScrolled={isScrolled} />
+              <PageInfoEditButton isScrolled={isScrolled} onClick={() => setEditPageDialogOpen(true)} />
             </>
           ) : (
             <EditModeButton isScrolled={isScrolled} setMode={setMode} />
           )}
         </div>
       </div>
+
+      {/* ページ情報編集ダイアログ */}
+      {selectedPage && (
+        <EditPageDialog
+          open={editPageDialogOpen}
+          onOpenChange={setEditPageDialogOpen}
+          page={selectedPage}
+          onDeleted={pageId => {
+            const remainingPages = pages.filter(p => p.id !== pageId);
+            if (remainingPages.length > 0) {
+              onSelectPage(remainingPages[0].id);
+            }
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -206,8 +223,14 @@ const ViewModeButton = ({
   </HeaderButtonBase>
 );
 
-const PageInfoEditButton = ({ isScrolled }: { isScrolled: boolean }) => (
-  <HeaderButtonBase variant='secondary' isScrolled={isScrolled} iconSrc={penToSquareSolidIcon} iconAlt='ページ情報編集'>
+const PageInfoEditButton = ({ isScrolled, onClick }: { isScrolled: boolean; onClick?: () => void }) => (
+  <HeaderButtonBase
+    variant='secondary'
+    isScrolled={isScrolled}
+    iconSrc={penToSquareSolidIcon}
+    iconAlt='ページ情報編集'
+    onClick={onClick}
+  >
     ページ情報編集
   </HeaderButtonBase>
 );

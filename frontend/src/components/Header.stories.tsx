@@ -221,11 +221,11 @@ export const ScrolledState: Story = {
     },
   },
   decorators: [
-    Story => {
+    (Story, context) => {
       const scrollContainerRef = useRef<HTMLDivElement>(null);
       return (
         <div ref={scrollContainerRef} style={{ height: '200vh', overflow: 'auto' }}>
-          <Story args={{ scrollContainerRef }} />
+          <Story args={{ ...context.args, scrollContainerRef }} />
           <div style={{ padding: '2rem', marginTop: '2rem' }}>
             <h2>スクロールしてヘッダーの変化を確認</h2>
             <p>

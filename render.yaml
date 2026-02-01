@@ -1,0 +1,16 @@
+services:
+  # Backend API Service
+  - type: web
+    name: tabi-share-api
+    runtime: python
+    plan: free
+    region: oregon
+    buildCommand: pip install -r server/requirements.txt
+    startCommand: gunicorn -w 1 -k uvicorn.workers.UvicornWorker server.app.main:app --bind 0.0.0.0:$PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.0
+      - key: DATABASE_URL
+        sync: false
+      - key: ENVIRONMENT
+        value: production

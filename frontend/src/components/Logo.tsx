@@ -9,7 +9,11 @@ interface LogoProps {
 
 export function Logo({ size = 'medium', className }: LogoProps) {
   return (
-    <Link to='/' data-component='Logo' className={cn('flex flex-row items-center justify-center gap-1', className)}>
+    <Link
+      to='/'
+      data-component='Logo'
+      className={cn('flex w-fit flex-row items-center justify-center gap-1', className)}
+    >
       <img
         src={paperPlaneIcon}
         alt=''

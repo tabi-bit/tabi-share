@@ -90,6 +90,9 @@ export function Header({
         className
       )}
     >
+      <div className='flex w-full flex-row justify-center'>
+        <Logo size={isScrolled ? 'small' : 'medium'} />
+      </div>
       <Logo size={isScrolled ? 'small' : 'medium'} />
       <div className='grid grid-cols-[1fr_auto_1fr] items-center gap-4'>
         {/* 左カラム */}

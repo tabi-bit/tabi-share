@@ -1,36 +1,58 @@
-import { Link } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Header } from '@/components/Header';
+import { Button } from '@/components/ui/button';
+import { AddTripDialog } from '@/dialogs/AddTripDialog';
 import { useTrips } from '@/hooks/useTrips';
 
 const HomePage = () => {
   const { trips } = useTrips();
-  return (
-    <div className='flex min-h-screen flex-col items-center bg-gradient-to-br from-blue-50 to-cyan-50 p-4'>
-      <div className='w-full max-w-2xl'>
-        <header className='mb-8 text-center'>
-          <h1 className='mb-4 font-bold text-4xl text-gray-800'>🚗 TabiShare</h1>
-          <p className='text-gray-600 text-lg'>車旅行計画アプリ</p>
-        </header>
+  const navigate = useNavigate();
+  const [addTripDialogOpen, setAddTripDialogOpen] = useState(false);
 
-        <main>
-          <h2 className='mb-4 text-center font-bold text-2xl text-gray-700'>旅程一覧(仮実装)</h2>
+  return (
+    <div className='flex h-screen w-full flex-col overflow-auto bg-teal-50'>
+      <Header variant='logoOnly' />
+
+      <div className='flex flex-1 flex-col items-center p-4'>
+        <div className='w-full max-w-2xl'>
+          {/* ヘッダー行 */}
+          <div className='mb-6 flex items-center justify-between'>
+            <h2 className='font-bold text-2xl text-gray-800'>旅程一覧</h2>
+            <Button onClick={() => setAddTripDialogOpen(true)} size='sm'>
+              + 旅程を追加
+            </Button>
+          </div>
+
+          {/* Trip一覧 */}
           {trips != null && trips.length > 0 ? (
-            <ul className='space-y-4'>
+            <div className='space-y-3'>
               {trips.map(trip => (
-                <li key={trip.id} className='rounded-lg bg-white p-4 shadow transition hover:bg-gray-50'>
-                  <Link
-                    to={`/trip/${trip.urlId}`}
-                    className='block font-semibold text-blue-600 text-lg hover:underline'
-                  >
-                    {trip.title}
-                  </Link>
-                </li>
+                <Link
+                  key={trip.id}
+                  to={`/trip/${trip.urlId}`}
+                  className='block rounded-lg bg-white p-4 shadow-sm transition hover:shadow-md'
+                >
+                  <h3 className='mb-1 font-semibold text-gray-900 text-lg'>{trip.title}</h3>
+                  {trip.detail && <p className='line-clamp-2 text-gray-600 text-sm'>{trip.detail}</p>}
+                  {trip.peopleNum && <p className='mt-2 text-gray-500 text-xs'>参加人数: {trip.peopleNum}人</p>}
+                </Link>
               ))}
-            </ul>
+            </div>
           ) : (
-            <p className='text-center text-gray-500'>旅程がありません。</p>
+            <p className='mt-8 text-center text-gray-500'>旅程がまだありません。</p>
           )}
-        </main>
+        </div>
       </div>
+
+      {/* 旅程追加ダイアログ */}
+      <AddTripDialog
+        open={addTripDialogOpen}
+        onOpenChange={setAddTripDialogOpen}
+        onCreated={trip => {
+          navigate(`/trip/${trip.urlId}`);
+        }}
+      />
     </div>
   );
 };

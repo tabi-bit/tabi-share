@@ -16,7 +16,7 @@ export function HeaderSkeleton({ className }: HeaderSkeletonProps) {
       )}
     >
       {/* Logo */}
-      <div className='pointer-events-none'>
+      <div className='pointer-events-none flex w-full flex-row justify-center'>
         <Logo size='medium' />
       </div>
 

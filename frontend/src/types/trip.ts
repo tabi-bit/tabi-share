@@ -59,3 +59,29 @@ export const AppRequestTripSchema = TripSchema.transform(
     url_id: appData.urlId,
   })
 );
+
+// --- 作成/更新用のスキーマ ---
+
+/**
+ * 作成/更新リクエスト用のアプリケーション層スキーマ
+ * id, urlIdはサーバーで管理されるため除外
+ */
+export const TripMutationSchema = TripSchema.omit({ id: true, urlId: true });
+export type TripMutation = z.infer<typeof TripMutationSchema>;
+
+/**
+ * 作成/更新リクエスト用のAPI層スキーマ
+ */
+const ApiTripMutationSchema = ApiTripSchema.omit({ id: true, url_id: true });
+export type ApiTripMutation = z.infer<typeof ApiTripMutationSchema>;
+
+/**
+ * アプリケーション層の作成/更新データをAPI送信用に変換するスキーマ
+ */
+export const AppRequestTripMutationSchema = TripMutationSchema.transform(
+  (appData): ApiTripMutation => ({
+    title: appData.title,
+    detail: appData.detail,
+    people_num: appData.peopleNum,
+  })
+);

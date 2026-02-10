@@ -61,6 +61,11 @@ const meta = {
     ),
   ],
   argTypes: {
+    variant: {
+      control: { type: 'radio' },
+      options: ['full', 'logoOnly'],
+      description: '表示バリアント（full: 全機能表示 / logoOnly: ロゴのみ）',
+    },
     mode: {
       control: { type: 'radio' },
       options: ['view', 'edit'],
@@ -85,10 +90,24 @@ const meta = {
 } satisfies Meta<typeof Header>;
 
 export default meta;
-type Story = StoryObj<typeof meta>;
+type Story = StoryObj<typeof Header>;
+
+export const LogoOnly: Story = {
+  args: {
+    variant: 'logoOnly',
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: 'ロゴのみを表示するシンプルなヘッダー。ホーム画面などで使用されます。',
+      },
+    },
+  },
+};
 
 export const Default: Story = {
   args: {
+    variant: 'full',
     trip: demoTrip,
     pages: demoPages,
     mode: 'view',
@@ -110,6 +129,7 @@ export const Default: Story = {
 
 export const EditMode: Story = {
   args: {
+    variant: 'full',
     trip: demoTrip,
     pages: demoPages,
     mode: 'edit',
@@ -131,6 +151,7 @@ export const EditMode: Story = {
 
 export const SinglePage: Story = {
   args: {
+    variant: 'full',
     trip: {
       id: 1,
       title: '日帰り温泉ツアー',
@@ -155,6 +176,7 @@ export const SinglePage: Story = {
 
 export const EmptyPages: Story = {
   args: {
+    variant: 'full',
     trip: {
       id: 1,
       title: '新しい旅行計画',
@@ -179,6 +201,7 @@ export const EmptyPages: Story = {
 
 export const WithCustomClass: Story = {
   args: {
+    variant: 'full',
     trip: demoTrip,
     pages: demoPages,
     mode: 'view',
@@ -201,6 +224,7 @@ export const WithCustomClass: Story = {
 
 export const ScrolledState: Story = {
   args: {
+    variant: 'full',
     trip: demoTrip,
     pages: demoPages,
     mode: 'view',
@@ -225,7 +249,7 @@ export const ScrolledState: Story = {
       const scrollContainerRef = useRef<HTMLDivElement>(null);
       return (
         <div ref={scrollContainerRef} style={{ height: '200vh', overflow: 'auto' }}>
-          <Story args={{ ...context.args, scrollContainerRef }} />
+          <Story args={{ ...context.args, variant: 'full', scrollContainerRef }} />
           <div style={{ padding: '2rem', marginTop: '2rem' }}>
             <h2>スクロールしてヘッダーの変化を確認</h2>
             <p>

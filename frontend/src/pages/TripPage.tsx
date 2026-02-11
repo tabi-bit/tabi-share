@@ -5,6 +5,7 @@ import { HeaderSkeleton } from '@/components/HeaderSkeleton';
 import { TimelineSkeleton } from '@/components/timeline';
 import { usePages } from '@/hooks/usePages';
 import { useTripByUrlId } from '@/hooks/useTrips';
+import { useVisitedTrips } from '@/hooks/useVisitedTrips';
 import type { Page } from '@/types';
 import { EditTripLayout } from './TripPage/EditTripLayout';
 import { ViewTripLayout } from './TripPage/ViewTripLayout';
@@ -18,6 +19,7 @@ const TripPage = () => {
 
   const { trip, error: tripError, isLoading: isTripLoading } = useTripByUrlId(urlId ?? null);
   const { pages, error: pagesError, isLoading: isPagesLoading } = usePages(trip?.id ?? null);
+  const { addVisitedTrip } = useVisitedTrips();
 
   const isLoading = isTripLoading || isPagesLoading || trip == null || pages == null || !minLoadingComplete;
   const isError = tripError || pagesError;
@@ -41,6 +43,13 @@ const TripPage = () => {
       scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
     }
   }, [mode]);
+
+  // Tripが読み込まれたら訪問済みリストに追加
+  useEffect(() => {
+    if (trip) {
+      addVisitedTrip(trip.urlId);
+    }
+  }, [trip, addVisitedTrip]);
 
   if (isLoading) {
     return (
@@ -69,6 +78,7 @@ const TripPage = () => {
         >
           {selectedPageId != null && (
             <Header
+              variant='full'
               selectedPageId={selectedPageId}
               pages={pages}
               onSelectPage={setSelectedPageId}

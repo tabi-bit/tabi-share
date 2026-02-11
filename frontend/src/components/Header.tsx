@@ -64,6 +64,12 @@ function HeaderFull({
   const [addPageDialogOpen, setAddPageDialogOpen] = useState(false);
   const scrollY = useRef(0);
 
+  const handleHeaderClick = useCallback((e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.closest('button, a, select, [role="combobox"], [role="option"], [role="listbox"]')) return;
+    setIsScrolled(false);
+  }, []);
+
   const handleScroll = useCallback(() => {
     const container = scrollContainerRef?.current;
     if (!container) return;
@@ -107,12 +113,14 @@ function HeaderFull({
   const selectedPage = selectedPageId ? pages.find(page => page.id === selectedPageId) : pages[0];
 
   return (
-    <div
+    // biome-ignore lint/a11y/noStaticElementInteractions: ヘッダー領域クリックでスクロール縮小状態を解除するためのイベント委譲
+    <header
       data-component='header'
       className={cn(
         'sticky top-0 right-0 left-0 z-10 flex w-full flex-col justify-center gap-1 bg-teal-50/80 px-2 py-2 backdrop-blur-sm',
         className
       )}
+      onClick={handleHeaderClick}
       {...props}
     >
       <div className='flex w-full flex-row justify-center'>
@@ -204,7 +212,7 @@ function HeaderFull({
           }}
         />
       )}
-    </div>
+    </header>
   );
 }
 

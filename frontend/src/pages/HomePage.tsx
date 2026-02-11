@@ -1,9 +1,11 @@
+import type React from 'react';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { AddTripDialog } from '@/dialogs/AddTripDialog';
 import { useVisitedTrips } from '@/hooks/useVisitedTrips';
+import { cn } from '@/lib/utils';
 
 const HomePage = () => {
   const { trips } = useVisitedTrips();
@@ -15,12 +17,12 @@ const HomePage = () => {
       <Header variant='logoOnly' />
 
       <div className='flex flex-1 flex-col items-center p-4'>
-        <div className='w-full max-w-2xl'>
+        <div className='relative w-full max-w-2xl'>
           {/* ヘッダー行 */}
           <div className='mb-6 flex items-center justify-between'>
-            <h2 className='font-bold text-2xl text-gray-800'>旅程一覧</h2>
+            <h2 className='font-bold text-2xl text-gray-800'>最近見た旅程一覧</h2>
             <Button onClick={() => setAddTripDialogOpen(true)} size='sm'>
-              + 旅程を追加
+              + 新しく旅に出る
             </Button>
           </div>
 
@@ -40,7 +42,15 @@ const HomePage = () => {
               ))}
             </div>
           ) : (
-            <p className='mt-8 text-center text-gray-500'>旅程がまだありません。</p>
+            <div className='relative flex flex-col items-center px-24 sm:px-0'>
+              <p className='relative mt-8 w-full text-center text-gray-500'>
+                旅程がまだありません。
+                <br />
+                共有してもらうか新しく作りましょう！
+              </p>
+              {/* テキストから右上ボタンへの点線カーブ矢印 */}
+              <CurvedArrow className='-top-6 absolute right-4 h-24 text-gray-400 sm:right-16' />
+            </div>
           )}
         </div>
       </div>
@@ -54,6 +64,48 @@ const HomePage = () => {
         }}
       />
     </div>
+  );
+};
+
+const CurvedArrow = ({ className, ...props }: React.ComponentProps<'svg'>) => {
+  const ARROW_HEAD_SIZE = 30;
+  const ARROW_LINE_SIZE = 150;
+  const ARROW_CP = Math.round((ARROW_LINE_SIZE * 4) / 7);
+
+  return (
+    <svg
+      className={cn('pointer-events-none text-gray-400', className)}
+      viewBox={`${-ARROW_HEAD_SIZE} ${-ARROW_HEAD_SIZE} ${ARROW_LINE_SIZE + ARROW_HEAD_SIZE * 2} ${ARROW_LINE_SIZE + ARROW_HEAD_SIZE * 2}`}
+      role='img'
+      aria-label='ボタンへの誘導矢印'
+      {...props}
+    >
+      <defs>
+        <marker
+          id='arrowhead'
+          markerUnits='userSpaceOnUse'
+          markerWidth={ARROW_HEAD_SIZE}
+          markerHeight={ARROW_HEAD_SIZE}
+          refX={ARROW_HEAD_SIZE}
+          refY={ARROW_HEAD_SIZE / 2}
+          orient='auto'
+        >
+          <polygon
+            points={`0 0, ${ARROW_HEAD_SIZE} ${ARROW_HEAD_SIZE / 2}, 0 ${ARROW_HEAD_SIZE}`}
+            fill='currentColor'
+          />
+        </marker>
+      </defs>
+      <path
+        d={`M0,${ARROW_LINE_SIZE} C${ARROW_CP},${ARROW_LINE_SIZE} ${ARROW_LINE_SIZE},${ARROW_CP} ${ARROW_LINE_SIZE},0`}
+        fill='none'
+        stroke='currentColor'
+        strokeWidth='3'
+        strokeDasharray='20 10'
+        strokeLinecap='round'
+        markerEnd='url(#arrowhead)'
+      />
+    </svg>
   );
 };
 

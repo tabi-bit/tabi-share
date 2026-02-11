@@ -13,7 +13,7 @@ const HomePage = () => {
   const [addTripDialogOpen, setAddTripDialogOpen] = useState(false);
 
   return (
-    <div className='flex h-screen w-full flex-col overflow-auto bg-teal-50'>
+    <div className='flex h-dvh w-full flex-col overflow-auto bg-teal-50'>
       <Header variant='logoOnly' />
 
       <div className='flex flex-1 flex-col items-center p-4'>

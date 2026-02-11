@@ -53,7 +53,7 @@ const TripPage = () => {
 
   if (isLoading) {
     return (
-      <div className='flex h-screen w-full flex-col items-center overflow-auto'>
+      <div className='flex h-dvh w-full flex-col items-center overflow-auto'>
         <HeaderSkeleton />
         <TimelineSkeleton className='w-full max-w-3xl p-4' />
       </div>
@@ -74,7 +74,7 @@ const TripPage = () => {
       {trip && pages && (
         <div
           ref={scrollContainerRef}
-          className='flex h-screen w-full flex-col items-center justify-between gap-4 overflow-auto'
+          className='flex h-dvh w-full flex-col items-center justify-between gap-4 overflow-auto overscroll-y-none'
         >
           {selectedPageId != null && (
             <Header

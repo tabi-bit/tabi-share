@@ -47,7 +47,7 @@ export const AddTripDialog = ({ open, onOpenChange, onCreated }: AddTripDialogPr
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className='max-w-md'>
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>旅程を追加</DialogTitle>
         </DialogHeader>

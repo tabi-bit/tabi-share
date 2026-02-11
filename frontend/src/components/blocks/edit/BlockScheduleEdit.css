@@ -29,6 +29,6 @@
 
 @container (height < 2rem) {
   .BlockScheduleEdit .schedule-time-wrapper {
-    font-size: 12px !important;
+    font-size: 10px !important;
   }
 }

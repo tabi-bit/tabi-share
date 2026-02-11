@@ -11,7 +11,7 @@ export function HeaderSkeleton({ className }: HeaderSkeletonProps) {
     <div
       data-component='header-skeleton'
       className={cn(
-        'sticky top-0 right-0 left-0 z-10 flex w-full flex-col justify-center gap-1 bg-teal-50/80 px-6 py-2 backdrop-blur-sm',
+        'sticky top-0 right-0 left-0 z-10 flex w-full flex-col justify-center gap-1 bg-teal-50/80 px-2 py-2 backdrop-blur-sm',
         className
       )}
     >
@@ -21,18 +21,19 @@ export function HeaderSkeleton({ className }: HeaderSkeletonProps) {
       </div>
 
       {/* グリッドレイアウト */}
-      <div className='grid grid-cols-[1fr_auto_1fr] items-center gap-4'>
+      <div className='grid grid-cols-1 gap-4 gap-x-4 gap-y-2 sm:grid-cols-[1fr_auto_1fr] sm:items-center'>
         {/* 左カラム: trip.title */}
-        <div className='flex justify-end'>
-          <Skeleton className='h-7 w-32' />
+        <div className='flex justify-start sm:justify-end'>
+          <Skeleton className='h-6 w-32 sm:h-7' />
         </div>
 
-        {/* 中央カラム: ページセレクト */}
-        <Skeleton className='h-10 w-40' />
-
-        {/* 右カラム: ボタン */}
-        <div className='flex flex-row justify-start gap-x-4'>
-          <Skeleton className='h-10 w-32' />
+        <div className='flex flex-row justify-start gap-x-2 sm:contents'>
+          {/* 中央カラム: ページセレクト */}
+          <Skeleton className='h-9 w-40' />
+          {/* 右カラム: ボタン */}
+          <div className='flex flex-row justify-start gap-x-4'>
+            <Skeleton className='h-9 w-32' />
+          </div>
         </div>
       </div>
     </div>

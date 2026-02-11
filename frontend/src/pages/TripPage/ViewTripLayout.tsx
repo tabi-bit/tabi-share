@@ -13,7 +13,7 @@ const ViewTripLayout = ({ selectedPageId }: ViewTripLayoutProps) => {
     <>
       {isBlocksLoading && <div>Loading Blocks ...</div>}
       {!isBlocksLoading && blocks && (
-        <div className='flex h-full w-full max-w-3xl grow flex-col items-center'>
+        <div className='flex h-full w-full max-w-3xl grow flex-col items-center px-2'>
           <Timeline blocks={blocks} type='view' className='pb-4' />
         </div>
       )}

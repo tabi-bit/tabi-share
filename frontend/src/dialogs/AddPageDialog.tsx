@@ -39,7 +39,7 @@ export const AddPageDialog = ({ open, onOpenChange, tripId, onCreated }: AddPage
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className='max-w-md'>
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>ページを追加</DialogTitle>
         </DialogHeader>

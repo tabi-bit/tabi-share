@@ -55,7 +55,7 @@ export const EditPageDialog = ({ open, onOpenChange, page, onDeleted }: EditPage
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className='max-w-md'>
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>ページ情報の編集</DialogTitle>
         </DialogHeader>
@@ -76,7 +76,9 @@ export const EditPageDialog = ({ open, onOpenChange, page, onDeleted }: EditPage
           {/* 左側: 削除ボタン */}
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant='destructive'>削除</Button>
+              <Button variant='destructive' className='mr-0 sm:mr-auto'>
+                削除
+              </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
@@ -94,13 +96,10 @@ export const EditPageDialog = ({ open, onOpenChange, page, onDeleted }: EditPage
             </AlertDialogContent>
           </AlertDialog>
 
-          {/* 右側: キャンセル・更新ボタン */}
-          <div className='flex gap-2'>
-            <Button variant='outline' onClick={() => onOpenChange(false)}>
-              キャンセル
-            </Button>
-            <Button onClick={handleSubmit}>更新</Button>
-          </div>
+          <Button variant='outline' onClick={() => onOpenChange(false)}>
+            キャンセル
+          </Button>
+          <Button onClick={handleSubmit}>更新</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

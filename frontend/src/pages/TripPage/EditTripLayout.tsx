@@ -182,8 +182,8 @@ export const EditTripLayout = ({ selectedPageId }: EditTripLayoutProps) => {
         slotLabelInterval={'01:00:00'}
         slotMaxTime={'28:00:00'}
         // スタイリング
-        viewClassNames={'h-full w-full max-w-3xl px-8'}
-        slotLabelClassNames={'-translate-y-1/2'}
+        viewClassNames={'h-full w-full max-w-3xl px-2'}
+        slotLabelClassNames={'-translate-y-1/2 text-14px sm:text-16px'}
         // Ref
         ref={calendarRef}
       />

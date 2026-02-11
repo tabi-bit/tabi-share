@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
@@ -68,6 +68,7 @@ const HomePage = () => {
 };
 
 const CurvedArrow = ({ className, ...props }: React.ComponentProps<'svg'>) => {
+  const markerId = useId();
   const ARROW_HEAD_SIZE = 30;
   const ARROW_LINE_SIZE = 150;
   const ARROW_CP = Math.round((ARROW_LINE_SIZE * 4) / 7);
@@ -82,7 +83,7 @@ const CurvedArrow = ({ className, ...props }: React.ComponentProps<'svg'>) => {
     >
       <defs>
         <marker
-          id='arrowhead'
+          id={markerId}
           markerUnits='userSpaceOnUse'
           markerWidth={ARROW_HEAD_SIZE}
           markerHeight={ARROW_HEAD_SIZE}
@@ -103,7 +104,7 @@ const CurvedArrow = ({ className, ...props }: React.ComponentProps<'svg'>) => {
         strokeWidth='3'
         strokeDasharray='20 10'
         strokeLinecap='round'
-        markerEnd='url(#arrowhead)'
+        markerEnd={`url(#${markerId})`}
       />
     </svg>
   );

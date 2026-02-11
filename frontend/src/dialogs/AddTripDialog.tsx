@@ -32,9 +32,6 @@ export const AddTripDialog = ({ open, onOpenChange, onCreated }: AddTripDialogPr
 
     if (newTrip) {
       onCreated?.(newTrip);
-      setTitle('');
-      setDetail('');
-      setPeopleNum(undefined);
       onOpenChange(false);
     }
   };
@@ -87,8 +84,8 @@ export const AddTripDialog = ({ open, onOpenChange, onCreated }: AddTripDialogPr
               min='1'
               value={peopleNum ?? ''}
               onChange={e => {
-                const value = e.target.value;
-                setPeopleNum(value ? Number(value) : undefined);
+                const parsed = parseInt(e.target.value, 10);
+                setPeopleNum(!Number.isNaN(parsed) && parsed >= 1 ? parsed : undefined);
               }}
               placeholder='例: 4'
             />

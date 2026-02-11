@@ -27,6 +27,7 @@ type HeaderFullProps = HeaderBaseProps & {
   onSelectPage: (pageId: Page['id']) => void;
   scrollContainerRef: React.RefObject<HTMLDivElement | null>;
   setMode: Dispatch<SetStateAction<'view' | 'edit'>>;
+  isDraggingRef: React.RefObject<boolean>;
 };
 
 type HeaderProps = HeaderLogoOnlyProps | HeaderFullProps;
@@ -57,6 +58,7 @@ function HeaderFull({
   setMode,
   className,
   scrollContainerRef,
+  isDraggingRef,
   ...props
 }: Omit<HeaderFullProps, 'variant'>) {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -75,6 +77,13 @@ function HeaderFull({
     if (!container) return;
 
     const scrollTop = container.scrollTop;
+
+    // ドラッグ中はisScrolledの更新をスキップし、スクロール位置の基準だけ更新する
+    if (isDraggingRef.current) {
+      scrollY.current = scrollTop;
+      return;
+    }
+
     const deltaY = scrollTop - scrollY.current;
 
     // isScrolledの次の状態を計算する
@@ -100,7 +109,7 @@ function HeaderFull({
       // レイアウトシフトによる誤作動を防ぐ
       scrollY.current = scrollTop;
     }
-  }, [isScrolled, scrollContainerRef]);
+  }, [isScrolled, scrollContainerRef, isDraggingRef]);
 
   useEffect(() => {
     const container = scrollContainerRef?.current;

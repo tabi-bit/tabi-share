@@ -13,14 +13,17 @@ import type { Block, Page } from '@/types';
 
 interface EditTripLayoutProps {
   selectedPageId: Page['id'];
+  onDragStart?: () => void;
+  onDragEnd?: () => void;
 }
 
-export const EditTripLayout = ({ selectedPageId }: EditTripLayoutProps) => {
+export const EditTripLayout = ({ selectedPageId, onDragStart, onDragEnd }: EditTripLayoutProps) => {
   const { blocks } = useBlocks(selectedPageId);
   const { createBlock } = useCreateBlock(selectedPageId);
   const { updateBlock } = useUpdateBlock(selectedPageId);
   const { deleteBlock } = useDeleteBlock(selectedPageId);
   const calendarRef = useRef<FullCalendar>(null);
+  const calendarContainerRef = useRef<HTMLDivElement>(null);
   const isFirstEventMount = useRef(true);
 
   // AddBlockDialog用のstate
@@ -57,6 +60,32 @@ export const EditTripLayout = ({ selectedPageId }: EditTripLayoutProps) => {
       calendarApi.gotoDate(blocks[0].startTime);
     }
   }, [blocks]);
+
+  // タイムグリッド上の長押しを検出してスクロールをロック（新規イベント追加時の選択操作対応）
+  useEffect(() => {
+    const timeGrid = calendarContainerRef.current?.querySelector<HTMLElement>('.fc-timegrid-body');
+    if (!timeGrid) return;
+
+    const handleStart = () => onDragStart?.();
+
+    const handleEnd = () => onDragEnd?.();
+
+    timeGrid.addEventListener('touchstart', handleStart, { passive: true });
+    timeGrid.addEventListener('touchend', handleEnd);
+    timeGrid.addEventListener('touchcancel', handleEnd);
+    timeGrid.addEventListener('pointerdown', handleStart);
+    timeGrid.addEventListener('pointerup', handleEnd);
+    timeGrid.addEventListener('pointercancel', handleEnd);
+
+    return () => {
+      timeGrid.removeEventListener('touchstart', handleStart);
+      timeGrid.removeEventListener('touchend', handleEnd);
+      timeGrid.removeEventListener('touchcancel', handleEnd);
+      timeGrid.removeEventListener('pointerdown', handleStart);
+      timeGrid.removeEventListener('pointerup', handleEnd);
+      timeGrid.removeEventListener('pointercancel', handleEnd);
+    };
+  }, [onDragStart, onDragEnd]);
 
   // selectedPageId変更時にスクロールフラグをリセット
   // biome-ignore lint/correctness/useExhaustiveDependencies: selectedPageId変更を検知してrefをリセットするための意図的な依存配列
@@ -144,6 +173,14 @@ export const EditTripLayout = ({ selectedPageId }: EditTripLayoutProps) => {
     return <div className='p-1'>{eventInfo.event.title}</div>;
   };
 
+  const handleDragStart = useCallback(() => {
+    onDragStart?.();
+  }, [onDragStart]);
+
+  const handleDragEnd = useCallback(() => {
+    onDragEnd?.();
+  }, [onDragEnd]);
+
   const handleEventMount = (arg: ViewMountArg) => {
     if (!isFirstEventMount.current) return;
     arg.el.scrollIntoView({ block: 'center', behavior: 'smooth' });
@@ -152,41 +189,47 @@ export const EditTripLayout = ({ selectedPageId }: EditTripLayoutProps) => {
 
   return (
     <main className='flex w-full flex-row justify-center py-2'>
-      <FullCalendar
-        // プラグインとビュー設定
-        plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-        initialView='timeGridDay'
-        headerToolbar={false}
-        dayHeaders={false}
-        height={'auto'}
-        expandRows
-        // 地域化と言語
-        locale='ja'
-        // インタラクション設定
-        selectable
-        editable
-        longPressDelay={100}
-        unselectAuto={false}
-        // データとイベントハンドラ
-        events={events}
-        select={handleSelect}
-        eventClick={handleEventClick}
-        eventDrop={handleEventDrop}
-        eventResize={handleEventResize}
-        eventContent={renderEventContent}
-        eventDidMount={handleEventMount}
-        // スロットと時間軸の設定
-        allDaySlot={false}
-        slotDuration={'00:15:00'}
-        slotMinTime={'00:00:00'}
-        slotLabelInterval={'01:00:00'}
-        slotMaxTime={'28:00:00'}
-        // スタイリング
-        viewClassNames={'h-full w-full max-w-3xl px-2'}
-        slotLabelClassNames={'-translate-y-1/2 text-14px sm:text-16px'}
-        // Ref
-        ref={calendarRef}
-      />
+      <div ref={calendarContainerRef}>
+        <FullCalendar
+          // プラグインとビュー設定
+          plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+          initialView='timeGridDay'
+          headerToolbar={false}
+          dayHeaders={false}
+          height={'auto'}
+          expandRows
+          // 地域化と言語
+          locale='ja'
+          // インタラクション設定
+          selectable
+          editable
+          longPressDelay={300}
+          unselectAuto={false}
+          // データとイベントハンドラ
+          events={events}
+          select={handleSelect}
+          eventClick={handleEventClick}
+          eventDragStart={handleDragStart}
+          eventDrop={handleEventDrop}
+          eventDragStop={handleDragEnd}
+          eventResizeStart={handleDragStart}
+          eventResize={handleEventResize}
+          eventResizeStop={handleDragEnd}
+          eventContent={renderEventContent}
+          eventDidMount={handleEventMount}
+          // スロットと時間軸の設定
+          allDaySlot={false}
+          slotDuration={'00:15:00'}
+          slotMinTime={'00:00:00'}
+          slotLabelInterval={'01:00:00'}
+          slotMaxTime={'28:00:00'}
+          // スタイリング
+          viewClassNames={'h-full w-full max-w-3xl px-2'}
+          slotLabelClassNames={'-translate-y-1/2 text-14px sm:text-16px'}
+          // Ref
+          ref={calendarRef}
+        />
+      </div>
 
       {addDialogSelectInfo && (
         <AddBlockDialog

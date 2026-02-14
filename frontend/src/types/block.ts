@@ -138,6 +138,7 @@ export const AppRequestBlockSchema = BlockSchema.transform((appData): ApiBlock =
     start_time: startTime.toISOString(),
     end_time: endTime?.toISOString() ?? null,
     page_id: pageId,
+    detail: appData.detail ?? '',
   };
 
   if (type === 'transportation') {

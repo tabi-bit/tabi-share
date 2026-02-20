@@ -4,7 +4,13 @@ import useSWR, { useSWRConfig } from 'swr';
 import useSWRMutation from 'swr/mutation';
 import z from 'zod';
 import { apiClient, fetcher } from '@/lib/apiClient';
-import { AppRequestTripSchema, AppResponseTripSchema, type Trip, TripSchema } from '@/types/trip';
+import {
+  AppRequestTripMutationSchema,
+  AppResponseTripSchema,
+  type Trip,
+  type TripMutation,
+  TripMutationSchema,
+} from '@/types/trip';
 
 const TRIPS_BASE_PATH = '/trips';
 
@@ -80,19 +86,16 @@ export const useTrip = (id: Trip['id'] | null) => {
   };
 };
 
-type CreateTripArg = Omit<Trip, 'id'>;
-const CreateTripSchema = TripSchema.omit({ id: true });
+type CreateTripArg = TripMutation;
 
 /**
  * 新しいTripを作成する
  */
 export const useCreateTrip = () => {
   const createTrip = useCallback(async (url: string, { arg: tripData }: { arg: CreateTripArg }) => {
-    CreateTripSchema.parse(tripData);
-    // アプリ層→API層に変換してからバリデーション・送信
-    const apiData = AppRequestTripSchema.parse({ ...tripData, id: 0 }); // idは仮値
-    const { id: _, ...payload } = apiData; // idを除外
-    const response = await apiClient.post(url, payload);
+    TripMutationSchema.parse(tripData);
+    const apiData = AppRequestTripMutationSchema.parse(tripData);
+    const response = await apiClient.post(url, apiData);
     return AppResponseTripSchema.parse(response.data);
   }, []);
 
@@ -109,8 +112,7 @@ export const useCreateTrip = () => {
   };
 };
 
-type UpdateTripArg = { id: Trip['id']; data: Omit<Trip, 'id'> };
-const UpdateTripSchema = TripSchema.omit({ id: true });
+type UpdateTripArg = { id: Trip['id']; data: TripMutation };
 
 /**
  * Tripを更新するためのフック
@@ -120,11 +122,9 @@ export const useUpdateTrip = () => {
 
   const updateTripFetcher = useCallback(async (_key: string | null, { arg }: { arg: UpdateTripArg }) => {
     const { id, data } = arg;
-    UpdateTripSchema.parse(data);
-    // アプリ層→API層に変換してからバリデーション・送信
-    const apiData = AppRequestTripSchema.parse({ ...data, id });
-    const { id: _, ...payload } = apiData; // idを除外（URLパスで指定）
-    const response = await apiClient.put(`${TRIPS_BASE_PATH}/${id}`, payload);
+    TripMutationSchema.parse(data);
+    const apiData = AppRequestTripMutationSchema.parse(data);
+    const response = await apiClient.put(`${TRIPS_BASE_PATH}/${id}`, apiData);
     return AppResponseTripSchema.parse(response.data);
   }, []);
 
@@ -159,7 +159,6 @@ export const useUpdateTrip = () => {
 };
 
 type DeleteTripArg = Trip['id'];
-const DeleteTripSchema = TripSchema.shape.id;
 
 /**
  * Tripを削除する
@@ -168,7 +167,7 @@ export const useDeleteTrip = () => {
   const { mutate } = useSWRConfig();
 
   const deleteTripFetcher = useCallback(async (_: string | null, { arg: id }: { arg: DeleteTripArg }) => {
-    DeleteTripSchema.parse(id);
+    z.number().parse(id);
     await apiClient.delete(`${TRIPS_BASE_PATH}/${id}`);
     return undefined;
   }, []);

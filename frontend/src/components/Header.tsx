@@ -1,4 +1,4 @@
-import { type Dispatch, type SetStateAction, useCallback, useEffect, useRef, useState } from 'react';
+import React, { type Dispatch, type SetStateAction, useCallback, useEffect, useRef, useState } from 'react';
 import editScheduleIcon from '@/assets/icons/edit-schedule-white.svg';
 import eyeSolidIcon from '@/assets/icons/eye-solid-white.svg';
 import penToSquareSolidIcon from '@/assets/icons/pen-to-square-solid-white.svg';
@@ -12,7 +12,14 @@ import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
-type HeaderProps = {
+type HeaderBaseProps = React.ComponentProps<'div'>;
+
+type HeaderLogoOnlyProps = HeaderBaseProps & {
+  variant: 'logoOnly';
+};
+
+type HeaderFullProps = HeaderBaseProps & {
+  variant: 'full';
   trip: Trip;
   pages: Page[];
   mode?: 'view' | 'edit';
@@ -20,12 +27,28 @@ type HeaderProps = {
   onSelectPage: (pageId: Page['id']) => void;
   scrollContainerRef: React.RefObject<HTMLDivElement | null>;
   setMode: Dispatch<SetStateAction<'view' | 'edit'>>;
-  className?: string;
 };
+
+type HeaderProps = HeaderLogoOnlyProps | HeaderFullProps;
 
 const transitionClassNames = 'duration-300 ease-in-out';
 
-export function Header({
+function HeaderLogoOnly({ className, ...props }: HeaderLogoOnlyProps) {
+  return (
+    <div
+      data-component='header'
+      className={cn(
+        'sticky top-0 right-0 left-0 z-10 flex w-full flex-col items-center justify-center bg-teal-50/80 px-6 py-3 backdrop-blur-sm',
+        className
+      )}
+      {...props}
+    >
+      <Logo size='medium' className='mx-auto' />
+    </div>
+  );
+}
+
+function HeaderFull({
   pages,
   trip,
   mode = 'view',
@@ -34,7 +57,8 @@ export function Header({
   setMode,
   className,
   scrollContainerRef,
-}: HeaderProps) {
+  ...props
+}: Omit<HeaderFullProps, 'variant'>) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [editPageDialogOpen, setEditPageDialogOpen] = useState(false);
   const [addPageDialogOpen, setAddPageDialogOpen] = useState(false);
@@ -89,8 +113,11 @@ export function Header({
         'sticky top-0 right-0 left-0 z-10 flex w-full flex-col justify-center gap-1 bg-teal-50/80 px-6 py-2 backdrop-blur-sm',
         className
       )}
+      {...props}
     >
-      <Logo size={isScrolled ? 'small' : 'medium'} />
+      <div className='flex w-full flex-row justify-center'>
+        <Logo size={isScrolled ? 'small' : 'medium'} />
+      </div>
       <div className='grid grid-cols-[1fr_auto_1fr] items-center gap-4'>
         {/* 左カラム */}
         <div
@@ -178,6 +205,13 @@ export function Header({
       )}
     </div>
   );
+}
+
+export function Header(props: HeaderProps) {
+  if (props.variant === 'logoOnly') {
+    return <HeaderLogoOnly {...props} />;
+  }
+  return <HeaderFull {...props} />;
 }
 
 type HeaderButtonBaseProps = React.ComponentProps<typeof Button> & {

@@ -9,11 +9,12 @@ import { BlockScheduleEdit } from '@/components/blocks/edit/BlockScheduleEdit';
 import { BlockTransportationEdit } from '@/components/blocks/edit/BlockTransportationEdit';
 import { AddBlockDialog, EditBlockDialog } from '@/dialogs';
 import { useBlocks, useCreateBlock, useDeleteBlock, useUpdateBlock } from '@/hooks/useBlocks';
+import { useCalendarDragDetection } from '@/hooks/useCalendarDragDetection';
 import type { Block, Page } from '@/types';
 
 interface EditTripLayoutProps {
   selectedPageId: Page['id'];
-  onDragStart?: () => void;
+  onDragStart?: (isTouch: boolean) => void;
   onDragEnd?: () => void;
 }
 
@@ -33,6 +34,13 @@ export const EditTripLayout = ({ selectedPageId, onDragStart, onDragEnd }: EditT
   // EditBlockDialog用のstate
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingBlock, setEditingBlock] = useState<Block | null>(null);
+
+  // ドラッグ操作検出（マウスpointer + MutationObserver + FCコールバック）
+  const { handleEventDragStart, handleEventDragStop, onBeforeSelect } = useCalendarDragDetection(
+    calendarContainerRef,
+    onDragStart,
+    onDragEnd
+  );
 
   const createEvent = useCallback((block: Block) => {
     return {
@@ -61,32 +69,6 @@ export const EditTripLayout = ({ selectedPageId, onDragStart, onDragEnd }: EditT
     }
   }, [blocks]);
 
-  // タイムグリッド上の長押しを検出してスクロールをロック（新規イベント追加時の選択操作対応）
-  useEffect(() => {
-    const timeGrid = calendarContainerRef.current?.querySelector<HTMLElement>('.fc-timegrid-body');
-    if (!timeGrid) return;
-
-    const handleStart = () => onDragStart?.();
-
-    const handleEnd = () => onDragEnd?.();
-
-    timeGrid.addEventListener('touchstart', handleStart, { passive: true });
-    timeGrid.addEventListener('touchend', handleEnd);
-    timeGrid.addEventListener('touchcancel', handleEnd);
-    timeGrid.addEventListener('pointerdown', handleStart);
-    timeGrid.addEventListener('pointerup', handleEnd);
-    timeGrid.addEventListener('pointercancel', handleEnd);
-
-    return () => {
-      timeGrid.removeEventListener('touchstart', handleStart);
-      timeGrid.removeEventListener('touchend', handleEnd);
-      timeGrid.removeEventListener('touchcancel', handleEnd);
-      timeGrid.removeEventListener('pointerdown', handleStart);
-      timeGrid.removeEventListener('pointerup', handleEnd);
-      timeGrid.removeEventListener('pointercancel', handleEnd);
-    };
-  }, [onDragStart, onDragEnd]);
-
   // selectedPageId変更時にスクロールフラグをリセット
   // biome-ignore lint/correctness/useExhaustiveDependencies: selectedPageId変更を検知してrefをリセットするための意図的な依存配列
   useEffect(() => {
@@ -94,6 +76,7 @@ export const EditTripLayout = ({ selectedPageId, onDragStart, onDragEnd }: EditT
   }, [selectedPageId]);
 
   const handleSelect = (selectInfo: DateSelectArg) => {
+    onBeforeSelect();
     setAddDialogSelectInfo(selectInfo);
     setAddDialogOpen(true);
   };
@@ -131,29 +114,30 @@ export const EditTripLayout = ({ selectedPageId, onDragStart, onDragEnd }: EditT
     await deleteBlock(blockId);
   };
 
-  const handleEventDrop = async (dropInfo: EventDropArg) => {
-    const blockData = dropInfo.event.extendedProps.blockData as Block;
-    await updateBlock({
-      id: blockData.id,
-      data: {
-        ...blockData,
-        startTime: dropInfo.event.start ?? blockData.startTime,
-        endTime: dropInfo.event.end ?? blockData.endTime,
-      },
-    });
-  };
+  const updateBlockTime = useCallback(
+    async (event: EventDropArg['event'] | EventResizeDoneArg['event']) => {
+      const blockData = event.extendedProps.blockData as Block;
+      await updateBlock({
+        id: blockData.id,
+        data: {
+          ...blockData,
+          startTime: event.start ?? blockData.startTime,
+          endTime: event.end ?? blockData.endTime,
+        },
+      });
+    },
+    [updateBlock]
+  );
 
-  const handleEventResize = async (resizeInfo: EventResizeDoneArg) => {
-    const blockData = resizeInfo.event.extendedProps.blockData as Block;
-    await updateBlock({
-      id: blockData.id,
-      data: {
-        ...blockData,
-        startTime: resizeInfo.event.start ?? blockData.startTime,
-        endTime: resizeInfo.event.end ?? blockData.endTime,
-      },
-    });
-  };
+  const handleEventDrop = useCallback(
+    async (dropInfo: EventDropArg) => updateBlockTime(dropInfo.event),
+    [updateBlockTime]
+  );
+
+  const handleEventResize = useCallback(
+    async (resizeInfo: EventResizeDoneArg) => updateBlockTime(resizeInfo.event),
+    [updateBlockTime]
+  );
 
   /**
    * カレンダーのイベント表示をカスタマイズする関数
@@ -172,14 +156,6 @@ export const EditTripLayout = ({ selectedPageId, onDragStart, onDragEnd }: EditT
     // デフォルトのフォールバック
     return <div className='p-1'>{eventInfo.event.title}</div>;
   };
-
-  const handleDragStart = useCallback(() => {
-    onDragStart?.();
-  }, [onDragStart]);
-
-  const handleDragEnd = useCallback(() => {
-    onDragEnd?.();
-  }, [onDragEnd]);
 
   const handleEventMount = (arg: ViewMountArg) => {
     if (!isFirstEventMount.current) return;
@@ -209,12 +185,12 @@ export const EditTripLayout = ({ selectedPageId, onDragStart, onDragEnd }: EditT
           events={events}
           select={handleSelect}
           eventClick={handleEventClick}
-          eventDragStart={handleDragStart}
+          eventDragStart={handleEventDragStart}
           eventDrop={handleEventDrop}
-          eventDragStop={handleDragEnd}
-          eventResizeStart={handleDragStart}
+          eventDragStop={handleEventDragStop}
+          eventResizeStart={handleEventDragStart}
           eventResize={handleEventResize}
-          eventResizeStop={handleDragEnd}
+          eventResizeStop={handleEventDragStop}
           eventContent={renderEventContent}
           eventDidMount={handleEventMount}
           // スロットと時間軸の設定

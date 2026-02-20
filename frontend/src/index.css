@@ -173,10 +173,10 @@
 
   .fc-event {
     box-shadow: none !important;
-  }
-
-  .fc-event-dragging {
-    touch-action: none;
+    /* pan-y: 縦スクロールを許可しつつ、横スクロール/ズーム等をブロック。
+       長押しドラッグ時はユーザーが動かず保持するため、ブラウザはスクロールを開始せず
+       FullCalendarがpreventDefaultでドラッグを開始できる。 */
+    touch-action: pan-y;
   }
 }
 

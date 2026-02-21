@@ -42,6 +42,8 @@ export const EditTripLayout = ({ selectedPageId, onDragStart, onDragEnd }: EditT
     onDragEnd
   );
 
+  // --- カレンダーイベント変換 ---
+
   const createEvent = useCallback((block: Block) => {
     return {
       id: block.id.toString(),
@@ -62,6 +64,8 @@ export const EditTripLayout = ({ selectedPageId, onDragStart, onDragEnd }: EditT
     return blocks.map(block => createEvent(block));
   }, [blocks, createEvent]);
 
+  // --- カレンダー初期化・同期 ---
+
   useEffect(() => {
     if (blocks && blocks.length > 0 && calendarRef.current) {
       const calendarApi = calendarRef.current.getApi();
@@ -74,6 +78,14 @@ export const EditTripLayout = ({ selectedPageId, onDragStart, onDragEnd }: EditT
   useEffect(() => {
     isFirstEventMount.current = true;
   }, [selectedPageId]);
+
+  const handleEventMount = (arg: ViewMountArg) => {
+    if (!isFirstEventMount.current) return;
+    arg.el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    isFirstEventMount.current = false;
+  };
+
+  // --- ブロック追加ダイアログ ---
 
   const handleSelect = (selectInfo: DateSelectArg) => {
     onBeforeSelect();
@@ -92,6 +104,8 @@ export const EditTripLayout = ({ selectedPageId, onDragStart, onDragEnd }: EditT
   const handleDialogSubmit = async (block: Omit<Block, 'id'>) => {
     await createBlock(block);
   };
+
+  // --- ブロック編集ダイアログ ---
 
   const handleEventClick = (clickInfo: EventClickArg) => {
     const blockData = clickInfo.event.extendedProps.blockData as Block;
@@ -113,6 +127,8 @@ export const EditTripLayout = ({ selectedPageId, onDragStart, onDragEnd }: EditT
   const handleEditDialogDelete = async (blockId: number) => {
     await deleteBlock(blockId);
   };
+
+  // --- ドラッグ&ドロップ・リサイズ操作 ---
 
   const updateBlockTime = useCallback(
     async (event: EventDropArg['event'] | EventResizeDoneArg['event']) => {
@@ -139,9 +155,8 @@ export const EditTripLayout = ({ selectedPageId, onDragStart, onDragEnd }: EditT
     [updateBlockTime]
   );
 
-  /**
-   * カレンダーのイベント表示をカスタマイズする関数
-   */
+  // --- カレンダーイベント表示 ---
+
   const renderEventContent = (eventInfo: EventContentArg) => {
     const blockData = eventInfo.event.extendedProps.blockData as Block;
 
@@ -155,12 +170,6 @@ export const EditTripLayout = ({ selectedPageId, onDragStart, onDragEnd }: EditT
 
     // デフォルトのフォールバック
     return <div className='p-1'>{eventInfo.event.title}</div>;
-  };
-
-  const handleEventMount = (arg: ViewMountArg) => {
-    if (!isFirstEventMount.current) return;
-    arg.el.scrollIntoView({ block: 'center', behavior: 'smooth' });
-    isFirstEventMount.current = false;
   };
 
   return (

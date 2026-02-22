@@ -107,7 +107,20 @@ export const EditTripLayout = ({ selectedPageId, onDragStart, onDragEnd }: EditT
 
   // --- ブロック編集ダイアログ ---
 
+  // FC内部のeventSelection状態を解除する（公開APIが存在しないため内部dispatch使用）
+  const unselectEvent = () => {
+    const calendarApi = calendarRef.current?.getApi();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const currentData = (calendarApi as any)?.getCurrentData?.();
+    if (currentData?.eventSelection) {
+      currentData.dispatch({ type: 'UNSELECT_EVENT' });
+      return true;
+    }
+    return false;
+  };
+
   const handleEventClick = (clickInfo: EventClickArg) => {
+    if (unselectEvent()) return;
     const blockData = clickInfo.event.extendedProps.blockData as Block;
     setEditingBlock(blockData);
     setEditDialogOpen(true);

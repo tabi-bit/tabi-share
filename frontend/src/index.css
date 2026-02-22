@@ -177,6 +177,11 @@
        長押しドラッグ時はユーザーが動かず保持するため、ブラウザはスクロールを開始せず
        FullCalendarがpreventDefaultでドラッグを開始できる。 */
     touch-action: pan-y;
+
+    /* タップ/クリック時の:focusオーバーレイを抑制し、キーボード操作時のみ表示 */
+    &:focus:not(:focus-visible)::after {
+      display: none;
+    }
   }
 }
 

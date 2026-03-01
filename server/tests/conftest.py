@@ -1,66 +1,84 @@
-from app.schemas.page import Page
-import os
-
-import pytest
 import pytest_asyncio
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session, sessionmaker
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
+from sqlalchemy.pool import NullPool
 
+from app.config import get_settings
 from app.cruds import pages as pages_cruds
 from app.cruds import trips as trips_cruds
 from app.db_connection import Base, get_db_session
 from app.main import app
-from app.schemas.page import PageCreate
+from app.schemas.page import Page, PageCreate
 from app.schemas.trip import Trip, TripCreateIn
 
-TEST_DB_USER = os.getenv("TEST_POSTGRES_USER", "tabishare_test_user")
-TEST_DB_PASSWORD = os.getenv("TEST_POSTGRES_PASSWORD", "tabishare_test_password")
-TEST_DB_HOST = os.getenv("TEST_POSTGRES_HOST", "localhost")
-TEST_DB_PORT = os.getenv("TEST_POSTGRES_PORT", "5432")
-TEST_DB_NAME = os.getenv("TEST_POSTGRES_DB", "tabishare_db_test")
+settings = get_settings()
 
-TEST_DATABASE_URL = f"postgresql+psycopg2://{TEST_DB_USER}:{TEST_DB_PASSWORD}@{TEST_DB_HOST}:{TEST_DB_PORT}/{TEST_DB_NAME}"
+# テスト用の非同期エンジン
+test_engine: AsyncEngine = create_async_engine(
+    settings.get_test_database_url(),
+    echo=False,
+    poolclass=NullPool,
+)
+
+# テスト用の非同期セッションファクトリ
+TestingAsyncSessionLocal = async_sessionmaker(
+    test_engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+    autoflush=True,
+    autocommit=False,
+)
 
 
-engine = create_engine(TEST_DATABASE_URL)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-
-def override_get_db_session():
-    """テスト用のDBセッションを生成する関数"""
-    try:
-        db = TestingSessionLocal()
-        yield db
-    finally:
-        db.close()
+async def override_get_db_session():
+    """テスト用の非同期DBセッションを生成する関数"""
+    async with TestingAsyncSessionLocal() as session:
+        yield session
 
 
 app.dependency_overrides[get_db_session] = override_get_db_session
 
 
-@pytest.fixture(scope="function")
-def db_session():
-    """テストの前後でDBのテーブルを初期化するFixture"""
-    Base.metadata.create_all(bind=engine)
-    db = TestingSessionLocal()
+@pytest_asyncio.fixture(scope="function", autouse=True)
+async def setup_database():
+    """テストの前後でDBのテーブルを初期化する非同期Fixture"""
+    async with test_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    yield
+
     try:
-        yield db
-    finally:
-        db.close()
+        async with test_engine.begin() as conn:
+            await conn.execute(text("TRUNCATE TABLE blocks, pages, trips RESTART IDENTITY CASCADE"))
+    except Exception:
+        pass
 
-    Base.metadata.drop_all(bind=engine)
+
+@pytest_asyncio.fixture(scope="function")
+async def db_session():
+    """テスト用の非同期DBセッションを提供するFixture"""
+    async with TestingAsyncSessionLocal() as session:
+        yield session
 
 
-@pytest.fixture(scope="module")
-def client():
-    """テスト用のAPIクライアントを生成するFixture"""
-    with TestClient(app) as c:
+@pytest_asyncio.fixture(scope="function")
+async def client():
+    """テスト用の非同期APIクライアントを生成するFixture"""
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test"
+    ) as c:
         yield c
 
 
 @pytest_asyncio.fixture
-async def test_create_trip(db_session: Session) -> Trip:
+async def test_create_trip(db_session: AsyncSession) -> Trip:
     """テスト用のTripを作成して、Tripを返すフィクスチャ"""
     trip_in = TripCreateIn(
         title="test trip for fixture", detail="test detail for fixture"
@@ -72,7 +90,7 @@ async def test_create_trip(db_session: Session) -> Trip:
 
 
 @pytest_asyncio.fixture
-async def test_create_page(db_session: Session, test_create_trip: Trip) -> Page:
+async def test_create_page(db_session: AsyncSession, test_create_trip: Trip) -> Page:
     """前提データとしてPageを作成し、Pageを返すフィクスチャ"""
     page_in = PageCreate(title="test page")
     db_page = await pages_cruds.create_page(

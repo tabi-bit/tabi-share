@@ -1,0 +1,162 @@
+name: Deploy Backend
+
+on:
+  push:
+    branches:
+      - develop
+      - main
+    paths:
+      - 'server/**'
+      - '.github/workflows/deploy-backend.yml'
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'staging にデプロイするブランチ名'
+        required: true
+        default: 'develop'
+      environment:
+        description: 'デプロイ先環境'
+        type: choice
+        options:
+          - staging
+          - production
+        default: staging
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  REGION: asia-northeast1
+  ARTIFACT_REGISTRY: asia-northeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/tabi-share
+  RUNTIME_SA: tabi-share-api-runtime@${{ secrets.GCP_PROJECT_ID }}.iam.gserviceaccount.com
+  CLOUD_SQL_INSTANCE: ${{ secrets.GCP_PROJECT_ID }}:asia-northeast1:tabi-share-db
+
+jobs:
+  deploy:
+    name: Build & Deploy to Cloud Run
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      # ------------------------------------------------------------------
+      # 1. チェックアウト
+      # ------------------------------------------------------------------
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.branch || github.ref }}
+
+      # ------------------------------------------------------------------
+      # 2. デプロイ先環境の判定
+      # ------------------------------------------------------------------
+      - name: Determine deployment target
+        id: target
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            ENV="${{ inputs.environment }}"
+          elif [ "${{ github.ref_name }}" = "main" ]; then
+            ENV="production"
+          else
+            ENV="staging"
+          fi
+
+          if [ "${ENV}" = "production" ]; then
+            echo "env=production"                      >> "$GITHUB_OUTPUT"
+            echo "service=tabi-share-api-prod"         >> "$GITHUB_OUTPUT"
+            echo "secret=DATABASE_URL_PROD"            >> "$GITHUB_OUTPUT"
+          else
+            echo "env=staging"                         >> "$GITHUB_OUTPUT"
+            echo "service=tabi-share-api-staging"      >> "$GITHUB_OUTPUT"
+            echo "secret=DATABASE_URL_STAGING"         >> "$GITHUB_OUTPUT"
+          fi
+
+      # ------------------------------------------------------------------
+      # 3. GCP 認証 (Workload Identity Federation)
+      # ------------------------------------------------------------------
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      # ------------------------------------------------------------------
+      # 4. Docker build & push to Artifact Registry
+      # ------------------------------------------------------------------
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Build and push Docker image
+        id: build
+        run: |
+          IMAGE="${{ env.ARTIFACT_REGISTRY }}/api:${{ github.sha }}"
+          docker build -f server/Dockerfile ./server -t "${IMAGE}"
+          docker push "${IMAGE}"
+          echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
+
+      # ------------------------------------------------------------------
+      # 5. マイグレーション実行 (Cloud Run Jobs)
+      # ------------------------------------------------------------------
+      - name: Run database migration
+        run: |
+          JOB_NAME="migration-${{ steps.target.outputs.env }}"
+          IMAGE="${{ steps.build.outputs.image }}"
+          SECRET="${{ steps.target.outputs.secret }}"
+
+          # Job が存在する場合は update、存在しない場合は create
+          if gcloud run jobs describe "${JOB_NAME}" \
+              --region="${{ env.REGION }}" --project="${{ env.PROJECT_ID }}" &>/dev/null; then
+            gcloud run jobs update "${JOB_NAME}" \
+              --image="${IMAGE}" \
+              --region="${{ env.REGION }}" \
+              --service-account="${{ env.RUNTIME_SA }}" \
+              --set-secrets="DATABASE_URL=${SECRET}:latest" \
+              --add-cloudsql-instances="${{ env.CLOUD_SQL_INSTANCE }}" \
+              --command="alembic" \
+              --args="-n,production,upgrade,head" \
+              --project="${{ env.PROJECT_ID }}"
+          else
+            gcloud run jobs create "${JOB_NAME}" \
+              --image="${IMAGE}" \
+              --region="${{ env.REGION }}" \
+              --service-account="${{ env.RUNTIME_SA }}" \
+              --set-secrets="DATABASE_URL=${SECRET}:latest" \
+              --add-cloudsql-instances="${{ env.CLOUD_SQL_INSTANCE }}" \
+              --command="alembic" \
+              --args="-n,production,upgrade,head" \
+              --project="${{ env.PROJECT_ID }}"
+          fi
+
+          # マイグレーション実行 (完了まで待機)
+          gcloud run jobs execute "${JOB_NAME}" \
+            --region="${{ env.REGION }}" \
+            --project="${{ env.PROJECT_ID }}" \
+            --wait
+
+      # ------------------------------------------------------------------
+      # 6. Cloud Run デプロイ
+      # ------------------------------------------------------------------
+      - name: Deploy to Cloud Run
+        id: deploy
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ steps.target.outputs.service }}
+          image: ${{ steps.build.outputs.image }}
+          region: ${{ env.REGION }}
+          project_id: ${{ env.PROJECT_ID }}
+          service_account: ${{ env.RUNTIME_SA }}
+          flags: |
+            --allow-unauthenticated
+            --port=8080
+            --set-secrets=DATABASE_URL=${{ steps.target.outputs.secret }}:latest
+            --add-cloudsql-instances=${{ env.CLOUD_SQL_INSTANCE }}
+
+      # ------------------------------------------------------------------
+      # 7. デプロイ結果の出力
+      # ------------------------------------------------------------------
+      - name: Show deployment result
+        run: |
+          echo "=== デプロイ完了 ==="
+          echo "環境    : ${{ steps.target.outputs.env }}"
+          echo "サービス: ${{ steps.target.outputs.service }}"
+          echo "URL     : ${{ steps.deploy.outputs.url }}"
+          echo "イメージ: ${{ steps.build.outputs.image }}"

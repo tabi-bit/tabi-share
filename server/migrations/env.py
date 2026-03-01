@@ -27,7 +27,7 @@ if os.getenv("DATABASE_URL"):
     # asyncpg用にURLを変換
     # ?host=/cloudsql/... などのUnixソケットパラメータは保持する
     production_database_url = os.getenv("DATABASE_URL").replace(
-        "postgresql://", "postgresql+asyncpg://"
+        "postgresql://", "postgresql+asyncpg://", 1
     )
     config.set_section_option("production", "sqlalchemy.url", production_database_url)
 

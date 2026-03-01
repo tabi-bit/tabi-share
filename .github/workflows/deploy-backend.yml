@@ -27,6 +27,7 @@ env:
   REGION: asia-northeast1
   ARTIFACT_REGISTRY: asia-northeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/tabi-share
   RUNTIME_SA: tabi-share-api-runtime@${{ secrets.GCP_PROJECT_ID }}.iam.gserviceaccount.com
+  CLOUD_SQL_INSTANCE: ${{ secrets.GCP_PROJECT_ID }}:asia-northeast1:tabi-share-db
 
 jobs:
   deploy:
@@ -109,6 +110,7 @@ jobs:
               --region="${{ env.REGION }}" \
               --service-account="${{ env.RUNTIME_SA }}" \
               --set-secrets="DATABASE_URL=${SECRET}:latest" \
+              --add-cloudsql-instances="${{ env.CLOUD_SQL_INSTANCE }}" \
               --command="alembic" \
               --args="-n,devdb,upgrade,head" \
               --project="${{ env.PROJECT_ID }}"
@@ -118,6 +120,7 @@ jobs:
               --region="${{ env.REGION }}" \
               --service-account="${{ env.RUNTIME_SA }}" \
               --set-secrets="DATABASE_URL=${SECRET}:latest" \
+              --add-cloudsql-instances="${{ env.CLOUD_SQL_INSTANCE }}" \
               --command="alembic" \
               --args="-n,devdb,upgrade,head" \
               --project="${{ env.PROJECT_ID }}"
@@ -145,6 +148,7 @@ jobs:
             --allow-unauthenticated
             --port=8080
             --set-secrets=DATABASE_URL=${{ steps.target.outputs.secret }}:latest
+            --add-cloudsql-instances=${{ env.CLOUD_SQL_INSTANCE }}
 
       # ------------------------------------------------------------------
       # 7. デプロイ結果の出力

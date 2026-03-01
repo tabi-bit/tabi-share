@@ -33,12 +33,16 @@ else:
     # ローカル開発用
     dev_database_url = settings.get_database_url()
 
-# --- テストデータベース (testdb) の設定 ---
-test_database_url = settings.get_test_database_url()
-
 # Alembicの設定にデータベースURLをセット
 config.set_section_option("devdb", "sqlalchemy.url", dev_database_url)
-config.set_section_option("testdb", "sqlalchemy.url", test_database_url)
+
+# --- テストデータベース (testdb) の設定 ---
+# testdb セクションで実行する場合のみ URL を解決する（CI/Cloud Run 環境では不要）
+try:
+    test_database_url = settings.get_test_database_url()
+    config.set_section_option("testdb", "sqlalchemy.url", test_database_url)
+except ValueError:
+    pass
 
 target_metadata = Base.metadata
 

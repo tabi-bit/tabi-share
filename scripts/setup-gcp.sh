@@ -212,8 +212,11 @@ if ! gcloud sql users describe "${DB_USER}" \
   echo "パスワード: ${DB_PASSWORD}  ← 必ず控えてください"
 else
   echo "DB ユーザーは既に存在します: ${DB_USER}"
-  echo "パスワードは既に設定済みです。変更する場合は gcloud sql users set-password を使用してください"
-  DB_PASSWORD="(既存パスワード)"
+  echo "このスクリプトでは既存のパスワードを取得できないため、処理を中断します。"
+  echo "Secret Manager の DATABASE_URL_PROD と DATABASE_URL_STAGING は手動で設定してください:"
+  echo "  postgresql://${DB_USER}:<パスワード>@/<DB名>?host=/cloudsql/${PROJECT_ID}:${REGION}:${INSTANCE_NAME}"
+  echo "パスワードをリセットする場合: gcloud sql users set-password ${DB_USER} --instance=${INSTANCE_NAME} --project=${PROJECT_ID}"
+  exit 1
 fi
 
 # =============================================================================
@@ -282,6 +285,8 @@ for SERVICE_NAME in "${CLOUD_RUN_PROD}" "${CLOUD_RUN_STAGING}"; do
 
   if ! gcloud run services describe "${SERVICE_NAME}" \
       --region="${REGION}" --project="${PROJECT_ID}" &>/dev/null; then
+    # --allow-unauthenticated: 旅程の閲覧はログイン不要の設計仕様のため Cloud Run レベルは公開。
+    # 書き込み操作はアプリケーションレベルの Firebase Authentication で認可を行う。
     gcloud run deploy "${SERVICE_NAME}" \
       --image="${PLACEHOLDER_IMAGE}" \
       --region="${REGION}" \

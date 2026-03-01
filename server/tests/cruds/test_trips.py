@@ -1,13 +1,13 @@
 import pytest
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.cruds import trips as trips_cruds
 from app.schemas.trip import TripCreateIn, TripUpdate
 
 
 @pytest.mark.asyncio
-async def test_create_trip(db_session: Session):
+async def test_create_trip(db_session: AsyncSession):
     """
     create_trip()/正常系
     """
@@ -28,7 +28,7 @@ async def test_create_trip(db_session: Session):
 
 
 @pytest.mark.asyncio
-async def test_create_trip_duplicate_url_id(db_session: Session):
+async def test_create_trip_duplicate_url_id(db_session: AsyncSession):
     """
     create_trip()/異常系/url_id重複 (IntegrityError)
     """
@@ -46,7 +46,7 @@ async def test_create_trip_duplicate_url_id(db_session: Session):
 
 
 @pytest.mark.asyncio
-async def test_get_trip(db_session: Session):
+async def test_get_trip(db_session: AsyncSession):
     """
     get_trip()/正常系
     """
@@ -76,7 +76,7 @@ async def test_get_trip(db_session: Session):
 
 
 @pytest.mark.asyncio
-async def test_get_trip_by_url_id(db_session: Session):
+async def test_get_trip_by_url_id(db_session: AsyncSession):
     """
     get_trip_by_url_id()/正常系
     """
@@ -110,7 +110,7 @@ async def test_get_trip_by_url_id(db_session: Session):
 
 
 @pytest.mark.asyncio
-async def test_list_trips(db_session: Session):
+async def test_list_trips(db_session: AsyncSession):
     """
     list_trips()/正常系
     """
@@ -132,7 +132,7 @@ async def test_list_trips(db_session: Session):
 
 
 @pytest.mark.asyncio
-async def test_update_trip(db_session: Session):
+async def test_update_trip(db_session: AsyncSession):
     """
     update_trip()/正常系
     """
@@ -164,7 +164,7 @@ async def test_update_trip(db_session: Session):
 
 
 @pytest.mark.asyncio
-async def test_delete_trip(db_session: Session):
+async def test_delete_trip(db_session: AsyncSession):
     """
     delete_trip()/正常系
     """

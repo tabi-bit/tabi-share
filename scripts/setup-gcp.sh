@@ -82,12 +82,9 @@ gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
   --member="serviceAccount:${RUNTIME_SA}" \
   --role="roles/cloudsql.client"
 
-# Secret Manager 読み取り権限
-gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
-  --member="serviceAccount:${RUNTIME_SA}" \
-  --role="roles/secretmanager.secretAccessor"
-
 echo "ランタイム SA 設定完了: ${RUNTIME_SA}"
+# Note: Secret Manager の読み取り権限は Section 7 で個別シークレットに対して付与する。
+# プロジェクト全体への付与は最小権限の原則に反するため行わない。
 
 # =============================================================================
 # Section 5: GitHub Actions 用サービスアカウント + Workload Identity Federation
@@ -209,7 +206,7 @@ if ! gcloud sql users describe "${DB_USER}" \
     --password="${DB_PASSWORD}" \
     --project="${PROJECT_ID}"
   echo "DB ユーザー作成完了: ${DB_USER}"
-  echo "パスワード: ${DB_PASSWORD}  ← 必ず控えてください"
+  echo "パスワードは Secret Manager (DATABASE_URL_PROD / DATABASE_URL_STAGING) に保存されます。"
 else
   echo "DB ユーザーは既に存在します: ${DB_USER}"
   echo "このスクリプトでは既存のパスワードを取得できないため、処理を中断します。"
@@ -273,10 +270,6 @@ echo "==> Cloud Run サービス (placeholder) を作成しています..."
 PLACEHOLDER_IMAGE="us-docker.pkg.dev/cloudrun/container/hello"
 
 for SERVICE_NAME in "${CLOUD_RUN_PROD}" "${CLOUD_RUN_STAGING}"; do
-  if ENV_NAME="${SERVICE_NAME##*-}"; then  # prod or staging
-    :
-  fi
-
   if [ "${SERVICE_NAME}" = "${CLOUD_RUN_PROD}" ]; then
     SECRET_NAME="DATABASE_URL_PROD"
   else

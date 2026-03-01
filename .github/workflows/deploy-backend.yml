@@ -112,7 +112,7 @@ jobs:
               --set-secrets="DATABASE_URL=${SECRET}:latest" \
               --add-cloudsql-instances="${{ env.CLOUD_SQL_INSTANCE }}" \
               --command="alembic" \
-              --args="-n,devdb,upgrade,head" \
+              --args="-n,production,upgrade,head" \
               --project="${{ env.PROJECT_ID }}"
           else
             gcloud run jobs create "${JOB_NAME}" \
@@ -122,7 +122,7 @@ jobs:
               --set-secrets="DATABASE_URL=${SECRET}:latest" \
               --add-cloudsql-instances="${{ env.CLOUD_SQL_INSTANCE }}" \
               --command="alembic" \
-              --args="-n,devdb,upgrade,head" \
+              --args="-n,production,upgrade,head" \
               --project="${{ env.PROJECT_ID }}"
           fi
 

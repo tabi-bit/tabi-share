@@ -24,13 +24,11 @@ settings = get_settings()
 # --- 本番環境 (production) の設定 ---
 # DATABASE_URLが存在する場合は本番環境として設定
 if os.getenv("DATABASE_URL"):
-    # asyncpg用にURLを変換し、psycopg2固有のパラメータを削除
+    # asyncpg用にURLを変換
+    # ?host=/cloudsql/... などのUnixソケットパラメータは保持する
     production_database_url = os.getenv("DATABASE_URL").replace(
         "postgresql://", "postgresql+asyncpg://"
     )
-    # sslmode, channel_bindingなどのpsycopg2固有パラメータを削除
-    # asyncpgは自動的にSSLを使用するため、これらは不要
-    production_database_url = production_database_url.split("?")[0]
     config.set_section_option("production", "sqlalchemy.url", production_database_url)
 
 # --- 開発データベース (devdb) の設定 ---

@@ -10,5 +10,4 @@ COPY --from=builder /app/.venv /app/.venv
 COPY . .
 ENV PATH="/app/.venv/bin:$PATH"
 EXPOSE 8080
-CMD ["gunicorn", "-w", "1", "-k", "uvicorn.workers.UvicornWorker", \
-     "app.main:app", "--bind", "0.0.0.0:8080"]
+CMD ["sh", "-c", "exec gunicorn -w \"${WEB_CONCURRENCY:-1}\" -k uvicorn.workers.UvicornWorker app.main:app --bind 0.0.0.0:8080"]

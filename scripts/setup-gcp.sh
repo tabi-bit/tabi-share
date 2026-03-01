@@ -9,8 +9,14 @@ set -euo pipefail
 # =============================================================================
 # Section 1: 変数定義
 # =============================================================================
-PROJECT_ID="${GCP_PROJECT_ID:-your-project-id}"   # 実行前に設定すること
+PROJECT_ID="${GCP_PROJECT_ID:-your-project-id}"
 REGION="asia-northeast1"
+
+# PROJECT_ID が未設定の場合は早期終了
+if [[ "${PROJECT_ID}" == "your-project-id" || -z "${PROJECT_ID}" ]]; then
+  echo "エラー: GCP_PROJECT_ID 環境変数を設定するか、スクリプト内の PROJECT_ID を編集してください。" >&2
+  exit 1
+fi
 INSTANCE_NAME="tabi-share-db"
 DB_VERSION="POSTGRES_16"
 DB_TIER="db-f1-micro"
@@ -25,6 +31,11 @@ GITHUB_SA_NAME="tabi-share-github-actions"
 GITHUB_SA="${GITHUB_SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
 
 GITHUB_REPO="${GITHUB_REPO:-tabi-bit/tabi-share}"   # GitHub リポジトリ (owner/repo)
+# GITHUB_REPO の形式を検証 (インジェクション対策)
+if [[ ! "${GITHUB_REPO}" =~ ^[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+$ ]]; then
+  echo "エラー: GITHUB_REPO の形式が不正です (正しい例: owner/repo): ${GITHUB_REPO}" >&2
+  exit 1
+fi
 WIF_POOL_NAME="github-actions-pool"
 WIF_PROVIDER_NAME="github-actions-provider"
 
@@ -198,7 +209,7 @@ done
 
 # Cloud SQL ユーザー作成
 echo "==> Cloud SQL ユーザーを作成しています..."
-DB_PASSWORD=$(openssl rand -base64 24)
+DB_PASSWORD=$(openssl rand -hex 24)
 if ! gcloud sql users describe "${DB_USER}" \
     --instance="${INSTANCE_NAME}" --project="${PROJECT_ID}" &>/dev/null; then
   gcloud sql users create "${DB_USER}" \

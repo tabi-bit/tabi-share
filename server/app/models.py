@@ -5,7 +5,7 @@ Add Trip, Page, and Block models with relationships.
 from datetime import datetime
 from typing import List, Optional
 
-from sqlalchemy import ForeignKey, String, Text
+from sqlalchemy import DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .db_connection import Base
@@ -71,10 +71,10 @@ class Block(Base):
         String(200), nullable=False, comment="Title of the block"
     )
     start_time: Mapped[datetime] = mapped_column(
-        nullable=False, comment="Start time of the block(UTC)"
+        DateTime(timezone=True), nullable=False, comment="Start time of the block(UTC)"
     )
     end_time: Mapped[Optional[datetime]] = mapped_column(
-        nullable=True, comment="End time of the block(UTC)"
+        DateTime(timezone=True), nullable=True, comment="End time of the block(UTC)"
     )
     page_id: Mapped[int] = mapped_column(
         ForeignKey("pages.id", ondelete="CASCADE"),

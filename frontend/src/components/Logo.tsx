@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import paperPlaneIcon from '@/assets/icons/paper-plane.svg';
 import { cn } from '@/lib/utils';
 
@@ -8,7 +9,11 @@ interface LogoProps {
 
 export function Logo({ size = 'medium', className }: LogoProps) {
   return (
-    <div data-component='Logo' className={cn('flex flex-row items-center justify-center gap-1', className)}>
+    <Link
+      to='/'
+      data-component='Logo'
+      className={cn('flex w-fit flex-row items-center justify-center gap-1', className)}
+    >
       <img
         src={paperPlaneIcon}
         alt=''
@@ -17,6 +22,6 @@ export function Logo({ size = 'medium', className }: LogoProps) {
       <div className={cn(size === 'medium' ? 'text-24px' : 'text-16px', 'transition-all duration-300 ease-in-out')}>
         たびしぇあ
       </div>
-    </div>
+    </Link>
   );
 }

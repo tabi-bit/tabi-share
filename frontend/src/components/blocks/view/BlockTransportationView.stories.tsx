@@ -25,12 +25,13 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 const baseBlock: TransportationBlock = {
-  id: '1',
+  id: 1,
   type: 'transportation',
   transportationType: 'car',
   title: '移動の予定',
   startTime: new Date('2024-01-01T09:00:00'),
   endTime: new Date('2024-01-01T10:30:00'),
+  pageId: 1,
 };
 
 export const Default: Story = {
@@ -39,21 +40,21 @@ export const Default: Story = {
   },
 };
 
-export const WithDetails: Story = {
+export const WithDetail: Story = {
   args: {
     block: {
       ...baseBlock,
-      details: '高速道路を使用して移動します。ETCカードを忘れずに。',
+      detail: '高速道路を使用して移動します。ETCカードを忘れずに。',
     },
   },
 };
 
-export const WithLongDetails: Story = {
+export const WithLongDetail: Story = {
   args: {
     block: {
       ...baseBlock,
       title: '新宿駅 → 草津温泉',
-      details: `detail detail
+      detail: `detail detail
 • detail detail
 リンク
 詳細詳細

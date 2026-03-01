@@ -1,29 +1,101 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { Header } from '@/components/Header';
-import { Timeline } from '@/components/timeline/Timeline';
-import { demoBlocks1, demoBlocks2, demoPages, demoTrip } from './test-data';
+import { HeaderSkeleton } from '@/components/HeaderSkeleton';
+import { TimelineSkeleton } from '@/components/timeline';
+import { usePages } from '@/hooks/usePages';
+import { useTripByUrlId } from '@/hooks/useTrips';
+import { useVisitedTrips } from '@/hooks/useVisitedTrips';
+import type { Page } from '@/types';
+import { EditTripLayout } from './TripPage/EditTripLayout';
+import { ViewTripLayout } from './TripPage/ViewTripLayout';
 
 const TripPage = () => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [selectedPageId, setSelectedPageId] = useState(demoPages[0]?.id);
+  const [selectedPageId, setSelectedPageId] = useState<Page['id']>();
+  const [mode, setMode] = useState<'view' | 'edit'>('view');
+  const [minLoadingComplete, setMinLoadingComplete] = useState(false);
+  const { urlId } = useParams<{ urlId: string }>();
+
+  const { trip, error: tripError, isLoading: isTripLoading } = useTripByUrlId(urlId ?? null);
+  const { pages, error: pagesError, isLoading: isPagesLoading } = usePages(trip?.id ?? null);
+  const { addVisitedTrip } = useVisitedTrips();
+
+  const isLoading = isTripLoading || isPagesLoading || trip == null || pages == null || !minLoadingComplete;
+  const isError = tripError || pagesError;
+
+  // 1秒間の最小ローディング表示を管理
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setMinLoadingComplete(true);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (selectedPageId == null && pages != null && pages.length > 0) {
+      setSelectedPageId(pages[0].id);
+    }
+  }, [pages, selectedPageId]);
+
+  useEffect(() => {
+    if (mode === 'view') {
+      scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [mode]);
+
+  // Tripが読み込まれたら訪問済みリストに追加
+  useEffect(() => {
+    if (trip) {
+      addVisitedTrip(trip.urlId);
+    }
+  }, [trip, addVisitedTrip]);
+
+  if (isLoading) {
+    return (
+      <div className='flex h-screen w-full flex-col items-center overflow-auto'>
+        <HeaderSkeleton />
+        <TimelineSkeleton className='w-full max-w-3xl p-4' />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div>
+        {tripError && `Trip Loading Error: ${String(tripError)}`}
+        {pagesError && `Pages Loading Error: ${String(pagesError)}`}
+      </div>
+    );
+  }
 
   return (
-    <div
-      ref={scrollContainerRef}
-      className='flex h-screen w-full flex-col items-center justify-between gap-4 overflow-auto'
-    >
-      <Header
-        selectedPageId={selectedPageId}
-        pages={demoPages}
-        onSelectPage={setSelectedPageId}
-        trip={demoTrip}
-        mode='view'
-        scrollContainerRef={scrollContainerRef}
-      />
-      <div className='flex h-full w-full max-w-3xl grow flex-col items-center'>
-        <Timeline blocks={selectedPageId === 'page1' ? demoBlocks1 : demoBlocks2} type='view' className='pb-4' />
-      </div>
-    </div>
+    <>
+      {trip && pages && (
+        <div
+          ref={scrollContainerRef}
+          className='flex h-screen w-full flex-col items-center justify-between gap-4 overflow-auto'
+        >
+          {selectedPageId != null && (
+            <Header
+              variant='full'
+              selectedPageId={selectedPageId}
+              pages={pages}
+              onSelectPage={setSelectedPageId}
+              setMode={setMode}
+              trip={trip}
+              mode={mode}
+              scrollContainerRef={scrollContainerRef}
+            />
+          )}
+          {pages.length === 0 && (
+            <div className='flex h-full items-center justify-center text-gray-500'>ページを追加してください</div>
+          )}
+          {selectedPageId != null && mode === 'view' && <ViewTripLayout selectedPageId={selectedPageId} />}
+          {selectedPageId != null && mode === 'edit' && <EditTripLayout selectedPageId={selectedPageId} />}
+        </div>
+      )}
+    </>
   );
 };
 

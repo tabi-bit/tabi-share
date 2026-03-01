@@ -1,8 +1,17 @@
 {
-  "mcpServers": {
-    "serena": {
-      "command": "uvx",
-      "args": ["--from", "git+https://github.com/oraios/serena", "serena", "start-mcp-server"]
-    }
+  "$schema": "https://raw.githubusercontent.com/google-gemini/gemini-cli/main/schemas/settings.schema.json",
+  "context": {
+    "fileName": "AGENTS.md"
+  },
+  "mcpServers": {},
+  "tools": {
+    "allowed": [
+      "run_shell_command(ls)",
+      "run_shell_command(grep)",
+      "run_shell_command(find)",
+      "run_shell_command(cat)",
+      "run_shell_command(npm run)",
+      "run_shell_command(git log)"
+    ]
   }
 }

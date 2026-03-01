@@ -219,12 +219,8 @@ fi
 # =============================================================================
 # Section 7: DATABASE_URL を Secret Manager に登録
 # =============================================================================
-echo "==> Cloud SQL Public IP を取得しています..."
-CLOUD_SQL_IP=$(gcloud sql instances describe "${INSTANCE_NAME}" \
-  --project="${PROJECT_ID}" \
-  --format="value(ipAddresses[0].ipAddress)")
-echo "Cloud SQL Public IP: ${CLOUD_SQL_IP}"
-
+# Cloud SQL Auth Proxy (Unix ソケット) 経由で接続する形式を使用。
+# Public IP は不要なため取得しない。
 for ENV in prod staging; do
   if [ "${ENV}" = "prod" ]; then
     DB_NAME="${PROD_DB}"
@@ -234,7 +230,7 @@ for ENV in prod staging; do
     SECRET_NAME="DATABASE_URL_STAGING"
   fi
 
-  DATABASE_URL="postgresql://${DB_USER}:${DB_PASSWORD}@${CLOUD_SQL_IP}/${DB_NAME}"
+  DATABASE_URL="postgresql://${DB_USER}:${DB_PASSWORD}@/${DB_NAME}?host=/cloudsql/${PROJECT_ID}:${REGION}:${INSTANCE_NAME}"
 
   if gcloud secrets describe "${SECRET_NAME}" \
       --project="${PROJECT_ID}" &>/dev/null; then

@@ -10,8 +10,8 @@ async def test_create_and_read_block(
     # --- Create ---
     block_data = {
         "title": "test block",
-        "start_time": "2023-01-01T\1:\2:\3Z",  # Ensure timezone-aware for datetime
-        "end_time": "2023-01-01T\1:\2:\3Z",
+        "start_time": "2023-01-01T10:00:00Z",  # Ensure timezone-aware for datetime
+        "end_time": "2023-01-01T10:00:00Z",
         "detail": "test detail",
         "block_type": "event",
     }
@@ -38,8 +38,8 @@ async def test_create_block_invalid_input(
     """
     # title が欠落している不正なデータ
     invalid_block_data_missing_title = {
-        "start_time": "2023-01-01T\1:\2:\3Z",
-        "end_time": "2023-01-01T\1:\2:\3Z",
+        "start_time": "2023-01-01T10:00:00Z",
+        "end_time": "2023-01-01T10:00:00Z",
         "detail": "test detail",
         "block_type": "event",
     }
@@ -53,8 +53,8 @@ async def test_create_block_invalid_input(
     # block_type が不正なデータ
     invalid_block_data_invalid_type = {
         "title": "test block",
-        "start_time": "2023-01-01T\1:\2:\3Z",
-        "end_time": "2023-01-01T\1:\2:\3Z",
+        "start_time": "2023-01-01T10:00:00Z",
+        "end_time": "2023-01-01T10:00:00Z",
         "detail": "test detail",
         "block_type": "invalid_type",
     }
@@ -72,8 +72,8 @@ async def test_create_block_non_existent_page(client: AsyncClient, db_session: A
     """
     block_data = {
         "title": "test block",
-        "start_time": "2023-01-01T\1:\2:\3Z",
-        "end_time": "2023-01-01T\1:\2:\3Z",
+        "start_time": "2023-01-01T10:00:00Z",
+        "end_time": "2023-01-01T10:00:00Z",
         "detail": "test detail",
         "block_type": "event",
     }
@@ -90,7 +90,7 @@ async def test_read_blocks(
         f"/pages/{test_create_page.id}/blocks",
         json={
             "title": "block 1",
-            "start_time": "2023-01-01T\1:\2:\3Z",
+            "start_time": "2023-01-01T10:00:00Z",
             "detail": "d",
             "block_type": "event",
         },
@@ -99,7 +99,7 @@ async def test_read_blocks(
         f"/pages/{test_create_page.id}/blocks",
         json={
             "title": "block 2",
-            "start_time": "2023-01-01T\1:\2:\3Z",
+            "start_time": "2023-01-01T10:00:00Z",
             "detail": "d",
             "block_type": "event",
         },
@@ -129,7 +129,7 @@ async def test_update_block(
     # ブロックを作成
     block_data = {
         "title": "before update",
-        "start_time": "2023-01-01T\1:\2:\3Z",
+        "start_time": "2023-01-01T10:00:00Z",
         "detail": "d",
         "block_type": "event",
     }
@@ -139,7 +139,7 @@ async def test_update_block(
     # --- Update ---
     update_data = {
         "title": "after update",
-        "start_time": "2023-01-01T\1:\2:\3Z",
+        "start_time": "2023-01-01T10:00:00Z",
         "detail": "d",
         "block_type": "event",
     }
@@ -159,7 +159,7 @@ async def test_update_block_non_existent_id(client: AsyncClient, db_session: Asy
     """
     update_data = {
         "title": "non existent",
-        "start_time": "2023-01-01T\1:\2:\3Z",
+        "start_time": "2023-01-01T10:00:00Z",
         "detail": "d",
         "block_type": "event",
     }
@@ -176,7 +176,7 @@ async def test_update_block_invalid_input(
     """
     block_data = {
         "title": "test",
-        "start_time": "2023-01-01T\1:\2:\3Z",
+        "start_time": "2023-01-01T10:00:00Z",
         "detail": "d",
         "block_type": "event",
     }
@@ -186,7 +186,7 @@ async def test_update_block_invalid_input(
     # title の型が不正なデータ
     invalid_update_data = {
         "title": 123,
-        "start_time": "2023-01-01T\1:\2:\3Z",
+        "start_time": "2023-01-01T10:00:00Z",
         "detail": "d",
         "block_type": "event",
     }  # Pydantic will catch this
@@ -202,7 +202,7 @@ async def test_delete_block(
     # ブロックを作成
     block_data = {
         "title": "to be deleted",
-        "start_time": "2023-01-01T\1:\2:\3Z",
+        "start_time": "2023-01-01T10:00:00Z",
         "detail": "d",
         "block_type": "event",
     }

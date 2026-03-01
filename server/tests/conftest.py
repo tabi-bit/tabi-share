@@ -1,3 +1,5 @@
+import logging
+
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
@@ -56,8 +58,8 @@ async def setup_database():
     try:
         async with test_engine.begin() as conn:
             await conn.execute(text("TRUNCATE TABLE blocks, pages, trips RESTART IDENTITY CASCADE"))
-    except Exception:
-        pass
+    except Exception as e:
+        logging.warning("テーブルのクリーンアップ中にエラーが発生しました: %s", e)
 
 
 @pytest_asyncio.fixture(scope="function")

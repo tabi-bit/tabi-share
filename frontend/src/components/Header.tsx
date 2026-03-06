@@ -215,6 +215,7 @@ function HeaderFull({
           open={editPageDialogOpen}
           onOpenChange={setEditPageDialogOpen}
           page={selectedPage}
+          trip={trip}
           onDeleted={pageId => {
             const remainingPages = pages.filter(p => p.id !== pageId);
             if (remainingPages.length > 0) {

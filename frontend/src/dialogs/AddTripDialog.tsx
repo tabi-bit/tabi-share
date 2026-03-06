@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { LazyMarkdownEditor } from '@/components/ui/markdown';
 import { useCreateTrip } from '@/hooks/useTrips';
 import type { CreateTripFromApi } from '@/types/trip';
 
@@ -67,12 +67,11 @@ export const AddTripDialog = ({ open, onOpenChange, onCreated }: AddTripDialogPr
 
           <div className='space-y-2'>
             <Label htmlFor='add-trip-detail'>詳細</Label>
-            <Textarea
+            <LazyMarkdownEditor
               id='add-trip-detail'
               value={detail}
-              onChange={e => setDetail(e.target.value)}
+              onChange={setDetail}
               placeholder='旅程の詳細や目的など'
-              rows={3}
             />
           </div>
 

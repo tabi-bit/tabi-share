@@ -4,9 +4,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { LazyMarkdownEditor } from '@/components/ui/markdown';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Textarea } from '@/components/ui/textarea';
 import type { Block, ScheduleBlock, TransportationBlock, TransportationType } from '@/types/block';
 import { TRANSPORTATION_OPTIONS } from '@/types/block';
 
@@ -251,13 +251,12 @@ export const AddBlockDialog = ({
 
             <div className='space-y-2'>
               <Label htmlFor='schedule-detail'>詳細</Label>
-              <Textarea
+              <LazyMarkdownEditor
                 id='schedule-detail'
                 value={scheduleDetail}
-                onChange={e => setScheduleDetail(e.target.value)}
+                onChange={setScheduleDetail}
                 placeholder='詳細情報（任意）'
-                rows={3}
-                className='max-h-32'
+                maxHeight='8rem'
               />
             </div>
           </TabsContent>
@@ -340,13 +339,12 @@ export const AddBlockDialog = ({
 
             <div className='space-y-2'>
               <Label htmlFor='transportation-detail'>詳細</Label>
-              <Textarea
+              <LazyMarkdownEditor
                 id='transportation-detail'
                 value={transportationDetail}
-                onChange={e => setTransportationDetail(e.target.value)}
+                onChange={setTransportationDetail}
                 placeholder='詳細情報（任意）'
-                rows={3}
-                className='max-h-32'
+                maxHeight='8rem'
               />
             </div>
           </TabsContent>

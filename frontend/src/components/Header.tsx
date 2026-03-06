@@ -198,17 +198,19 @@ function HeaderFull({
       </div>
 
       {/* ページ追加ダイアログ */}
-      <AddPageDialog
-        open={addPageDialogOpen}
-        onOpenChange={setAddPageDialogOpen}
-        tripId={trip.id}
-        onCreated={page => {
-          onSelectPage(page.id);
-        }}
-      />
+      {trip && (
+        <AddPageDialog
+          open={addPageDialogOpen}
+          onOpenChange={setAddPageDialogOpen}
+          tripId={trip.id}
+          onCreated={page => {
+            onSelectPage(page.id);
+          }}
+        />
+      )}
 
       {/* ページ情報編集ダイアログ */}
-      {selectedPage && (
+      {trip && selectedPage && (
         <EditPageDialog
           open={editPageDialogOpen}
           onOpenChange={setEditPageDialogOpen}

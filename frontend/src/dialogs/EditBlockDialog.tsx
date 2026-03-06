@@ -15,8 +15,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { LazyMarkdownEditor } from '@/components/ui/markdown';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
 import type { Block, TransportationBlock, TransportationType } from '@/types/block';
 import { TRANSPORTATION_OPTIONS } from '@/types/block';
 
@@ -226,13 +226,12 @@ export const EditBlockDialog = ({ open, onOpenChange, block, onSubmit, onDelete 
 
           <div className='space-y-2'>
             <Label htmlFor='edit-detail'>詳細</Label>
-            <Textarea
+            <LazyMarkdownEditor
               id='edit-detail'
               value={detail}
-              onChange={e => setDetail(e.target.value)}
+              onChange={setDetail}
               placeholder='詳細情報（任意）'
-              rows={3}
-              className='max-h-32'
+              maxHeight='8rem'
             />
           </div>
         </div>

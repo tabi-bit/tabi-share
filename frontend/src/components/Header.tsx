@@ -119,7 +119,7 @@ function HeaderFull({
     return () => container.removeEventListener('scroll', handleScroll);
   }, [handleScroll, scrollContainerRef]);
 
-  const selectedPage = selectedPageId ? pages.find(page => page.id === selectedPageId) : pages[0];
+  const selectedPage = selectedPageId ? pages.find(page => page.id === selectedPageId) : (pages[0] ?? null);
 
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: ヘッダー領域クリックでスクロール縮小状態を解除するためのイベント委譲
@@ -157,7 +157,7 @@ function HeaderFull({
             )
           ) : (
             <Select
-              value={String(selectedPageId)}
+              value={selectedPageId != null ? String(selectedPageId) : undefined}
               onValueChange={v => {
                 if (v === 'add-new') {
                   setAddPageDialogOpen(true);

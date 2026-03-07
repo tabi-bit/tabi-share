@@ -78,21 +78,21 @@ const TripPage = () => {
           ref={scrollContainerRef}
           className='flex h-dvh w-full flex-col items-center justify-between gap-4 overflow-auto overscroll-y-none'
         >
-          {selectedPageId != null && (
-            <Header
-              variant='full'
-              selectedPageId={selectedPageId}
-              pages={pages}
-              onSelectPage={setSelectedPageId}
-              setMode={setMode}
-              trip={trip}
-              mode={mode}
-              scrollContainerRef={scrollContainerRef}
-              isDraggingRef={isDraggingRef}
-            />
-          )}
+          <Header
+            variant='full'
+            selectedPageId={selectedPageId}
+            pages={pages}
+            onSelectPage={setSelectedPageId}
+            setMode={setMode}
+            trip={trip}
+            mode={mode}
+            scrollContainerRef={scrollContainerRef}
+            isDraggingRef={isDraggingRef}
+          />
           {pages.length === 0 && (
-            <div className='flex h-full items-center justify-center text-gray-500'>ページを追加してください</div>
+            <div className='flex h-full items-center justify-center text-gray-500'>
+              編集モードからページを追加してください
+            </div>
           )}
           {selectedPageId != null && mode === 'view' && <ViewTripLayout selectedPageId={selectedPageId} />}
           {selectedPageId != null && mode === 'edit' && (

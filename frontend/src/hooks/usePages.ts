@@ -4,7 +4,7 @@ import useSWR, { useSWRConfig } from 'swr';
 import useSWRMutation from 'swr/mutation';
 import { z } from 'zod';
 import { apiClient, fetcher } from '@/lib/apiClient';
-import { AppRequestPageSchema, AppResponsePageSchema, type Page, PageSchema } from '@/types/page';
+import { type Page, PageSchema, pageFromApi, pageToApi } from '@/types/page';
 
 const TRIPS_BASE_PATH = '/trips';
 const PAGES_BASE_PATH = '/pages';
@@ -17,7 +17,7 @@ export const usePages = (tripId: number | null) => {
     tripId ? `${TRIPS_BASE_PATH}/${tripId}/pages` : null,
     async (url: string) => {
       const res = await fetcher(url);
-      return z.array(AppResponsePageSchema).parse(res);
+      return z.array(pageFromApi).parse(res);
     }
   );
 
@@ -34,7 +34,7 @@ export const usePages = (tripId: number | null) => {
 export const usePage = (id: number | null) => {
   const { data, error, isLoading } = useSWR<Page>(id ? `${PAGES_BASE_PATH}/${id}` : null, async (url: string) => {
     const res = await fetcher(url);
-    return AppResponsePageSchema.parse(res);
+    return pageFromApi.parse(res);
   });
 
   return {
@@ -58,10 +58,10 @@ export const useCreatePage = (tripId: number | null) => {
     async (_key: string | null, { arg: pageData }: { arg: CreatePageArg }) => {
       CreatePageSchema.parse(pageData);
       // アプリ層→API層に変換してからバリデーション・送信
-      const apiData = AppRequestPageSchema.parse({ ...pageData, id: 0 }); // idは仮値
+      const apiData = pageToApi.parse({ ...pageData, id: 0 }); // idは仮値
       const { id: _, ...payload } = apiData; // idを除外
       const response = await apiClient.post(`${TRIPS_BASE_PATH}/${tripId}/pages`, payload);
-      return AppResponsePageSchema.parse(response.data);
+      return pageFromApi.parse(response.data);
     },
     [tripId]
   );
@@ -104,10 +104,10 @@ export const useUpdatePage = (tripId: number | null) => {
     const { id, data } = arg;
     UpdatePageSchema.parse(data);
     // アプリ層→API層に変換してからバリデーション・送信
-    const apiData = AppRequestPageSchema.parse({ ...data, id });
+    const apiData = pageToApi.parse({ ...data, id });
     const { id: _, ...payload } = apiData; // idを除外（URLパスで指定）
     const response = await apiClient.put(`${PAGES_BASE_PATH}/${id}`, payload);
-    return AppResponsePageSchema.parse(response.data);
+    return pageFromApi.parse(response.data);
   }, []);
 
   const { trigger, isMutating, error, data } = useSWRMutation(listKey, updatePageFetcher, {

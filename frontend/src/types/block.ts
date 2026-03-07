@@ -105,7 +105,7 @@ const parseUtcDate = (dateStr: string): Date => {
   return new Date(`${dateStr}Z`);
 };
 
-export const AppResponseBlockSchema = ApiBlockSchema.transform(apiData => {
+export const blockFromApi = ApiBlockSchema.transform(apiData => {
   const { start_time, end_time, page_id, block_type, ...rest } = apiData;
   const common = {
     ...rest,
@@ -130,7 +130,7 @@ export const AppResponseBlockSchema = ApiBlockSchema.transform(apiData => {
 
 // --- 変換スキーマ (アプリケーション -> API) ---
 // BlockSchemaをApiBlockSchemaの形に変換するロジック
-export const AppRequestBlockSchema = BlockSchema.transform((appData): ApiBlock => {
+export const blockToApi = BlockSchema.transform((appData): ApiBlock => {
   const { startTime, endTime, pageId, type, ...rest } = appData;
 
   const common = {

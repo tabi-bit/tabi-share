@@ -10,6 +10,8 @@ on:
 jobs:
   build_and_deploy:
     runs-on: ubuntu-latest
+    env:
+      DOTENV_PRIVATE_KEY_PROD: ${{ secrets.DOTENV_PRIVATE_KEY_PROD }}
     steps:
       - uses: actions/checkout@v4
       - run: npm run install:all && npm run build:prod

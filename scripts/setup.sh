@@ -13,15 +13,10 @@ cd "$SCRIPT_DIR"
 cd ..
 ROOT_DIR=$(pwd)
 
-# Node.js依存関係をインストール
-echo "📦 ルートディレクトリのパッケージをインストール中..."
+# パッケージ依存関係をインストール
+echo "📦 パッケージをインストール中..."
 cd "$ROOT_DIR"
-npm run install:all
-
-# バックエンドディレクトリのPython依存関係をインストール
-echo "🐍 バックエンドのPython依存関係をインストール中..."
-cd "$ROOT_DIR/server"
-uv sync
+npm run sync
 
 echo "✅ セットアップが完了しました！"
 echo ""

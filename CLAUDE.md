@@ -28,6 +28,25 @@
 
 ## 開発コマンド
 
+### 環境変数の管理（dotenvx）
+
+```bash
+# デフォルト(.env)を使用してコマンド実行
+npx dotenvx run -- <コマンド>
+
+# 特定の環境ファイルを指定して実行
+npx dotenvx run --env-file .env.stg -- <コマンド>
+
+# 例: .env.stgを使ってフロントエンド開発サーバーを起動
+npx dotenvx run --env-file .env.stg -- sh -c 'cd frontend && npm run dev'
+
+# 特定の環境ファイルに環境変数をセットする
+npx dotenvx set KEY value -f .env.stg
+
+# 例: .env.stgにAPIのURLをセット
+npx dotenvx set VITE_API_BASE_URL https://api.example.com -f .env.stg
+```
+
 ### リンター・フォーマッター・型チェック
 
 ```bash

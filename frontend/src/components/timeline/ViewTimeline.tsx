@@ -44,7 +44,7 @@ export function ViewTimeline({ blocks, className }: ViewTimelineProps) {
   }
 
   return (
-    <div className={cn('grid grid-cols-[auto_1fr] gap-x-4', className)}>
+    <div className={cn('grid w-full grid-cols-[auto_1fr] gap-x-4', className)}>
       {timelineItems.map(item => (
         <ViewTimelineBlock key={item.id} item={item} />
       ))}

@@ -78,10 +78,7 @@ export const Destructive: Story = {
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel onClick={onAccountDeleteCancel}>キャンセル</AlertDialogCancel>
-          <AlertDialogAction
-            className='bg-destructive text-destructive-foreground hover:bg-destructive/90'
-            onClick={onAccountDeleteConfirm}
-          >
+          <AlertDialogAction variant='destructive' onClick={onAccountDeleteConfirm}>
             削除する
           </AlertDialogAction>
         </AlertDialogFooter>
@@ -207,10 +204,7 @@ export const WithActionsDemo: Story = {
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel onClick={onDangerousCancel}>やめる</AlertDialogCancel>
-              <AlertDialogAction
-                className='bg-destructive text-destructive-foreground hover:bg-destructive/90'
-                onClick={onDangerousExecute}
-              >
+              <AlertDialogAction variant='destructive' onClick={onDangerousExecute}>
                 続行
               </AlertDialogAction>
             </AlertDialogFooter>

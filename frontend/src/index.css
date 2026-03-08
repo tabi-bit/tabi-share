@@ -6,6 +6,12 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
+  interpolate-size: allow-keywords;
+  /* autoのアニメーション有効化
+  Chrome, Edge 129- のみ対応 */
+}
+
+:root {
   --background: oklch(1 0 0);
   --foreground: oklch(0.1448 0 0);
   --card: oklch(1 0 0);
@@ -149,6 +155,34 @@
   --shadow-lg: var(--shadow-lg);
   --shadow-xl: var(--shadow-xl);
   --shadow-2xl: var(--shadow-2xl);
+}
+
+/* FullCalendarの時刻表示部分のボーダーを消す */
+.fc {
+  .fc-scroller-harness {
+    overflow: visible !important;
+  }
+
+  .fc-timegrid-slot-label {
+    border-width: 0px !important;
+  }
+
+  .fc-scrollgrid {
+    border-width: 0px !important;
+  }
+
+  .fc-event {
+    box-shadow: none !important;
+    /* pan-y: 縦スクロールを許可しつつ、横スクロール/ズーム等をブロック。
+       長押しドラッグ時はユーザーが動かず保持するため、ブラウザはスクロールを開始せず
+       FullCalendarがpreventDefaultでドラッグを開始できる。 */
+    touch-action: pan-y;
+
+    /* タップ/クリック時の:focusオーバーレイを抑制し、キーボード操作時のみ表示 */
+    &:focus:not(:focus-visible)::after {
+      display: none;
+    }
+  }
 }
 
 @layer base {

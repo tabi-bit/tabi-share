@@ -9,7 +9,7 @@ TRIP_MAX_DETAIL_LENGTH = 2000
 
 class TripBase(BaseModel):
     title: str = Field(min_length=1, max_length=TRIP_MAX_TITLE_LENGTH)
-    detail: str = Field(min_length=1, max_length=TRIP_MAX_DETAIL_LENGTH)
+    detail: str | None = Field(default=None, max_length=TRIP_MAX_DETAIL_LENGTH)
 
 
 class TripCreateIn(TripBase):

@@ -28,7 +28,7 @@ export function ViewTimeline({ blocks, className }: ViewTimelineProps) {
     const nextBlock = i < sortedBlocks.length - 1 ? sortedBlocks[i + 1] : null;
 
     // 前のブロックとの間に時間間隔がある場合、破線ブロックを追加
-    if (previousBlock && previousBlock.endTime.getTime() !== currentBlock.startTime.getTime()) {
+    if (previousBlock && previousBlock.endTime?.getTime() !== currentBlock.startTime.getTime()) {
       timelineItems.push({
         type: 'gap',
         id: `gap-${previousBlock.id}-${currentBlock.id}`,
@@ -38,8 +38,8 @@ export function ViewTimeline({ blocks, className }: ViewTimelineProps) {
     timelineItems.push({
       type: 'block',
       block: currentBlock,
-      id: currentBlock.id,
-      isConnectedWithNextBlock: nextBlock ? nextBlock.startTime.getTime() === currentBlock.endTime.getTime() : false,
+      id: String(currentBlock.id),
+      isConnectedWithNextBlock: nextBlock ? nextBlock.startTime.getTime() === currentBlock.endTime?.getTime() : false,
     });
   }
 
@@ -84,26 +84,28 @@ function ViewTimelineBlock({ item }: ViewTimelineBlockProps) {
       {item.type === 'block' && item.block?.startTime && (
         <div className='flex flex-row gap-2'>
           <div className='flex flex-col justify-between'>
-            <div className='flex h-8 flex-row items-center font-medium text-18px text-gray-700'>
+            <div className='flex h-6 flex-row items-center font-medium text-14px text-gray-700 sm:h-8 sm:text-18px'>
               {formatTime(item.block.startTime)}
             </div>
-            {!item.isConnectedWithNextBlock && (
-              <div className='flex h-8 flex-row items-center font-medium text-18px text-gray-700'>
+            {!item.isConnectedWithNextBlock && item.block.endTime && (
+              <div className='flex h-6 flex-row items-center font-medium text-14px text-gray-700 sm:h-8 sm:text-18px'>
                 {formatTime(item.block.endTime)}
               </div>
             )}
           </div>
           <div className='flex min-h-24 flex-col items-center justify-between'>
-            <div className={cn('h-8 w-8 shrink-0 rounded-full', themeColor)} />
+            <div className={cn('h-6 w-6 shrink-0 rounded-full sm:h-8 sm:w-8', themeColor)} />
             <div className={cn('-my-4 h-full w-2', themeColor)}></div>
-            {!item.isConnectedWithNextBlock && <div className={cn('h-8 w-8 shrink-0 rounded-full', themeColor)} />}
+            {!item.isConnectedWithNextBlock && (
+              <div className={cn('h-6 w-6 shrink-0 rounded-full sm:h-8 sm:w-8', themeColor)} />
+            )}
           </div>
         </div>
       )}
       {item.type === 'gap' && (
         <div className='flex h-8 flex-row'>
           <div className='grow border-neutral-600 border-r-2 border-dashed' />
-          <div className='w-4 border-neutral-600 border-l-2 border-dashed'></div>
+          <div className='w-3 border-neutral-600 border-l-2 border-dashed sm:w-4'></div>
         </div>
       )}
 

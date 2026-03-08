@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 import pytest
 from sqlalchemy.exc import IntegrityError
@@ -17,8 +17,8 @@ async def test_create_block(db_session: AsyncSession, test_create_page: Page):
     # arrange
     block_in = BlockCreate(
         title="test block",
-        start_time=datetime(2023, 1, 1, 10, 0),
-        end_time=datetime(2023, 1, 1, 12, 0),
+        start_time=datetime(2023, 1, 1, 10, 0, tzinfo=timezone.utc),
+        end_time=datetime(2023, 1, 1, 12, 0, tzinfo=timezone.utc),
         detail="test detail",
         block_type="event",
         transportation_type="car",
@@ -50,8 +50,8 @@ async def test_create_block_non_existent_page_id(db_session: AsyncSession):
     # arrange
     block_in = BlockCreate(
         title="test block",
-        start_time=datetime(2023, 1, 1, 10, 0),
-        end_time=datetime(2023, 1, 1, 12, 0),
+        start_time=datetime(2023, 1, 1, 10, 0, tzinfo=timezone.utc),
+        end_time=datetime(2023, 1, 1, 12, 0, tzinfo=timezone.utc),
         detail="test detail",
         block_type="event",
     )
@@ -72,8 +72,8 @@ async def test_get_block(db_session: AsyncSession, test_create_page: Page):
     # arrange
     block_in = BlockCreate(
         title="test block",
-        start_time=datetime(2023, 1, 1, 10, 0),
-        end_time=datetime(2023, 1, 1, 12, 0),
+        start_time=datetime(2023, 1, 1, 10, 0, tzinfo=timezone.utc),
+        end_time=datetime(2023, 1, 1, 12, 0, tzinfo=timezone.utc),
         detail="test detail",
         block_type="event",
         transportation_type="car",
@@ -116,7 +116,7 @@ async def test_find_blocks(db_session: AsyncSession, test_create_page: Page):
         db=db_session,
         block=BlockCreate(
             title="b1",
-            start_time=datetime(2023, 1, 1, 10, 0),
+            start_time=datetime(2023, 1, 1, 10, 0, tzinfo=timezone.utc),
             detail="d",
             block_type="event",
         ),
@@ -126,7 +126,7 @@ async def test_find_blocks(db_session: AsyncSession, test_create_page: Page):
         db=db_session,
         block=BlockCreate(
             title="b2",
-            start_time=datetime(2023, 1, 1, 11, 0),
+            start_time=datetime(2023, 1, 1, 11, 0, tzinfo=timezone.utc),
             detail="d",
             block_type="event",
         ),
@@ -150,7 +150,7 @@ async def test_update_block(db_session: AsyncSession, test_create_page: Page):
     # arrange
     block_in = BlockCreate(
         title="before",
-        start_time=datetime(2023, 1, 1, 10, 0),
+        start_time=datetime(2023, 1, 1, 10, 0, tzinfo=timezone.utc),
         detail="d",
         block_type="event",
     )
@@ -159,7 +159,7 @@ async def test_update_block(db_session: AsyncSession, test_create_page: Page):
     )
     update_data = BlockUpdate(
         title="after",
-        start_time=datetime(2023, 1, 1, 10, 0),
+        start_time=datetime(2023, 1, 1, 10, 0, tzinfo=timezone.utc),
         detail="d",
         block_type="event",
     )
@@ -190,7 +190,7 @@ async def test_delete_block(db_session: AsyncSession, test_create_page: Page):
     # arrange
     block_in = BlockCreate(
         title="delete",
-        start_time=datetime(2023, 1, 1, 10, 0),
+        start_time=datetime(2023, 1, 1, 10, 0, tzinfo=timezone.utc),
         detail="d",
         block_type="event",
     )

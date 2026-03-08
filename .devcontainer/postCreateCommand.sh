@@ -42,7 +42,6 @@ sh ./scripts/setup_database.sh
 # Claude Code
 npm install -g @anthropic-ai/claude-code
 uv tool install claude-monitor
-claude mcp add serena -- uvx --from git+https://github.com/oraios/serena serena start-mcp-server --context ide-assistant --project $(pwd)
 
 # Gemini CLI
 npm install -g @google/gemini-cli
@@ -50,3 +49,8 @@ echo "🎉 All setup steps completed successfully!"
 
 # Firebase CLI Tools
 npm install -g firebase-tools
+
+# AI検索用にripgrepをインストール
+sudo apt-get update
+sudo apt-get install -y ripgrep
+echo "🔍 ripgrep installed for AI search functionality."

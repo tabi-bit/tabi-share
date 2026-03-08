@@ -50,20 +50,20 @@ export function BlockTransportationView({ block, className }: BlockTransportatio
     >
       <div className='flex items-center gap-2'>
         <TransportationIcon type={block.transportationType} />
-        <div className='font-bold text-16px text-neutral-800'>{block.title}</div>
+        <div className='font-bold text-14px text-neutral-800 sm:text-16px'>{block.title}</div>
       </div>
-      {block.details && (
+      {block.detail && (
         <div
           className={cn(
-            'ml-8 overflow-hidden transition-[max-height] duration-300',
+            'ml-2 overflow-hidden text-14px transition-[max-height] duration-300 sm:text-16px',
             isExpanded ? 'max-h-[80vh]' : 'max-h-18'
           )}
           ref={detailDivRef}
         >
-          {block.details}
+          {block.detail}
         </div>
       )}
-      {block.details && isOverflowDetail && (
+      {block.detail && isOverflowDetail && (
         <button
           type='button'
           className='flex items-center self-end text-neutral-800 hover:cursor-pointer'

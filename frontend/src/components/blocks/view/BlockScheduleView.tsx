@@ -47,19 +47,19 @@ export function BlockScheduleView({ block, className }: BlockScheduleViewProps) 
         className
       )}
     >
-      <div className='font-bold text-16px text-white'>{block.title}</div>
-      {block.details && (
+      <div className='font-bold text-14px text-white sm:text-16px'>{block.title}</div>
+      {block.detail && (
         <div
           className={cn(
-            'overflow-hidden transition-[max-height] duration-300',
+            'ml-2 overflow-hidden text-12px transition-[max-height] duration-300 sm:text-16px',
             isExpanded ? 'max-h-[80vh]' : 'max-h-18'
           )}
           ref={detailDivRef}
         >
-          {block.details}
+          {block.detail}
         </div>
       )}
-      {block.details && isOverflowDetail && (
+      {block.detail && isOverflowDetail && (
         <button
           type='button'
           className='flex items-center self-end text-white hover:cursor-pointer'

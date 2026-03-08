@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useCreatePage } from '@/hooks/usePages';
@@ -44,17 +44,19 @@ export const AddPageDialog = ({ open, onOpenChange, tripId, onCreated }: AddPage
           <DialogTitle>ページを追加</DialogTitle>
         </DialogHeader>
 
-        <div className='space-y-4'>
-          <div className='space-y-2'>
-            <Label htmlFor='add-page-title'>タイトル</Label>
-            <Input
-              id='add-page-title'
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              placeholder='ページのタイトル'
-            />
+        <DialogBody>
+          <div className='space-y-4'>
+            <div className='space-y-2'>
+              <Label htmlFor='add-page-title'>タイトル</Label>
+              <Input
+                id='add-page-title'
+                value={title}
+                onChange={e => setTitle(e.target.value)}
+                placeholder='ページのタイトル'
+              />
+            </div>
           </div>
-        </div>
+        </DialogBody>
 
         <DialogFooter>
           <Button variant='outline' onClick={() => handleOpenChange(false)}>

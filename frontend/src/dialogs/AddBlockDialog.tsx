@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { LazyMarkdownEditor } from '@/components/ui/markdown';
@@ -181,182 +181,183 @@ export const AddBlockDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>ブロックの追加</DialogTitle>
-        </DialogHeader>
+      <Tabs value={blockType} onValueChange={value => setBlockType(value as 'schedule' | 'transportation')}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>ブロックの追加</DialogTitle>
+            <TabsList className='grid w-full grid-cols-2'>
+              <TabsTrigger value='schedule'>予定</TabsTrigger>
+              <TabsTrigger value='transportation'>移動</TabsTrigger>
+            </TabsList>
+          </DialogHeader>
 
-        <Tabs value={blockType} onValueChange={value => setBlockType(value as 'schedule' | 'transportation')}>
-          <TabsList className='grid w-full grid-cols-2'>
-            <TabsTrigger value='schedule'>予定</TabsTrigger>
-            <TabsTrigger value='transportation'>移動</TabsTrigger>
-          </TabsList>
-
-          {/* 予定ブロック */}
-          <TabsContent value='schedule' className='space-y-4'>
-            <div className='space-y-2'>
-              <Label htmlFor='schedule-title'>タイトル</Label>
-              <Input
-                id='schedule-title'
-                value={scheduleTitle}
-                onChange={e => setScheduleTitle(e.target.value)}
-                placeholder='予定のタイトル'
-              />
-            </div>
-
-            <div className='space-y-2'>
-              <Label htmlFor='schedule-start-time'>開始時間</Label>
-              <Input
-                id='schedule-start-time'
-                type='time'
-                value={scheduleStartTime}
-                onChange={e => setScheduleStartTime(e.target.value)}
-              />
-            </div>
-
-            <div className='space-y-2'>
-              <Label>所要時間</Label>
-              <div className='flex items-center gap-2'>
+          <DialogBody>
+            {/* 予定ブロック */}
+            <TabsContent value='schedule' className='space-y-4'>
+              <div className='space-y-2'>
+                <Label htmlFor='schedule-title'>タイトル</Label>
                 <Input
-                  type='number'
-                  min='0'
-                  value={scheduleDurationHours}
-                  onChange={e => setScheduleDurationHours(e.target.value)}
-                  disabled={scheduleNoEndTime}
-                  className='w-20'
+                  id='schedule-title'
+                  value={scheduleTitle}
+                  onChange={e => setScheduleTitle(e.target.value)}
+                  placeholder='予定のタイトル'
                 />
-                <span className='text-sm'>時間</span>
+              </div>
+
+              <div className='space-y-2'>
+                <Label htmlFor='schedule-start-time'>開始時間</Label>
                 <Input
-                  type='number'
-                  min='0'
-                  max='59'
-                  value={scheduleDurationMinutes}
-                  onChange={e => setScheduleDurationMinutes(e.target.value)}
-                  disabled={scheduleNoEndTime}
-                  className='w-20'
+                  id='schedule-start-time'
+                  type='time'
+                  value={scheduleStartTime}
+                  onChange={e => setScheduleStartTime(e.target.value)}
                 />
-                <span className='text-sm'>分</span>
               </div>
-              <div className='flex items-center space-x-2'>
-                <Checkbox
-                  id='schedule-no-end'
-                  checked={scheduleNoEndTime}
-                  onCheckedChange={checked => setScheduleNoEndTime(!!checked)}
+
+              <div className='space-y-2'>
+                <Label>所要時間</Label>
+                <div className='flex items-center gap-2'>
+                  <Input
+                    type='number'
+                    min='0'
+                    value={scheduleDurationHours}
+                    onChange={e => setScheduleDurationHours(e.target.value)}
+                    disabled={scheduleNoEndTime}
+                    className='w-20'
+                  />
+                  <span className='text-sm'>時間</span>
+                  <Input
+                    type='number'
+                    min='0'
+                    max='59'
+                    value={scheduleDurationMinutes}
+                    onChange={e => setScheduleDurationMinutes(e.target.value)}
+                    disabled={scheduleNoEndTime}
+                    className='w-20'
+                  />
+                  <span className='text-sm'>分</span>
+                </div>
+                <div className='flex items-center space-x-2'>
+                  <Checkbox
+                    id='schedule-no-end'
+                    checked={scheduleNoEndTime}
+                    onCheckedChange={checked => setScheduleNoEndTime(!!checked)}
+                  />
+                  <Label htmlFor='schedule-no-end' className='font-normal text-sm'>
+                    設定しない
+                  </Label>
+                </div>
+              </div>
+
+              <div className='space-y-2'>
+                <Label htmlFor='schedule-detail'>詳細</Label>
+                <LazyMarkdownEditor
+                  className='max-h-72'
+                  id='schedule-detail'
+                  value={scheduleDetail}
+                  onChange={setScheduleDetail}
+                  placeholder='詳細情報（任意）'
                 />
-                <Label htmlFor='schedule-no-end' className='font-normal text-sm'>
-                  設定しない
-                </Label>
               </div>
-            </div>
+            </TabsContent>
 
-            <div className='space-y-2'>
-              <Label htmlFor='schedule-detail'>詳細</Label>
-              <LazyMarkdownEditor
-                id='schedule-detail'
-                value={scheduleDetail}
-                onChange={setScheduleDetail}
-                placeholder='詳細情報（任意）'
-                maxHeight='8rem'
-              />
-            </div>
-          </TabsContent>
-
-          {/* 移動ブロック */}
-          <TabsContent value='transportation' className='space-y-4'>
-            <div className='space-y-2'>
-              <Label htmlFor='transportation-title'>タイトル</Label>
-              <Input
-                id='transportation-title'
-                value={transportationTitle}
-                onChange={e => setTransportationTitle(e.target.value)}
-                placeholder='移動のタイトル'
-              />
-            </div>
-
-            <div className='space-y-2'>
-              <Label htmlFor='transportation-type'>移動手段</Label>
-              <Select
-                value={transportationType}
-                onValueChange={value => setTransportationType(value as TransportationType)}
-              >
-                <SelectTrigger id='transportation-type'>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {TRANSPORTATION_OPTIONS.map(option => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className='space-y-2'>
-              <Label htmlFor='transportation-start-time'>開始時間</Label>
-              <Input
-                id='transportation-start-time'
-                type='time'
-                value={transportationStartTime}
-                onChange={e => setTransportationStartTime(e.target.value)}
-              />
-            </div>
-
-            <div className='space-y-2'>
-              <Label>所要時間</Label>
-              <div className='flex items-center gap-2'>
+            {/* 移動ブロック */}
+            <TabsContent value='transportation' className='h-full space-y-4'>
+              <div className='space-y-2'>
+                <Label htmlFor='transportation-title'>タイトル</Label>
                 <Input
-                  type='number'
-                  min='0'
-                  value={transportationDurationHours}
-                  onChange={e => setTransportationDurationHours(e.target.value)}
-                  disabled={transportationNoEndTime}
-                  className='w-20'
+                  id='transportation-title'
+                  value={transportationTitle}
+                  onChange={e => setTransportationTitle(e.target.value)}
+                  placeholder='移動のタイトル'
                 />
-                <span className='text-sm'>時間</span>
+              </div>
+
+              <div className='space-y-2'>
+                <Label htmlFor='transportation-type'>移動手段</Label>
+                <Select
+                  value={transportationType}
+                  onValueChange={value => setTransportationType(value as TransportationType)}
+                >
+                  <SelectTrigger id='transportation-type'>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TRANSPORTATION_OPTIONS.map(option => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className='space-y-2'>
+                <Label htmlFor='transportation-start-time'>開始時間</Label>
                 <Input
-                  type='number'
-                  min='0'
-                  max='59'
-                  value={transportationDurationMinutes}
-                  onChange={e => setTransportationDurationMinutes(e.target.value)}
-                  disabled={transportationNoEndTime}
-                  className='w-20'
+                  id='transportation-start-time'
+                  type='time'
+                  value={transportationStartTime}
+                  onChange={e => setTransportationStartTime(e.target.value)}
                 />
-                <span className='text-sm'>分</span>
               </div>
-              <div className='flex items-center space-x-2'>
-                <Checkbox
-                  id='transportation-no-end'
-                  checked={transportationNoEndTime}
-                  onCheckedChange={checked => setTransportationNoEndTime(!!checked)}
+
+              <div className='space-y-2'>
+                <Label>所要時間</Label>
+                <div className='flex items-center gap-2'>
+                  <Input
+                    type='number'
+                    min='0'
+                    value={transportationDurationHours}
+                    onChange={e => setTransportationDurationHours(e.target.value)}
+                    disabled={transportationNoEndTime}
+                    className='w-20'
+                  />
+                  <span className='text-sm'>時間</span>
+                  <Input
+                    type='number'
+                    min='0'
+                    max='59'
+                    value={transportationDurationMinutes}
+                    onChange={e => setTransportationDurationMinutes(e.target.value)}
+                    disabled={transportationNoEndTime}
+                    className='w-20'
+                  />
+                  <span className='text-sm'>分</span>
+                </div>
+                <div className='flex items-center space-x-2'>
+                  <Checkbox
+                    id='transportation-no-end'
+                    checked={transportationNoEndTime}
+                    onCheckedChange={checked => setTransportationNoEndTime(!!checked)}
+                  />
+                  <Label htmlFor='transportation-no-end' className='font-normal text-sm'>
+                    設定しない
+                  </Label>
+                </div>
+              </div>
+
+              <div className='space-y-2'>
+                <Label htmlFor='transportation-detail'>詳細</Label>
+                <LazyMarkdownEditor
+                  className='max-h-72'
+                  id='transportation-detail'
+                  value={transportationDetail}
+                  onChange={setTransportationDetail}
+                  placeholder='詳細情報（任意）'
                 />
-                <Label htmlFor='transportation-no-end' className='font-normal text-sm'>
-                  設定しない
-                </Label>
               </div>
-            </div>
+            </TabsContent>
+          </DialogBody>
 
-            <div className='space-y-2'>
-              <Label htmlFor='transportation-detail'>詳細</Label>
-              <LazyMarkdownEditor
-                id='transportation-detail'
-                value={transportationDetail}
-                onChange={setTransportationDetail}
-                placeholder='詳細情報（任意）'
-                maxHeight='8rem'
-              />
-            </div>
-          </TabsContent>
-        </Tabs>
-
-        <DialogFooter>
-          <Button variant='outline' onClick={() => handleOpenChange(false)}>
-            キャンセル
-          </Button>
-          <Button onClick={handleSubmit}>追加</Button>
-        </DialogFooter>
-      </DialogContent>
+          <DialogFooter>
+            <Button variant='outline' onClick={() => handleOpenChange(false)}>
+              キャンセル
+            </Button>
+            <Button onClick={handleSubmit}>追加</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Tabs>
     </Dialog>
   );
 };

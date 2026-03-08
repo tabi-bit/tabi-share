@@ -21,7 +21,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins,
+    allow_origins=[*settings.cors_origins, 'https://tabishare.net', 'https://st.tabishare.net'], # 検証用に本番、ステージングのURLも追加
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

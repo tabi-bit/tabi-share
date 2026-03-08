@@ -176,7 +176,7 @@ function HeaderFull({
                   </SelectItem>
                 ))}
                 {mode === 'edit' && (
-                  <SelectItem value='add-new' className='text-primary'>
+                  <SelectItem value='add-new' className='text-nowrap text-primary'>
                     + ページを追加
                   </SelectItem>
                 )}

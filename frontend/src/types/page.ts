@@ -33,7 +33,7 @@ export type ApiPage = z.infer<typeof ApiPageSchema>;
 /**
  * APIレスポンスをアプリケーション層のPageに変換するスキーマ
  */
-export const AppResponsePageSchema = ApiPageSchema.transform(
+export const pageFromApi = ApiPageSchema.transform(
   (apiData): Page => ({
     id: apiData.id,
     title: apiData.title,
@@ -47,9 +47,29 @@ export const AppResponsePageSchema = ApiPageSchema.transform(
 /**
  * アプリケーション層のPageをAPI送信用の形式に変換するスキーマ
  */
-export const AppRequestPageSchema = PageSchema.transform(
+export const pageToApi = PageSchema.transform(
   (appData): ApiPage => ({
     id: appData.id,
+    title: appData.title,
+    detail: appData.detail,
+    trip_id: appData.tripId,
+  })
+);
+
+// --- 作成/更新用スキーマ ---
+
+/**
+ * 作成/更新リクエスト用のアプリケーション層スキーマ
+ * idはサーバーで管理されるため除外
+ */
+export const PageMutationSchema = PageSchema.omit({ id: true });
+export type PageMutation = z.infer<typeof PageMutationSchema>;
+
+/**
+ * アプリケーション層の作成/更新データをAPI送信用に変換するスキーマ
+ */
+export const pageMutationToApi = PageMutationSchema.transform(
+  (appData): Omit<ApiPage, 'id'> => ({
     title: appData.title,
     detail: appData.detail,
     trip_id: appData.tripId,

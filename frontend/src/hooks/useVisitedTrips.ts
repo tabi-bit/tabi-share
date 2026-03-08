@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/apiClient';
-import { AppResponseTripSchema, type Trip } from '@/types/trip';
+import { type Trip, tripFromApi } from '@/types/trip';
 
 const VISITED_TRIPS_KEY = 'visitedTripUrlIds';
 
@@ -60,7 +60,7 @@ export const useVisitedTrips = () => {
         urlIds.map(async urlId => {
           try {
             const res = await fetcher(`/trips/url/${urlId}`);
-            return AppResponseTripSchema.parse(res);
+            return tripFromApi.parse(res);
           } catch {
             // 取得失敗時はnullを返す
             return null;

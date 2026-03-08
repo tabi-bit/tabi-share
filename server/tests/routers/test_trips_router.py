@@ -30,6 +30,17 @@ async def test_create_and_read_trip(client: AsyncClient, db_session: AsyncSessio
     assert data["url_id"] == url_id
 
 
+async def test_create_trip_without_detail(client: AsyncClient, db_session: AsyncSession):
+    """
+    POST /trips/ で detail を省略した場合に作成できることを検証
+    """
+    response = await client.post("/trips/", json={"title": "no detail trip"})
+    assert response.status_code == 200
+    data = response.json()
+    assert "id" in data
+    assert "url_id" in data
+
+
 async def test_create_trip_invalid_input(client: AsyncClient):
     """
     POST /api/trips/ で不正な入力が与えられた場合に 422 が返ることを検証
@@ -40,6 +51,16 @@ async def test_create_trip_invalid_input(client: AsyncClient):
     assert response.status_code == 422
     assert "detail" in response.json()
     assert any("title" in err["loc"] for err in response.json()["detail"])
+
+    # title が max_length を超過している不正なデータ
+    response = await client.post("/trips/", json={"title": "a" * 201})
+    assert response.status_code == 422
+    assert any("title" in err["loc"] for err in response.json()["detail"])
+
+    # detail が max_length を超過している不正なデータ
+    response = await client.post("/trips/", json={"title": "test", "detail": "a" * 2001})
+    assert response.status_code == 422
+    assert any("detail" in err["loc"] for err in response.json()["detail"])
 
 
 async def test_read_trips(client: AsyncClient, db_session: AsyncSession):

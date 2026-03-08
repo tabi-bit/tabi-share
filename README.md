@@ -28,6 +28,12 @@ npm run dev
 - **バックエンドAPI**: http://localhost:8000
 - **Storybook**: http://localhost:6006
 
+## モバイルでの確認
+
+モバイル端末から開発サーバーにアクセスして動作確認を行う方法については、以下を参照してください：
+
+- [モバイル端末での動作確認](docs/mobile_dev.md)
+
 ## Windows/WSL環境でのSSH設定
 
 GitへのSSH接続ができない場合は、以下のスクリプトを実行してください：

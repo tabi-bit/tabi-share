@@ -5,12 +5,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useCreateTrip } from '@/hooks/useTrips';
-import type { Trip } from '@/types/trip';
+import type { CreateTripFromApi } from '@/types/trip';
 
 interface AddTripDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreated?: (trip: Trip) => void;
+  onCreated?: (trip: CreateTripFromApi) => void;
 }
 
 export const AddTripDialog = ({ open, onOpenChange, onCreated }: AddTripDialogProps) => {
@@ -47,7 +47,7 @@ export const AddTripDialog = ({ open, onOpenChange, onCreated }: AddTripDialogPr
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className='max-w-md'>
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>旅程を追加</DialogTitle>
         </DialogHeader>

@@ -32,8 +32,10 @@ export function TransportationIcon({ type, className }: TransportationIconProps)
   const iconLabel = getIconLabel(type);
 
   if (!iconSrc) {
-    return <div className={cn('flex h-8 w-8 items-center justify-center text-neutral-400', className)}>?</div>;
+    return (
+      <div className={cn('flex h-6 w-6 items-center justify-center text-neutral-400 sm:h-8 sm:w-8', className)}>?</div>
+    );
   }
 
-  return <img src={iconSrc} alt={iconLabel} className={cn('h-8 w-8', className)} />;
+  return <img src={iconSrc} alt={iconLabel} className={cn('h-6 w-6 sm:h-8 sm:w-8', className)} />;
 }

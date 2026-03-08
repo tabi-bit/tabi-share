@@ -3,7 +3,6 @@ Add Trip, Page, and Block models with relationships.
 """
 
 from datetime import datetime
-from typing import List, Optional
 
 from sqlalchemy import DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -25,11 +24,11 @@ class Trip(Base):
     title: Mapped[str] = mapped_column(
         String(200), nullable=False, comment="Title of the trip"
     )
-    detail: Mapped[str] = mapped_column(
-        Text, nullable=False, comment="Detailed description of the trip"
+    detail: Mapped[str | None] = mapped_column(
+        Text, nullable=True, comment="Detailed description of the trip"
     )
     # Relationships
-    pages: Mapped[List["Page"]] = relationship(
+    pages: Mapped[list["Page"]] = relationship(
         "Page",
         back_populates="trip",
         cascade="all, delete-orphan",
@@ -55,7 +54,7 @@ class Page(Base):
         "Trip",
         back_populates="pages",
     )
-    blocks: Mapped[List["Block"]] = relationship(
+    blocks: Mapped[list["Block"]] = relationship(
         "Block",
         back_populates="page",
         cascade="all, delete-orphan",
@@ -73,7 +72,7 @@ class Block(Base):
     start_time: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, comment="Start time of the block(UTC)"
     )
-    end_time: Mapped[Optional[datetime]] = mapped_column(
+    end_time: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True, comment="End time of the block(UTC)"
     )
     page_id: Mapped[int] = mapped_column(
@@ -82,13 +81,13 @@ class Block(Base):
         index=True,
         comment="Foreign key to the associated page",
     )
-    detail: Mapped[str] = mapped_column(
-        Text, nullable=False, comment="Detailed description of the block"
+    detail: Mapped[str | None] = mapped_column(
+        Text, nullable=True, comment="Detailed description of the block"
     )
     block_type: Mapped[str] = mapped_column(
         String(100), nullable=False, comment="Type of the block defined in app as enum"
     )
-    transportation_type: Mapped[Optional[str]] = mapped_column(
+    transportation_type: Mapped[str | None] = mapped_column(
         String(100), nullable=True, comment="Type of transportation"
     )
     # Relationships

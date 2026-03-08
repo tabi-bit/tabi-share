@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { HeaderSkeleton } from '@/components/HeaderSkeleton';
 import { TimelineSkeleton } from '@/components/timeline';
+import { useDragAutoScroll } from '@/hooks/useDragAutoScroll';
 import { usePages } from '@/hooks/usePages';
 import { useTripByUrlId } from '@/hooks/useTrips';
 import { useVisitedTrips } from '@/hooks/useVisitedTrips';
@@ -12,6 +13,7 @@ import { ViewTripLayout } from './TripPage/ViewTripLayout';
 
 const TripPage = () => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const { isDraggingRef, startDrag, stopDrag } = useDragAutoScroll(scrollContainerRef);
   const [selectedPageId, setSelectedPageId] = useState<Page['id']>();
   const [mode, setMode] = useState<'view' | 'edit'>('view');
   const [minLoadingComplete, setMinLoadingComplete] = useState(false);
@@ -53,7 +55,7 @@ const TripPage = () => {
 
   if (isLoading) {
     return (
-      <div className='flex h-screen w-full flex-col items-center overflow-auto'>
+      <div className='flex h-dvh w-full flex-col items-center overflow-auto'>
         <HeaderSkeleton />
         <TimelineSkeleton className='w-full max-w-3xl p-4' />
       </div>
@@ -74,25 +76,28 @@ const TripPage = () => {
       {trip && pages && (
         <div
           ref={scrollContainerRef}
-          className='flex h-screen w-full flex-col items-center justify-between gap-4 overflow-auto'
+          className='flex h-dvh w-full flex-col items-center justify-between gap-4 overflow-auto overscroll-y-none'
         >
-          {selectedPageId != null && (
-            <Header
-              variant='full'
-              selectedPageId={selectedPageId}
-              pages={pages}
-              onSelectPage={setSelectedPageId}
-              setMode={setMode}
-              trip={trip}
-              mode={mode}
-              scrollContainerRef={scrollContainerRef}
-            />
-          )}
+          <Header
+            variant='full'
+            selectedPageId={selectedPageId}
+            pages={pages}
+            onSelectPage={setSelectedPageId}
+            setMode={setMode}
+            trip={trip}
+            mode={mode}
+            scrollContainerRef={scrollContainerRef}
+            isDraggingRef={isDraggingRef}
+          />
           {pages.length === 0 && (
-            <div className='flex h-full items-center justify-center text-gray-500'>ページを追加してください</div>
+            <div className='flex h-full items-center justify-center text-gray-500'>
+              編集モードからページを追加してください
+            </div>
           )}
           {selectedPageId != null && mode === 'view' && <ViewTripLayout selectedPageId={selectedPageId} />}
-          {selectedPageId != null && mode === 'edit' && <EditTripLayout selectedPageId={selectedPageId} />}
+          {selectedPageId != null && mode === 'edit' && (
+            <EditTripLayout selectedPageId={selectedPageId} onDragStart={startDrag} onDragEnd={stopDrag} />
+          )}
         </div>
       )}
     </>

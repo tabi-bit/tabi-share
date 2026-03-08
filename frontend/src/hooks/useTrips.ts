@@ -4,12 +4,15 @@ import useSWR, { useSWRConfig } from 'swr';
 import useSWRMutation from 'swr/mutation';
 import z from 'zod';
 import { apiClient, fetcher } from '@/lib/apiClient';
+import { blockToApi } from '@/types';
+import { pageFromApi, pageMutationToApi } from '@/types/page';
 import {
-  AppRequestTripMutationSchema,
-  AppResponseTripSchema,
+  type CreateTripFromApi,
+  createTripFromApi,
   type Trip,
   type TripMutation,
-  TripMutationSchema,
+  tripFromApi,
+  tripMutationToApi,
 } from '@/types/trip';
 
 const TRIPS_BASE_PATH = '/trips';
@@ -20,7 +23,7 @@ const TRIPS_BASE_PATH = '/trips';
 export const useTrips = () => {
   const { data, error, isLoading } = useSWR<Trip[]>(TRIPS_BASE_PATH, async (url: string) => {
     const res = await fetcher(`${url}/`);
-    return z.array(AppResponseTripSchema).parse(res);
+    return z.array(tripFromApi).parse(res);
   });
 
   return {
@@ -39,7 +42,7 @@ export const useTripByUrlId = (urlId: Trip['urlId'] | null) => {
     urlId ? `${TRIPS_BASE_PATH}/url/${urlId}` : null,
     async (url: string) => {
       const res = await fetcher(url);
-      return AppResponseTripSchema.parse(res);
+      return tripFromApi.parse(res);
     },
     {
       onSuccess: trip => {
@@ -67,7 +70,7 @@ export const useTrip = (id: Trip['id'] | null) => {
     id ? `${TRIPS_BASE_PATH}/${id}` : null,
     async (url: string) => {
       const res = await fetcher(url);
-      return AppResponseTripSchema.parse(res);
+      return tripFromApi.parse(res);
     },
     {
       onSuccess: trip => {
@@ -93,13 +96,31 @@ type CreateTripArg = TripMutation;
  */
 export const useCreateTrip = () => {
   const createTrip = useCallback(async (url: string, { arg: tripData }: { arg: CreateTripArg }) => {
-    TripMutationSchema.parse(tripData);
-    const apiData = AppRequestTripMutationSchema.parse(tripData);
+    const apiData = tripMutationToApi.parse(tripData);
     const response = await apiClient.post(url, apiData);
-    return AppResponseTripSchema.parse(response.data);
+    const newTrip = createTripFromApi.parse(response.data);
+
+    // デフォルトPageを作成（遷移後にSWRが自動fetchするためキャッシュ管理不要）
+    const pageData = pageMutationToApi.parse({ title: '1日目', tripId: newTrip.id });
+    const pageRes = await apiClient.post(`${TRIPS_BASE_PATH}/${newTrip.id}/pages`, pageData);
+    const newPage = pageFromApi.parse(pageRes.data);
+
+    const blockFullData = blockToApi.parse({
+      id: 0, // idは仮値
+      title: 'サンプルスケジュール',
+      detail: '編集モードから旅程を編集できます',
+      type: 'schedule',
+      startTime: new Date(),
+      endTime: new Date(),
+      pageId: newPage.id,
+    });
+    const { id: _, ...blockPayload } = blockFullData; // API送信用にidを除外
+    await apiClient.post(`/pages/${newPage.id}/blocks`, blockPayload);
+
+    return newTrip;
   }, []);
 
-  const { trigger, isMutating, error, data } = useSWRMutation<Trip, AxiosError, string, CreateTripArg>(
+  const { trigger, isMutating, error, data } = useSWRMutation<CreateTripFromApi, AxiosError, string, CreateTripArg>(
     TRIPS_BASE_PATH,
     createTrip
   );
@@ -122,10 +143,9 @@ export const useUpdateTrip = () => {
 
   const updateTripFetcher = useCallback(async (_key: string | null, { arg }: { arg: UpdateTripArg }) => {
     const { id, data } = arg;
-    TripMutationSchema.parse(data);
-    const apiData = AppRequestTripMutationSchema.parse(data);
+    const apiData = tripMutationToApi.parse(data);
     const response = await apiClient.put(`${TRIPS_BASE_PATH}/${id}`, apiData);
-    return AppResponseTripSchema.parse(response.data);
+    return tripFromApi.parse(response.data);
   }, []);
 
   const { trigger, isMutating, error, data } = useSWRMutation(

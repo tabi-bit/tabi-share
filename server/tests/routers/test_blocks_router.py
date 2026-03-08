@@ -30,6 +30,24 @@ async def test_create_and_read_block(
     assert data["id"] == block_id
 
 
+async def test_create_block_without_detail(
+    client: AsyncClient, db_session: AsyncSession, test_create_page: Page
+):
+    """
+    POST /pages/{page_id}/blocks で detail を省略した場合に作成できることを検証
+    """
+    block_data = {
+        "title": "no detail block",
+        "start_time": "2023-01-01T10:00:00Z",
+        "block_type": "event",
+    }
+    response = await client.post(f"/pages/{test_create_page.id}/blocks", json=block_data)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["title"] == block_data["title"]
+    assert data["detail"] is None
+
+
 async def test_create_block_invalid_input(
     client: AsyncClient, db_session: AsyncSession, test_create_page: Page
 ):
@@ -49,6 +67,31 @@ async def test_create_block_invalid_input(
     assert response.status_code == 422
     assert "detail" in response.json()
     assert any("title" in err["loc"] for err in response.json()["detail"])
+
+    # title が max_length を超過している不正なデータ
+    response = await client.post(
+        f"/pages/{test_create_page.id}/blocks",
+        json={
+            "title": "a" * 201,
+            "start_time": "2023-01-01T10:00:00Z",
+            "block_type": "event",
+        },
+    )
+    assert response.status_code == 422
+    assert any("title" in err["loc"] for err in response.json()["detail"])
+
+    # detail が max_length を超過している不正なデータ
+    response = await client.post(
+        f"/pages/{test_create_page.id}/blocks",
+        json={
+            "title": "test block",
+            "start_time": "2023-01-01T10:00:00Z",
+            "detail": "a" * 2001,
+            "block_type": "event",
+        },
+    )
+    assert response.status_code == 422
+    assert any("detail" in err["loc"] for err in response.json()["detail"])
 
     # block_type が不正なデータ
     invalid_block_data_invalid_type = {

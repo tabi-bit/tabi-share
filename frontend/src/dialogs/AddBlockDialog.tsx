@@ -181,7 +181,7 @@ export const AddBlockDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className='max-w-md'>
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>ブロックの追加</DialogTitle>
         </DialogHeader>

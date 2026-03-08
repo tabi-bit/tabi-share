@@ -27,6 +27,7 @@ type HeaderFullProps = HeaderBaseProps & {
   onSelectPage: (pageId: Page['id']) => void;
   scrollContainerRef: React.RefObject<HTMLDivElement | null>;
   setMode: Dispatch<SetStateAction<'view' | 'edit'>>;
+  isDraggingRef: React.RefObject<boolean>;
 };
 
 type HeaderProps = HeaderLogoOnlyProps | HeaderFullProps;
@@ -57,6 +58,7 @@ function HeaderFull({
   setMode,
   className,
   scrollContainerRef,
+  isDraggingRef,
   ...props
 }: Omit<HeaderFullProps, 'variant'>) {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -64,11 +66,24 @@ function HeaderFull({
   const [addPageDialogOpen, setAddPageDialogOpen] = useState(false);
   const scrollY = useRef(0);
 
+  const handleHeaderClick = useCallback((e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.closest('button, a, select, [role="combobox"], [role="option"], [role="listbox"]')) return;
+    setIsScrolled(false);
+  }, []);
+
   const handleScroll = useCallback(() => {
     const container = scrollContainerRef?.current;
     if (!container) return;
 
     const scrollTop = container.scrollTop;
+
+    // ドラッグ中はisScrolledの更新をスキップし、スクロール位置の基準だけ更新する
+    if (isDraggingRef.current) {
+      scrollY.current = scrollTop;
+      return;
+    }
+
     const deltaY = scrollTop - scrollY.current;
 
     // isScrolledの次の状態を計算する
@@ -94,7 +109,7 @@ function HeaderFull({
       // レイアウトシフトによる誤作動を防ぐ
       scrollY.current = scrollTop;
     }
-  }, [isScrolled, scrollContainerRef]);
+  }, [isScrolled, scrollContainerRef, isDraggingRef]);
 
   useEffect(() => {
     const container = scrollContainerRef?.current;
@@ -104,78 +119,81 @@ function HeaderFull({
     return () => container.removeEventListener('scroll', handleScroll);
   }, [handleScroll, scrollContainerRef]);
 
-  const selectedPage = selectedPageId ? pages.find(page => page.id === selectedPageId) : pages[0];
+  const selectedPage = selectedPageId ? pages.find(page => page.id === selectedPageId) : (pages[0] ?? null);
 
   return (
-    <div
+    // biome-ignore lint/a11y/noStaticElementInteractions: ヘッダー領域クリックでスクロール縮小状態を解除するためのイベント委譲
+    <header
       data-component='header'
       className={cn(
-        'sticky top-0 right-0 left-0 z-10 flex w-full flex-col justify-center gap-1 bg-teal-50/80 px-6 py-2 backdrop-blur-sm',
+        'sticky top-0 right-0 left-0 z-10 flex w-full flex-col justify-center gap-1 bg-teal-50/80 px-2 py-2 backdrop-blur-sm',
         className
       )}
+      onClick={handleHeaderClick}
       {...props}
     >
       <div className='flex w-full flex-row justify-center'>
         <Logo size={isScrolled ? 'small' : 'medium'} />
       </div>
-      <div className='grid grid-cols-[1fr_auto_1fr] items-center gap-4'>
+      <div className='grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-[1fr_auto_1fr] sm:items-center'>
         {/* 左カラム */}
         <div
           className={cn(
-            'flex justify-end transition-[font-size]',
+            'flex justify-start transition-[font-size] sm:justify-end',
             transitionClassNames,
-            isScrolled ? 'text-16px' : 'text-20px'
+            isScrolled ? 'text-14px sm:text-16px' : 'text-16px sm:text-20px'
           )}
         >
           {trip.title}
         </div>
 
-        {/* 中央カラム */}
-        {isScrolled ? (
-          selectedPage && (
-            <Badge variant='outline' className='bg-white'>
-              {selectedPage.title}
-            </Badge>
-          )
-        ) : (
-          <Select
-            value={String(selectedPageId)}
-            onValueChange={v => {
-              if (v === 'add-new') {
-                setAddPageDialogOpen(true);
-              } else {
-                onSelectPage(Number(v));
-              }
-            }}
-          >
-            <SelectTrigger className='bg-white'>
-              <SelectValue placeholder='ページ選択' />
-            </SelectTrigger>
-            <SelectContent>
-              {pages.map(page => (
-                <SelectItem key={page.id} value={String(page.id)}>
-                  {page.title}
-                </SelectItem>
-              ))}
-              {mode === 'edit' && (
-                <SelectItem value='add-new' className='text-primary'>
-                  + ページを追加
-                </SelectItem>
-              )}
-            </SelectContent>
-          </Select>
-        )}
-
-        {/* 右カラム */}
-        <div className={cn('flex flex-row justify-start', isScrolled ? 'gap-x-2' : 'gap-x-4')}>
-          {mode === 'edit' ? (
-            <>
-              <ViewModeButton isScrolled={isScrolled} setMode={setMode} />
-              <PageInfoEditButton isScrolled={isScrolled} onClick={() => setEditPageDialogOpen(true)} />
-            </>
+        <div className='flex flex-row items-center justify-start gap-x-2 sm:contents'>
+          {/* 中央カラム */}
+          {isScrolled ? (
+            selectedPage && (
+              <Badge variant='outline' className='bg-white'>
+                {selectedPage.title}
+              </Badge>
+            )
           ) : (
-            <EditModeButton isScrolled={isScrolled} setMode={setMode} />
+            <Select
+              value={selectedPageId != null ? String(selectedPageId) : undefined}
+              onValueChange={v => {
+                if (v === 'add-new') {
+                  setAddPageDialogOpen(true);
+                } else {
+                  onSelectPage(Number(v));
+                }
+              }}
+            >
+              <SelectTrigger className='bg-white'>
+                <SelectValue placeholder='ページ選択' />
+              </SelectTrigger>
+              <SelectContent>
+                {pages.map(page => (
+                  <SelectItem key={page.id} value={String(page.id)}>
+                    {page.title}
+                  </SelectItem>
+                ))}
+                {mode === 'edit' && (
+                  <SelectItem value='add-new' className='text-primary'>
+                    + ページを追加
+                  </SelectItem>
+                )}
+              </SelectContent>
+            </Select>
           )}
+          {/* 右カラム */}
+          <div className={cn('flex flex-row justify-start', isScrolled ? 'gap-x-2' : 'gap-x-2 sm:gap-x-4')}>
+            {mode === 'edit' ? (
+              <>
+                <ViewModeButton isScrolled={isScrolled} setMode={setMode} />
+                <PageInfoEditButton isScrolled={isScrolled} onClick={() => setEditPageDialogOpen(true)} />
+              </>
+            ) : (
+              <EditModeButton isScrolled={isScrolled} setMode={setMode} />
+            )}
+          </div>
         </div>
       </div>
 
@@ -203,7 +221,7 @@ function HeaderFull({
           }}
         />
       )}
-    </div>
+    </header>
   );
 }
 
@@ -230,10 +248,10 @@ const HeaderButtonBase = ({
 }: HeaderButtonBaseProps) => {
   return (
     <Button
-      className={cn('gap-0 transition-[padding]', transitionClassNames, isScrolled ? 'px-2' : 'px-3', className)}
+      className={cn('gap-0 transition-[padding]', transitionClassNames, isScrolled ? 'sm:px-2' : 'px-3', className)}
       {...buttonProps}
     >
-      <img src={iconSrc} alt={iconAlt ?? ''} className='size-5' />
+      <img src={iconSrc} alt={iconAlt ?? ''} className='size-4 sm:size-5' />
       <span
         className={cn(
           'overflow-hidden transition-[width,opacity]',

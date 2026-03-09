@@ -49,6 +49,7 @@ const minutesToHoursAndMinutes = (totalMinutes: number): { hours: number; minute
 
 export const EditBlockDialog = ({ open, onOpenChange, block, onSubmit, onDelete }: EditBlockDialogProps) => {
   const isSchedule = block.type === 'schedule';
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // 共通のstate
   const [title, setTitle] = useState(block.title);
@@ -121,29 +122,34 @@ export const EditBlockDialog = ({ open, onOpenChange, block, onSubmit, onDelete 
       newEndTime = new Date(newStartTime.getTime() + totalMinutes * 60 * 1000);
     }
 
-    if (isSchedule) {
-      const updatedBlock: Block = {
-        ...block,
-        title: title.trim(),
-        startTime: newStartTime,
-        endTime: newEndTime,
-        detail: detail.trim() || null,
-      };
-      await onSubmit(updatedBlock);
-    } else {
-      const updatedBlock: Block = {
-        ...block,
-        type: 'transportation',
-        title: title.trim(),
-        startTime: newStartTime,
-        endTime: newEndTime,
-        detail: detail.trim() || null,
-        transportationType,
-      } as TransportationBlock;
-      await onSubmit(updatedBlock);
-    }
+    setIsSubmitting(true);
+    try {
+      if (isSchedule) {
+        const updatedBlock: Block = {
+          ...block,
+          title: title.trim(),
+          startTime: newStartTime,
+          endTime: newEndTime,
+          detail: detail.trim() || null,
+        };
+        await onSubmit(updatedBlock);
+      } else {
+        const updatedBlock: Block = {
+          ...block,
+          type: 'transportation',
+          title: title.trim(),
+          startTime: newStartTime,
+          endTime: newEndTime,
+          detail: detail.trim() || null,
+          transportationType,
+        } as TransportationBlock;
+        await onSubmit(updatedBlock);
+      }
 
-    onOpenChange(false);
+      onOpenChange(false);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -263,7 +269,9 @@ export const EditBlockDialog = ({ open, onOpenChange, block, onSubmit, onDelete 
           <Button variant='outline' onClick={() => onOpenChange(false)}>
             キャンセル
           </Button>
-          <Button onClick={handleSubmit}>更新</Button>
+          <Button onClick={handleSubmit} loading={isSubmitting}>
+            更新
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

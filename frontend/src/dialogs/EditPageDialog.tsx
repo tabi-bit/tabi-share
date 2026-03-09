@@ -33,9 +33,9 @@ export const EditPageDialog = ({ open, onOpenChange, page, trip, onDeleted }: Ed
   const [title, setTitle] = useState(page.title);
   const [tripTitle, setTripTitle] = useState(trip.title);
   const [tripDetail, setTripDetail] = useState(trip.detail ?? '');
-  const { updatePage } = useUpdatePage(page.tripId);
-  const { deletePage } = useDeletePage(page.tripId);
-  const { updateTrip } = useUpdateTrip();
+  const { updatePage, isUpdating: isUpdatingPage } = useUpdatePage(page.tripId);
+  const { deletePage, isDeleting } = useDeletePage(page.tripId);
+  const { updateTrip, isUpdating: isUpdatingTrip } = useUpdateTrip();
 
   // ダイアログが開いたときにフォームを初期化
   useEffect(() => {
@@ -154,7 +154,7 @@ export const EditPageDialog = ({ open, onOpenChange, page, trip, onDeleted }: Ed
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>キャンセル</AlertDialogCancel>
-                <AlertDialogAction variant='destructive' onClick={handleDelete}>
+                <AlertDialogAction variant='destructive' onClick={handleDelete} disabled={isDeleting}>
                   削除
                 </AlertDialogAction>
               </AlertDialogFooter>
@@ -164,7 +164,9 @@ export const EditPageDialog = ({ open, onOpenChange, page, trip, onDeleted }: Ed
           <Button variant='outline' onClick={() => onOpenChange(false)}>
             キャンセル
           </Button>
-          <Button onClick={handleSubmit}>更新</Button>
+          <Button onClick={handleSubmit} loading={isUpdatingPage || isUpdatingTrip}>
+            更新
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

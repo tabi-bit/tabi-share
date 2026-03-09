@@ -17,7 +17,7 @@ export const AddTripDialog = ({ open, onOpenChange, onCreated }: AddTripDialogPr
   const [title, setTitle] = useState('');
   const [detail, setDetail] = useState('');
   const [peopleNum, setPeopleNum] = useState<number | undefined>(undefined);
-  const { createTrip } = useCreateTrip();
+  const { createTrip, isCreating } = useCreateTrip();
 
   const handleSubmit = async () => {
     if (!title.trim()) {
@@ -98,7 +98,7 @@ export const AddTripDialog = ({ open, onOpenChange, onCreated }: AddTripDialogPr
           <Button variant='outline' onClick={() => handleOpenChange(false)}>
             キャンセル
           </Button>
-          <Button onClick={handleSubmit} disabled={!title.trim()}>
+          <Button onClick={handleSubmit} disabled={!title.trim()} loading={isCreating}>
             追加
           </Button>
         </DialogFooter>

@@ -46,6 +46,9 @@ export const AddBlockDialog = ({
   pageId,
   onSubmit,
 }: AddBlockDialogProps) => {
+  // 送信中の状態
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   // タブの状態
   const [blockType, setBlockType] = useState<'schedule' | 'transportation'>('schedule');
 
@@ -117,6 +120,8 @@ export const AddBlockDialog = ({
 
   // サブミット処理
   const handleSubmit = async () => {
+    if (isSubmitting) return;
+
     if (blockType === 'schedule') {
       // 予定ブロックの処理
       if (!scheduleTitle.trim()) {
@@ -146,8 +151,13 @@ export const AddBlockDialog = ({
         pageId,
       };
 
-      await onSubmit(block);
-      handleOpenChange(false);
+      setIsSubmitting(true);
+      try {
+        await onSubmit(block);
+        handleOpenChange(false);
+      } finally {
+        setIsSubmitting(false);
+      }
     } else {
       // 移動ブロックの処理
       const transportationLabel = TRANSPORTATION_OPTIONS.find(opt => opt.value === transportationType)?.label ?? '移動';
@@ -174,8 +184,13 @@ export const AddBlockDialog = ({
         pageId,
       };
 
-      await onSubmit(block);
-      handleOpenChange(false);
+      setIsSubmitting(true);
+      try {
+        await onSubmit(block);
+        handleOpenChange(false);
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -356,7 +371,9 @@ export const AddBlockDialog = ({
             <Button variant='outline' onClick={() => handleOpenChange(false)}>
               キャンセル
             </Button>
-            <Button onClick={handleSubmit}>追加</Button>
+            <Button onClick={handleSubmit} loading={isSubmitting}>
+              追加
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Tabs>

@@ -15,7 +15,7 @@ interface AddPageDialogProps {
 
 export const AddPageDialog = ({ open, onOpenChange, tripId, onCreated }: AddPageDialogProps) => {
   const [title, setTitle] = useState('');
-  const { createPage } = useCreatePage(tripId);
+  const { createPage, isCreating } = useCreatePage(tripId);
 
   const handleSubmit = async () => {
     if (!title.trim()) {
@@ -64,7 +64,7 @@ export const AddPageDialog = ({ open, onOpenChange, tripId, onCreated }: AddPage
           <Button variant='outline' onClick={() => handleOpenChange(false)}>
             キャンセル
           </Button>
-          <Button onClick={handleSubmit} disabled={!title.trim()}>
+          <Button onClick={handleSubmit} disabled={!title.trim()} loading={isCreating}>
             追加
           </Button>
         </DialogFooter>

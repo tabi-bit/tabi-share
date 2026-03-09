@@ -2,12 +2,17 @@ import { z } from 'zod';
 
 // --- アプリケーション層のスキーマ ---
 
+export const PAGE_TITLE_MAX_LENGTH = 8;
+
 /**
  * アプリケーション内で利用するPageのスキーマ
  */
 export const PageSchema = z.object({
   id: z.number(),
-  title: z.string(),
+  title: z
+    .string()
+    .min(1)
+    .max(PAGE_TITLE_MAX_LENGTH, { message: `ページ名は最大${PAGE_TITLE_MAX_LENGTH}文字です` }),
   detail: z.string().nullish(),
   tripId: z.number(),
 });

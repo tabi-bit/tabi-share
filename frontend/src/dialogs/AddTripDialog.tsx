@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { LazyMarkdownEditor } from '@/components/ui/markdown';
 import { useCreateTrip } from '@/hooks/useTrips';
-import type { CreateTripFromApi } from '@/types/trip';
+import { type CreateTripFromApi, TRIP_TITLE_MAX_LENGTH } from '@/types/trip';
 
 interface AddTripDialogProps {
   open: boolean;
@@ -63,6 +63,8 @@ export const AddTripDialog = ({ open, onOpenChange, onCreated }: AddTripDialogPr
                 value={title}
                 onChange={e => setTitle(e.target.value)}
                 placeholder='例: 箱根温泉旅行'
+                required
+                maxLength={TRIP_TITLE_MAX_LENGTH}
               />
             </div>
             <div className='space-y-2'>

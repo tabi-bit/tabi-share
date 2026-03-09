@@ -18,7 +18,7 @@ import { LazyMarkdownEditor } from '@/components/ui/markdown/LazyMarkdownEditor'
 import { Separator } from '@/components/ui/separator';
 import { useDeletePage, useUpdatePage } from '@/hooks/usePages';
 import { useUpdateTrip } from '@/hooks/useTrips';
-import type { Page } from '@/types';
+import { PAGE_TITLE_MAX_LENGTH, type Page, TRIP_TITLE_MAX_LENGTH } from '@/types';
 import type { Trip } from '@/types/trip';
 
 interface EditPageDialogProps {
@@ -103,6 +103,8 @@ export const EditPageDialog = ({ open, onOpenChange, page, trip, onDeleted }: Ed
                   value={title}
                   onChange={e => setTitle(e.target.value)}
                   placeholder='ページのタイトル'
+                  required
+                  maxLength={PAGE_TITLE_MAX_LENGTH}
                 />
               </div>
             </div>
@@ -117,6 +119,8 @@ export const EditPageDialog = ({ open, onOpenChange, page, trip, onDeleted }: Ed
                   value={tripTitle}
                   onChange={e => setTripTitle(e.target.value)}
                   placeholder='旅程のタイトル'
+                  required
+                  maxLength={TRIP_TITLE_MAX_LENGTH}
                 />
               </div>
               <div className='space-y-2'>

@@ -4,7 +4,7 @@ import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTi
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useCreatePage } from '@/hooks/usePages';
-import type { Page } from '@/types';
+import { PAGE_TITLE_MAX_LENGTH, type Page } from '@/types';
 
 interface AddPageDialogProps {
   open: boolean;
@@ -53,6 +53,8 @@ export const AddPageDialog = ({ open, onOpenChange, tripId, onCreated }: AddPage
                 value={title}
                 onChange={e => setTitle(e.target.value)}
                 placeholder='ページのタイトル'
+                required
+                maxLength={PAGE_TITLE_MAX_LENGTH}
               />
             </div>
           </div>

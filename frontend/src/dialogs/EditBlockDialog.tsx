@@ -18,7 +18,7 @@ import { Label } from '@/components/ui/label';
 import { LazyMarkdownEditor } from '@/components/ui/markdown';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { Block, TransportationBlock, TransportationType } from '@/types/block';
-import { TRANSPORTATION_OPTIONS } from '@/types/block';
+import { BLOCK_TITLE_MAX_LENGTH, TRANSPORTATION_OPTIONS } from '@/types/block';
 
 interface EditBlockDialogProps {
   open: boolean;
@@ -164,6 +164,8 @@ export const EditBlockDialog = ({ open, onOpenChange, block, onSubmit, onDelete 
                 value={title}
                 onChange={e => setTitle(e.target.value)}
                 placeholder={isSchedule ? '予定のタイトル' : '移動のタイトル'}
+                required
+                maxLength={BLOCK_TITLE_MAX_LENGTH}
               />
             </div>
             {!isSchedule && (

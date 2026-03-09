@@ -8,7 +8,7 @@ import { LazyMarkdownEditor } from '@/components/ui/markdown';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { Block, ScheduleBlock, TransportationBlock, TransportationType } from '@/types/block';
-import { TRANSPORTATION_OPTIONS } from '@/types/block';
+import { BLOCK_TITLE_MAX_LENGTH, TRANSPORTATION_OPTIONS } from '@/types/block';
 
 interface AddBlockDialogProps {
   open: boolean;
@@ -201,6 +201,8 @@ export const AddBlockDialog = ({
                   value={scheduleTitle}
                   onChange={e => setScheduleTitle(e.target.value)}
                   placeholder='予定のタイトル'
+                  required
+                  maxLength={BLOCK_TITLE_MAX_LENGTH}
                 />
               </div>
 

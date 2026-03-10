@@ -14,27 +14,19 @@ on:
         description: 'staging にデプロイするブランチ名'
         required: true
         default: 'develop'
-      environment:
-        description: 'デプロイ先環境'
-        type: choice
-        options:
-          - staging
-          - production
-        default: staging
 
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
   REGION: asia-northeast1
   ARTIFACT_REGISTRY: asia-northeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/tabi-share
   RUNTIME_SA: tabi-share-api-runtime@${{ secrets.GCP_PROJECT_ID }}.iam.gserviceaccount.com
-  CLOUD_SQL_INSTANCE: ${{ secrets.GCP_PROJECT_ID }}:asia-northeast1:tabi-share-db
 
 jobs:
   deploy:
     name: Build & Deploy to Cloud Run
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       id-token: write
 
     steps:
@@ -52,9 +44,7 @@ jobs:
       - name: Determine deployment target
         id: target
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            ENV="${{ inputs.environment }}"
-          elif [ "${{ github.ref_name }}" = "main" ]; then
+          if [ "${{ github.ref_name }}" = "main" ]; then
             ENV="production"
           else
             ENV="staging"
@@ -110,7 +100,7 @@ jobs:
               --region="${{ env.REGION }}" \
               --service-account="${{ env.RUNTIME_SA }}" \
               --set-secrets="DATABASE_URL=${SECRET}:latest" \
-              --add-cloudsql-instances="${{ env.CLOUD_SQL_INSTANCE }}" \
+              --clear-cloudsql-instances \
               --command="alembic" \
               --args="-n,production,upgrade,head" \
               --project="${{ env.PROJECT_ID }}"
@@ -120,7 +110,6 @@ jobs:
               --region="${{ env.REGION }}" \
               --service-account="${{ env.RUNTIME_SA }}" \
               --set-secrets="DATABASE_URL=${SECRET}:latest" \
-              --add-cloudsql-instances="${{ env.CLOUD_SQL_INSTANCE }}" \
               --command="alembic" \
               --args="-n,production,upgrade,head" \
               --project="${{ env.PROJECT_ID }}"
@@ -148,10 +137,23 @@ jobs:
             --allow-unauthenticated
             --port=8080
             --set-secrets=DATABASE_URL=${{ steps.target.outputs.secret }}:latest
-            --add-cloudsql-instances=${{ env.CLOUD_SQL_INSTANCE }}
 
       # ------------------------------------------------------------------
-      # 7. デプロイ結果の出力
+      # 7. GitHub Release 作成 (production のみ)
+      # ------------------------------------------------------------------
+      - name: Create GitHub Release
+        if: steps.target.outputs.env == 'production'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="v$(date +'%Y.%m.%d')-$(git rev-parse --short HEAD)"
+          gh release create "${TAG}" \
+            --title "${TAG}" \
+            --generate-notes \
+            --target main
+
+      # ------------------------------------------------------------------
+      # 8. デプロイ結果の出力
       # ------------------------------------------------------------------
       - name: Show deployment result
         run: |

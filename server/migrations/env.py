@@ -24,11 +24,7 @@ settings = get_settings()
 # --- 本番環境 (production) の設定 ---
 # DATABASE_URLが存在する場合は本番環境として設定
 if os.getenv("DATABASE_URL"):
-    # asyncpg用にURLを変換
-    # ?host=/cloudsql/... などのUnixソケットパラメータは保持する
-    production_database_url = os.getenv("DATABASE_URL").replace(
-        "postgresql://", "postgresql+asyncpg://", 1
-    )
+    production_database_url = settings.get_database_url()
     config.set_section_option("production", "sqlalchemy.url", production_database_url)
 
 # --- 開発データベース (devdb) の設定 ---
@@ -85,10 +81,12 @@ def do_run_migrations(connection: Connection) -> None:
 
 async def run_async_migrations() -> None:
     """非同期モードでマイグレーションを実行"""
+    connect_args = {"ssl": True} if settings.ssl_required else {}
     connectable = async_engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        connect_args=connect_args,
     )
 
     async with connectable.connect() as connection:

@@ -25,6 +25,7 @@ engine: AsyncEngine = create_async_engine(
     pool_pre_ping=True,  # 接続の健全性チェック
     pool_size=5,  # 接続プールサイズ
     max_overflow=10,  # 最大オーバーフロー接続数
+    connect_args={"ssl": True} if settings.ssl_required else {},
 )
 
 # 非同期セッションファクトリ

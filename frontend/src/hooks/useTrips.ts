@@ -18,22 +18,6 @@ import {
 const TRIPS_BASE_PATH = '/trips';
 
 /**
- * 全てのTripを取得するフック
- */
-export const useTrips = () => {
-  const { data, error, isLoading } = useSWR<Trip[]>(TRIPS_BASE_PATH, async (url: string) => {
-    const res = await fetcher(`${url}/`);
-    return z.array(tripFromApi).parse(res);
-  });
-
-  return {
-    trips: data,
-    error,
-    isLoading,
-  };
-};
-
-/**
  * URLのIDを指定して単一のTripを取得するフック
  */
 export const useTripByUrlId = (urlId: Trip['urlId'] | null) => {

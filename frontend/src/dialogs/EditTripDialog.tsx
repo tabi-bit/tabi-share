@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { LazyMarkdownEditor } from '@/components/ui/markdown/LazyMarkdownEditor';
 import { useDeleteTrip, useUpdateTrip } from '@/hooks/useTrips';
+import { useVisitedTrips } from '@/hooks/useVisitedTrips';
 import { TRIP_TITLE_MAX_LENGTH } from '@/types';
 import type { Trip } from '@/types/trip';
 
@@ -31,6 +32,7 @@ export const EditTripDialog = ({ open, onOpenChange, trip, onDeleted }: EditTrip
   const [tripDetail, setTripDetail] = useState(trip.detail ?? '');
   const { updateTrip, isUpdating } = useUpdateTrip();
   const { deleteTrip, isDeleting } = useDeleteTrip();
+  const { removeVisitedTrip } = useVisitedTrips();
 
   // ダイアログが開いたときにフォームを初期化
   useEffect(() => {
@@ -43,6 +45,7 @@ export const EditTripDialog = ({ open, onOpenChange, trip, onDeleted }: EditTrip
   // 削除処理
   const handleDelete = async () => {
     await deleteTrip(trip.id);
+    removeVisitedTrip(trip.urlId);
     onDeleted?.();
     onOpenChange(false);
   };

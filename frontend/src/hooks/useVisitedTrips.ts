@@ -1,3 +1,4 @@
+import { isAxiosError } from 'axios';
 import { useCallback, useEffect, useState } from 'react';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/apiClient';
@@ -8,7 +9,7 @@ const VISITED_TRIPS_KEY = 'visitedTripUrlIds';
 /**
  * localStorageから訪問済みTripのurlIdリストを取得
  */
-const getVisitedTripUrlIds = (): string[] => {
+export const getVisitedTripUrlIds = (): string[] => {
   try {
     const stored = localStorage.getItem(VISITED_TRIPS_KEY);
     if (!stored) return [];
@@ -21,7 +22,7 @@ const getVisitedTripUrlIds = (): string[] => {
 /**
  * localStorageに訪問済みTripのurlIdリストを保存
  */
-const saveVisitedTripUrlIds = (urlIds: string[]) => {
+export const saveVisitedTripUrlIds = (urlIds: string[]) => {
   try {
     localStorage.setItem(VISITED_TRIPS_KEY, JSON.stringify(urlIds));
   } catch {
@@ -51,6 +52,16 @@ export const useVisitedTrips = () => {
     });
   }, []);
 
+  // urlIdを訪問済みリストから削除
+  const removeVisitedTrip = useCallback((urlId: string) => {
+    setUrlIds(prev => {
+      const updated = prev.filter(id => id !== urlId);
+      if (updated.length === prev.length) return prev;
+      saveVisitedTripUrlIds(updated);
+      return updated;
+    });
+  }, []);
+
   // SWRで各urlIdからTripを取得
   const { data, error, isLoading } = useSWR<Trip[]>(
     urlIds.length > 0 ? ['visitedTrips', ...urlIds] : null,
@@ -61,8 +72,12 @@ export const useVisitedTrips = () => {
           try {
             const res = await fetcher(`/trips/url/${urlId}`);
             return tripFromApi.parse(res);
-          } catch {
-            // 取得失敗時はnullを返す
+          } catch (err) {
+            // 404 "Trip not found" の場合は訪問済みリストから除去
+            if (isAxiosError(err) && err.response?.status === 404 && err.response.data?.detail === 'Trip not found') {
+              const current = getVisitedTripUrlIds();
+              saveVisitedTripUrlIds(current.filter(id => id !== urlId));
+            }
             return null;
           }
         })
@@ -77,5 +92,6 @@ export const useVisitedTrips = () => {
     isLoading,
     error,
     addVisitedTrip,
+    removeVisitedTrip,
   };
 };

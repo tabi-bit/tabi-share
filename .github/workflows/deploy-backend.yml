@@ -14,13 +14,6 @@ on:
         description: 'staging にデプロイするブランチ名'
         required: true
         default: 'develop'
-      environment:
-        description: 'デプロイ先環境'
-        type: choice
-        options:
-          - staging
-          - production
-        default: staging
 
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
@@ -33,7 +26,7 @@ jobs:
     name: Build & Deploy to Cloud Run
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       id-token: write
 
     steps:
@@ -51,9 +44,7 @@ jobs:
       - name: Determine deployment target
         id: target
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            ENV="${{ inputs.environment }}"
-          elif [ "${{ github.ref_name }}" = "main" ]; then
+          if [ "${{ github.ref_name }}" = "main" ]; then
             ENV="production"
           else
             ENV="staging"
@@ -148,7 +139,21 @@ jobs:
             --set-secrets=DATABASE_URL=${{ steps.target.outputs.secret }}:latest
 
       # ------------------------------------------------------------------
-      # 7. デプロイ結果の出力
+      # 7. GitHub Release 作成 (production のみ)
+      # ------------------------------------------------------------------
+      - name: Create GitHub Release
+        if: steps.target.outputs.env == 'production'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="v$(date +'%Y.%m.%d')-$(git rev-parse --short HEAD)"
+          gh release create "${TAG}" \
+            --title "${TAG}" \
+            --generate-notes \
+            --target main
+
+      # ------------------------------------------------------------------
+      # 8. デプロイ結果の出力
       # ------------------------------------------------------------------
       - name: Show deployment result
         run: |

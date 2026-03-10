@@ -5,6 +5,7 @@
 """
 
 from functools import lru_cache
+from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -43,6 +44,11 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
+    @property
+    def ssl_required(self) -> bool:
+        """DATABASE_URL に sslmode=require が含まれる場合は SSL が必要"""
+        return bool(self.database_url and "sslmode=require" in self.database_url)
+
     def get_database_url(self) -> str:
         """
         データベースURLを取得
@@ -52,11 +58,17 @@ class Settings(BaseSettings):
         2. 個別の POSTGRES_* 環境変数から構築 (ローカル開発用)
         """
         if self.database_url:
-            # asyncpg 用に URL スキームを変換。
-            # クエリパラメータ (?host=/cloudsql/... 等) はそのまま保持する。
-            return self.database_url.replace(
-                "postgresql://", "postgresql+asyncpg://"
-            )
+            # asyncpg 用に URL スキームを変換
+            url = self.database_url.replace("postgresql://", "postgresql+asyncpg://")
+            # asyncpg がサポートしないクエリパラメータを除去
+            # (sslmode, channel_binding は connect_args で設定する)
+            parsed = urlparse(url)
+            params = {
+                k: v[0]
+                for k, v in parse_qs(parsed.query).items()
+                if k not in ("sslmode", "channel_binding")
+            }
+            return urlunparse(parsed._replace(query=urlencode(params)))
 
         if not all([
             self.postgres_user,

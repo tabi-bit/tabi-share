@@ -245,7 +245,7 @@ export const EditBlockDialog = ({ open, onOpenChange, block, onSubmit, onDelete 
           {/* 左側: 削除ボタン */}
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant='destructive' className='mr-0 sm:mr-auto'>
+              <Button variant='destructive' className='mr-auto'>
                 削除
               </Button>
             </AlertDialogTrigger>

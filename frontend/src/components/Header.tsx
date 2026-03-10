@@ -1,9 +1,12 @@
+import { Pencil } from 'lucide-react';
 import React, { type Dispatch, type SetStateAction, useCallback, useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import editScheduleIcon from '@/assets/icons/edit-schedule-white.svg';
 import eyeSolidIcon from '@/assets/icons/eye-solid-white.svg';
 import penToSquareSolidIcon from '@/assets/icons/pen-to-square-solid-white.svg';
 import { AddPageDialog } from '@/dialogs/AddPageDialog';
 import { EditPageDialog } from '@/dialogs/EditPageDialog';
+import { EditTripDialog } from '@/dialogs/EditTripDialog';
 import { cn } from '@/lib/utils';
 import type { Page } from '@/types';
 import type { Trip } from '@/types/trip';
@@ -63,7 +66,9 @@ function HeaderFull({
 }: Omit<HeaderFullProps, 'variant'>) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [editPageDialogOpen, setEditPageDialogOpen] = useState(false);
+  const [editTripDialogOpen, setEditTripDialogOpen] = useState(false);
   const [addPageDialogOpen, setAddPageDialogOpen] = useState(false);
+  const navigate = useNavigate();
   const scrollY = useRef(0);
 
   const handleHeaderClick = useCallback((e: React.MouseEvent) => {
@@ -144,7 +149,18 @@ function HeaderFull({
             isScrolled ? 'text-14px sm:text-16px' : 'text-16px sm:text-20px'
           )}
         >
-          {trip.title}
+          {mode === 'edit' ? (
+            <button
+              type='button'
+              className='inline-flex cursor-pointer items-center gap-1 underline decoration-dotted underline-offset-4 hover:decoration-solid'
+              onClick={() => setEditTripDialogOpen(true)}
+            >
+              {trip.title}
+              <Pencil className='size-3 opacity-60' />
+            </button>
+          ) : (
+            trip.title
+          )}
         </div>
 
         <div className='flex flex-row items-center justify-start gap-x-2 sm:contents'>
@@ -209,19 +225,28 @@ function HeaderFull({
         />
       )}
 
-      {/* ページ情報編集ダイアログ */}
-      {trip && selectedPage && (
+      {/* ページ編集ダイアログ */}
+      {selectedPage && (
         <EditPageDialog
           open={editPageDialogOpen}
           onOpenChange={setEditPageDialogOpen}
           page={selectedPage}
-          trip={trip}
           onDeleted={pageId => {
             const remainingPages = pages.filter(p => p.id !== pageId);
             if (remainingPages.length > 0) {
               onSelectPage(remainingPages[0].id);
             }
           }}
+        />
+      )}
+
+      {/* 旅程情報編集ダイアログ */}
+      {trip && (
+        <EditTripDialog
+          open={editTripDialogOpen}
+          onOpenChange={setEditTripDialogOpen}
+          trip={trip}
+          onDeleted={() => navigate('/')}
         />
       )}
     </header>
@@ -309,9 +334,9 @@ const PageInfoEditButton = ({ isScrolled, onClick }: { isScrolled: boolean; onCl
     variant='secondary'
     isScrolled={isScrolled}
     iconSrc={penToSquareSolidIcon}
-    iconAlt='ページ情報編集'
+    iconAlt='ページ編集'
     onClick={onClick}
   >
-    ページ情報編集
+    ページ編集
   </HeaderButtonBase>
 );

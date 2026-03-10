@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 async def test_create_and_read_trip(client: AsyncClient, db_session: AsyncSession):
     # --- Create ---
     trip_data = {"title": "test trip", "detail": "test detail"}
-    response = await client.post("/trips/", json=trip_data)
+    response = await client.post("/trips", json=trip_data)
     assert response.status_code == 200
     data = response.json()
     assert "id" in data
@@ -30,11 +30,13 @@ async def test_create_and_read_trip(client: AsyncClient, db_session: AsyncSessio
     assert data["url_id"] == url_id
 
 
-async def test_create_trip_without_detail(client: AsyncClient, db_session: AsyncSession):
+async def test_create_trip_without_detail(
+    client: AsyncClient, db_session: AsyncSession
+):
     """
-    POST /trips/ で detail を省略した場合に作成できることを検証
+    POST /trips で detail を省略した場合に作成できることを検証
     """
-    response = await client.post("/trips/", json={"title": "no detail trip"})
+    response = await client.post("/trips", json={"title": "no detail trip"})
     assert response.status_code == 200
     data = response.json()
     assert "id" in data
@@ -43,33 +45,33 @@ async def test_create_trip_without_detail(client: AsyncClient, db_session: Async
 
 async def test_create_trip_invalid_input(client: AsyncClient):
     """
-    POST /api/trips/ で不正な入力が与えられた場合に 422 が返ることを検証
+    POST /api/trips で不正な入力が与えられた場合に 422 が返ることを検証
     """
     # title が欠落している不正なデータ
     invalid_trip_data = {"detail": "missing title"}
-    response = await client.post("/trips/", json=invalid_trip_data)
+    response = await client.post("/trips", json=invalid_trip_data)
     assert response.status_code == 422
     assert "detail" in response.json()
     assert any("title" in err["loc"] for err in response.json()["detail"])
 
     # title が max_length を超過している不正なデータ
-    response = await client.post("/trips/", json={"title": "a" * 201})
+    response = await client.post("/trips", json={"title": "a" * 201})
     assert response.status_code == 422
     assert any("title" in err["loc"] for err in response.json()["detail"])
 
     # detail が max_length を超過している不正なデータ
-    response = await client.post("/trips/", json={"title": "test", "detail": "a" * 2001})
+    response = await client.post("/trips", json={"title": "test", "detail": "a" * 2001})
     assert response.status_code == 422
     assert any("detail" in err["loc"] for err in response.json()["detail"])
 
 
 async def test_read_trips(client: AsyncClient, db_session: AsyncSession):
     # 2つの旅行を作成
-    await client.post("/trips/", json={"title": "trip 1", "detail": "d1"})
-    await client.post("/trips/", json={"title": "trip 2", "detail": "d2"})
+    await client.post("/trips", json={"title": "trip 1", "detail": "d1"})
+    await client.post("/trips", json={"title": "trip 2", "detail": "d2"})
 
     # --- Read (Multiple) ---
-    response = await client.get("/trips/")
+    response = await client.get("/trips")
     assert response.status_code == 200
     data = response.json()
     # 既存のテストで作成されたデータも含まれる可能性があるため、2以上であることだけをチェック
@@ -85,7 +87,9 @@ async def test_get_trip_non_existent_id(client: AsyncClient, db_session: AsyncSe
     assert response.json()["detail"] == "Trip not found"
 
 
-async def test_get_trip_by_url_id_non_existent(client: AsyncClient, db_session: AsyncSession):
+async def test_get_trip_by_url_id_non_existent(
+    client: AsyncClient, db_session: AsyncSession
+):
     """
     GET /trips/url/{url_id} で存在しないURL IDが与えられた場合に 404 が返ることを検証
     """
@@ -97,7 +101,7 @@ async def test_get_trip_by_url_id_non_existent(client: AsyncClient, db_session: 
 async def test_update_trip(client: AsyncClient, db_session: AsyncSession):
     # 旅行を作成
     trip_data = {"title": "before update", "detail": "before"}
-    response = await client.post("/trips/", json=trip_data)
+    response = await client.post("/trips", json=trip_data)
     trip_id = response.json()["id"]
 
     # --- Update ---
@@ -113,7 +117,9 @@ async def test_update_trip(client: AsyncClient, db_session: AsyncSession):
     assert response.json()["title"] == update_data["title"]
 
 
-async def test_update_trip_non_existent_id(client: AsyncClient, db_session: AsyncSession):
+async def test_update_trip_non_existent_id(
+    client: AsyncClient, db_session: AsyncSession
+):
     """
     PUT /trips/{trip_id} で存在しないIDが与えられた場合に 404 が返ることを検証
     """
@@ -128,7 +134,7 @@ async def test_update_trip_invalid_input(client: AsyncClient, db_session: AsyncS
     PUT /trips/{trip_id} で不正な入力が与えられた場合に 422 が返ることを検証
     """
     trip_data = {"title": "test", "detail": "test"}
-    response = await client.post("/trips/", json=trip_data)
+    response = await client.post("/trips", json=trip_data)
     trip_id = response.json()["id"]
 
     # title の型が不正なデータ
@@ -145,7 +151,7 @@ async def test_update_trip_invalid_input(client: AsyncClient, db_session: AsyncS
 async def test_delete_trip(client: AsyncClient, db_session: AsyncSession):
     # 旅行を作成
     trip_data = {"title": "to be deleted", "detail": "delete"}
-    response = await client.post("/trips/", json=trip_data)
+    response = await client.post("/trips", json=trip_data)
     trip_id = response.json()["id"]
 
     # --- Delete ---

@@ -54,7 +54,9 @@ async def get_block(db: AsyncSession, block_id: int) -> Block | None:
     return result.scalar_one_or_none()
 
 
-async def update_block(db: AsyncSession, block_id: int, block: BlockUpdate) -> Block | None:
+async def update_block(
+    db: AsyncSession, block_id: int, block: BlockUpdate
+) -> Block | None:
     """
     特定のブロックを更新する関数
 

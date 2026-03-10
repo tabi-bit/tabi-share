@@ -44,7 +44,9 @@ async def test_create_page_invalid_input(
     assert any("title" in err["loc"] for err in response.json()["detail"])
 
 
-async def test_create_page_non_existent_trip(client: AsyncClient, db_session: AsyncSession):
+async def test_create_page_non_existent_trip(
+    client: AsyncClient, db_session: AsyncSession
+):
     """
     POST /trips/{trip_id}/pages で存在しないtrip_idが与えられた場合に 404 が返ることを検証
     """
@@ -94,7 +96,9 @@ async def test_update_page(
     assert response.json()["title"] == update_data["title"]
 
 
-async def test_update_page_non_existent_id(client: AsyncClient, db_session: AsyncSession):
+async def test_update_page_non_existent_id(
+    client: AsyncClient, db_session: AsyncSession
+):
     """
     PUT /pages/{page_id} で存在しないIDが与えられた場合に 404 が返ることを検証
     """
@@ -112,7 +116,9 @@ async def test_update_page_invalid_input(
     """
     # title の型が不正なデータ
     invalid_update_data = {"title": 123}  # Pydantic will catch this
-    response = await client.put(f"/pages/{test_create_page.id}", json=invalid_update_data)
+    response = await client.put(
+        f"/pages/{test_create_page.id}", json=invalid_update_data
+    )
     assert response.status_code == 422
     assert "detail" in response.json()
     assert any("title" in err["loc"] for err in response.json()["detail"])

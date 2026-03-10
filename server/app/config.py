@@ -35,6 +35,8 @@ class Settings(BaseSettings):
     cors_origins: list[str] = [
         "http://localhost:5173",
         "http://localhost:3000",
+        "https://tabishare.net",
+        "https://st.tabishare.net",
     ]
 
     model_config = SettingsConfigDict(
@@ -70,11 +72,7 @@ class Settings(BaseSettings):
             }
             return urlunparse(parsed._replace(query=urlencode(params)))
 
-        if not all([
-            self.postgres_user,
-            self.postgres_password,
-            self.postgres_db
-        ]):
+        if not all([self.postgres_user, self.postgres_password, self.postgres_db]):
             raise ValueError(
                 "DATABASE_URL または POSTGRES_* 環境変数が設定されていません"
             )

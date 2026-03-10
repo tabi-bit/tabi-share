@@ -57,7 +57,9 @@ async def setup_database():
 
     try:
         async with test_engine.begin() as conn:
-            await conn.execute(text("TRUNCATE TABLE blocks, pages, trips RESTART IDENTITY CASCADE"))
+            await conn.execute(
+                text("TRUNCATE TABLE blocks, pages, trips RESTART IDENTITY CASCADE")
+            )
     except Exception as e:
         logging.warning("テーブルのクリーンアップ中にエラーが発生しました: %s", e)
 
@@ -73,8 +75,7 @@ async def db_session():
 async def client():
     """テスト用の非同期APIクライアントを生成するFixture"""
     async with AsyncClient(
-        transport=ASGITransport(app=app),
-        base_url="http://test"
+        transport=ASGITransport(app=app), base_url="http://test"
     ) as c:
         yield c
 

@@ -15,7 +15,9 @@ async def test_create_and_read_block(
         "detail": "test detail",
         "block_type": "event",
     }
-    response = await client.post(f"/pages/{test_create_page.id}/blocks", json=block_data)
+    response = await client.post(
+        f"/pages/{test_create_page.id}/blocks", json=block_data
+    )
     assert response.status_code == 200
     data = response.json()
     assert data["title"] == block_data["title"]
@@ -41,7 +43,9 @@ async def test_create_block_without_detail(
         "start_time": "2023-01-01T10:00:00Z",
         "block_type": "event",
     }
-    response = await client.post(f"/pages/{test_create_page.id}/blocks", json=block_data)
+    response = await client.post(
+        f"/pages/{test_create_page.id}/blocks", json=block_data
+    )
     assert response.status_code == 200
     data = response.json()
     assert data["title"] == block_data["title"]
@@ -109,7 +113,9 @@ async def test_create_block_invalid_input(
     assert any("block_type" in err["loc"] for err in response.json()["detail"])
 
 
-async def test_create_block_non_existent_page(client: AsyncClient, db_session: AsyncSession):
+async def test_create_block_non_existent_page(
+    client: AsyncClient, db_session: AsyncSession
+):
     """
     POST /pages/{page_id}/blocks で存在しないpage_idが与えられた場合に 404 が返ることを検証
     """
@@ -176,7 +182,9 @@ async def test_update_block(
         "detail": "d",
         "block_type": "event",
     }
-    response = await client.post(f"/pages/{test_create_page.id}/blocks", json=block_data)
+    response = await client.post(
+        f"/pages/{test_create_page.id}/blocks", json=block_data
+    )
     block_id = response.json()["id"]
 
     # --- Update ---
@@ -196,7 +204,9 @@ async def test_update_block(
     assert response.json()["title"] == update_data["title"]
 
 
-async def test_update_block_non_existent_id(client: AsyncClient, db_session: AsyncSession):
+async def test_update_block_non_existent_id(
+    client: AsyncClient, db_session: AsyncSession
+):
     """
     PUT /blocks/{block_id} で存在しないIDが与えられた場合に 404 が返ることを検証
     """
@@ -223,7 +233,9 @@ async def test_update_block_invalid_input(
         "detail": "d",
         "block_type": "event",
     }
-    response = await client.post(f"/pages/{test_create_page.id}/blocks", json=block_data)
+    response = await client.post(
+        f"/pages/{test_create_page.id}/blocks", json=block_data
+    )
     block_id = response.json()["id"]
 
     # title の型が不正なデータ
@@ -249,7 +261,9 @@ async def test_delete_block(
         "detail": "d",
         "block_type": "event",
     }
-    response = await client.post(f"/pages/{test_create_page.id}/blocks", json=block_data)
+    response = await client.post(
+        f"/pages/{test_create_page.id}/blocks", json=block_data
+    )
     block_id = response.json()["id"]
 
     # --- Delete ---

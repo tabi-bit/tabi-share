@@ -72,11 +72,7 @@ class Settings(BaseSettings):
             }
             return urlunparse(parsed._replace(query=urlencode(params)))
 
-        if not all([
-            self.postgres_user,
-            self.postgres_password,
-            self.postgres_db
-        ]):
+        if not all([self.postgres_user, self.postgres_password, self.postgres_db]):
             raise ValueError(
                 "DATABASE_URL または POSTGRES_* 環境変数が設定されていません"
             )

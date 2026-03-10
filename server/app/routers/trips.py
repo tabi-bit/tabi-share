@@ -12,7 +12,7 @@ URL_ID_SIZE = 16
 
 
 @router.post(
-    "/",
+    "",
     summary="旅行作成",
     operation_id="trips-create",
     response_model=TripCreateOut,
@@ -33,7 +33,7 @@ async def create_trip(
 
 
 @router.get(
-    "/",
+    "",
     summary="旅行一覧取得",
     operation_id="trips-list",
     response_model=list[Trip],

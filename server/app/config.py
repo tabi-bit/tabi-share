@@ -35,6 +35,8 @@ class Settings(BaseSettings):
     cors_origins: list[str] = [
         "http://localhost:5173",
         "http://localhost:3000",
+        "https://tabishare.net",
+        "https://st.tabishare.net",
     ]
 
     model_config = SettingsConfigDict(

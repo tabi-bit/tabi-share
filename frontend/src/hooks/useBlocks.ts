@@ -1,6 +1,6 @@
 import type { AxiosError } from 'axios';
 import { useCallback } from 'react';
-import useSWR, { useSWRConfig } from 'swr';
+import useSWR, { type SWRConfiguration, useSWRConfig } from 'swr';
 import useSWRMutation from 'swr/mutation';
 import { z } from 'zod';
 import { apiClient, fetcher } from '@/lib/apiClient';
@@ -12,13 +12,14 @@ const BLOCKS_BASE_PATH = '/blocks';
 /**
  * pageId に紐づく Block をすべて取得するフック
  */
-export const useBlocks = (pageId: number | null) => {
+export const useBlocks = (pageId: number | null, options?: Pick<SWRConfiguration, 'refreshInterval'>) => {
   const { data, error, isLoading } = useSWR<Block[]>(
     pageId ? `${PAGES_BASE_PATH}/${pageId}/blocks` : null,
     async (url: string) => {
       const res = await fetcher(url);
       return z.array(blockFromApi).parse(res);
-    }
+    },
+    options
   );
 
   return {

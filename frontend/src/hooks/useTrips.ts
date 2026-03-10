@@ -1,6 +1,6 @@
 import type { AxiosError } from 'axios';
 import { useCallback } from 'react';
-import useSWR, { useSWRConfig } from 'swr';
+import useSWR, { type SWRConfiguration, useSWRConfig } from 'swr';
 import useSWRMutation from 'swr/mutation';
 import z from 'zod';
 import { apiClient, fetcher } from '@/lib/apiClient';
@@ -20,7 +20,7 @@ const TRIPS_BASE_PATH = '/trips';
 /**
  * URLのIDを指定して単一のTripを取得するフック
  */
-export const useTripByUrlId = (urlId: Trip['urlId'] | null) => {
+export const useTripByUrlId = (urlId: Trip['urlId'] | null, options?: Pick<SWRConfiguration, 'refreshInterval'>) => {
   const { mutate } = useSWRConfig();
   const { data, error, isLoading } = useSWR<Trip>(
     urlId ? `${TRIPS_BASE_PATH}/url/${urlId}` : null,
@@ -29,6 +29,7 @@ export const useTripByUrlId = (urlId: Trip['urlId'] | null) => {
       return tripFromApi.parse(res);
     },
     {
+      ...options,
       onSuccess: trip => {
         if (trip) {
           // /trips/{id} のキャッシュを更新

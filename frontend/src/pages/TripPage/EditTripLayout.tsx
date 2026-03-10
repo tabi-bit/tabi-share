@@ -16,10 +16,11 @@ interface EditTripLayoutProps {
   selectedPageId: Page['id'];
   onDragStart?: (isTouch: boolean) => void;
   onDragEnd?: () => void;
+  refreshInterval?: number;
 }
 
-export const EditTripLayout = ({ selectedPageId, onDragStart, onDragEnd }: EditTripLayoutProps) => {
-  const { blocks } = useBlocks(selectedPageId);
+export const EditTripLayout = ({ selectedPageId, onDragStart, onDragEnd, refreshInterval }: EditTripLayoutProps) => {
+  const { blocks } = useBlocks(selectedPageId, { refreshInterval });
   const { createBlock } = useCreateBlock(selectedPageId);
   const { updateBlock } = useUpdateBlock(selectedPageId);
   const { deleteBlock } = useDeleteBlock(selectedPageId);

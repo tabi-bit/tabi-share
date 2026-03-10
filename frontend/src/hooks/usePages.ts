@@ -1,6 +1,6 @@
 import type { AxiosError } from 'axios';
 import { useCallback } from 'react';
-import useSWR, { useSWRConfig } from 'swr';
+import useSWR, { type SWRConfiguration, useSWRConfig } from 'swr';
 import useSWRMutation from 'swr/mutation';
 import { z } from 'zod';
 import { apiClient, fetcher } from '@/lib/apiClient';
@@ -12,13 +12,14 @@ const PAGES_BASE_PATH = '/pages';
 /**
  * tripId に紐づく Page をすべて取得するフック
  */
-export const usePages = (tripId: number | null) => {
+export const usePages = (tripId: number | null, options?: Pick<SWRConfiguration, 'refreshInterval'>) => {
   const { data, error, isLoading } = useSWR<Page[]>(
     tripId ? `${TRIPS_BASE_PATH}/${tripId}/pages` : null,
     async (url: string) => {
       const res = await fetcher(url);
       return z.array(pageFromApi).parse(res);
-    }
+    },
+    options
   );
 
   return {

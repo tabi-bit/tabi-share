@@ -19,8 +19,9 @@ const TripPage = () => {
   const [minLoadingComplete, setMinLoadingComplete] = useState(false);
   const { urlId } = useParams<{ urlId: string }>();
 
-  const { trip, error: tripError, isLoading: isTripLoading } = useTripByUrlId(urlId ?? null);
-  const { pages, error: pagesError, isLoading: isPagesLoading } = usePages(trip?.id ?? null);
+  const refreshInterval = mode === 'edit' ? 5000 : 0;
+  const { trip, error: tripError, isLoading: isTripLoading } = useTripByUrlId(urlId ?? null, { refreshInterval });
+  const { pages, error: pagesError, isLoading: isPagesLoading } = usePages(trip?.id ?? null, { refreshInterval });
   const { addVisitedTrip } = useVisitedTrips();
 
   const isLoading = isTripLoading || isPagesLoading || trip == null || pages == null || !minLoadingComplete;
@@ -102,7 +103,12 @@ const TripPage = () => {
             />
           )}
           {selectedPageId != null && mode === 'edit' && (
-            <EditTripLayout selectedPageId={selectedPageId} onDragStart={startDrag} onDragEnd={stopDrag} />
+            <EditTripLayout
+              selectedPageId={selectedPageId}
+              onDragStart={startDrag}
+              onDragEnd={stopDrag}
+              refreshInterval={refreshInterval}
+            />
           )}
         </div>
       )}

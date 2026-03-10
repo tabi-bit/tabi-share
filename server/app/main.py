@@ -17,6 +17,7 @@ app = FastAPI(
     title="Tabi Share API",
     version="0.1.0",
     description="国内車旅行の旅程管理API",
+    redirect_slashes=False,
 )
 
 app.add_middleware(

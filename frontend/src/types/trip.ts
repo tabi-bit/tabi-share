@@ -17,15 +17,20 @@ export type Trip = z.infer<typeof TripSchema>;
 
 // --- API層のスキーマ ---
 
+export const TRIP_TITLE_MAX_LENGTH = 16;
+
 /**
  * APIから返ってくる生のデータ形式を表すスキーマ
  */
 const ApiTripSchema = z.object({
   id: z.number(),
-  title: z.string(),
+  title: z
+    .string()
+    .min(1)
+    .max(TRIP_TITLE_MAX_LENGTH, { message: `タイトルは最大${TRIP_TITLE_MAX_LENGTH}文字です` }),
   detail: z.string().nullish(),
   people_num: z.number().nullish(),
-  url_id: z.string(),
+  url_id: z.string().max(100),
 });
 
 export type ApiTrip = z.infer<typeof ApiTripSchema>;

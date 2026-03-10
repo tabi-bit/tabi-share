@@ -176,7 +176,7 @@ function HeaderFull({
                   </SelectItem>
                 ))}
                 {mode === 'edit' && (
-                  <SelectItem value='add-new' className='text-primary'>
+                  <SelectItem value='add-new' className='text-nowrap text-primary'>
                     + ページを追加
                   </SelectItem>
                 )}
@@ -198,21 +198,24 @@ function HeaderFull({
       </div>
 
       {/* ページ追加ダイアログ */}
-      <AddPageDialog
-        open={addPageDialogOpen}
-        onOpenChange={setAddPageDialogOpen}
-        tripId={trip.id}
-        onCreated={page => {
-          onSelectPage(page.id);
-        }}
-      />
+      {trip && (
+        <AddPageDialog
+          open={addPageDialogOpen}
+          onOpenChange={setAddPageDialogOpen}
+          tripId={trip.id}
+          onCreated={page => {
+            onSelectPage(page.id);
+          }}
+        />
+      )}
 
       {/* ページ情報編集ダイアログ */}
-      {selectedPage && (
+      {trip && selectedPage && (
         <EditPageDialog
           open={editPageDialogOpen}
           onOpenChange={setEditPageDialogOpen}
           page={selectedPage}
+          trip={trip}
           onDeleted={pageId => {
             const remainingPages = pages.filter(p => p.id !== pageId);
             if (remainingPages.length > 0) {

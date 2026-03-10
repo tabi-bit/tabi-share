@@ -24,10 +24,14 @@ const meta: Meta<typeof Button> = {
     disabled: {
       control: 'boolean',
     },
+    loading: {
+      control: 'boolean',
+    },
   },
   args: {
     children: 'Button',
     disabled: false,
+    loading: false,
   },
 };
 
@@ -104,6 +108,13 @@ export const Disabled: Story = {
   },
 };
 
+export const Loading: Story = {
+  args: {
+    loading: true,
+    children: '追加',
+  },
+};
+
 export const AllVariants: Story = {
   render: () => (
     <div className='flex flex-col gap-4'>
@@ -125,6 +136,15 @@ export const AllVariants: Story = {
         <Button disabled>Disabled</Button>
         <Button variant='destructive' disabled>
           Disabled Destructive
+        </Button>
+      </div>
+      <div className='flex gap-2'>
+        <Button loading>Loading</Button>
+        <Button variant='destructive' loading>
+          Loading Destructive
+        </Button>
+        <Button variant='outline' loading>
+          Loading Outline
         </Button>
       </div>
     </div>

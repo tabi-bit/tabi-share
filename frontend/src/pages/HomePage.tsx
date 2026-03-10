@@ -36,8 +36,6 @@ const HomePage = () => {
                   className='block rounded-lg bg-white p-4 shadow-sm transition hover:shadow-md'
                 >
                   <h3 className='mb-1 font-semibold text-gray-900 text-lg'>{trip.title}</h3>
-                  {trip.detail && <p className='line-clamp-2 text-gray-600 text-sm'>{trip.detail}</p>}
-                  {trip.peopleNum && <p className='mt-2 text-gray-500 text-xs'>参加人数: {trip.peopleNum}人</p>}
                 </Link>
               ))}
             </div>

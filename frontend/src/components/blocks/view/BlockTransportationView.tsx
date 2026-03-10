@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import angleDownIcon from '@/assets/icons/angle-down.svg';
+import { MarkdownViewer } from '@/components/ui/markdown';
 import { useResizeObserver } from '@/hooks/useResizeObserver';
 import { cn } from '@/lib/utils';
 import { TransportationIcon } from '../TransportationIcon';
@@ -60,7 +61,7 @@ export function BlockTransportationView({ block, className }: BlockTransportatio
           )}
           ref={detailDivRef}
         >
-          {block.detail}
+          <MarkdownViewer content={block.detail} variant='default' />
         </div>
       )}
       {block.detail && isOverflowDetail && (

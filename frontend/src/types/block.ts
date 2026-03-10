@@ -2,6 +2,8 @@ import { z } from 'zod';
 
 // --- 共通の型定義 ---
 
+export const BLOCK_TITLE_MAX_LENGTH = 32;
+
 /**
  * 交通手段の列挙型スキーマ
  */
@@ -32,7 +34,10 @@ export const TRANSPORTATION_OPTIONS = [
  */
 const AppBaseBlockSchema = z.object({
   id: z.number(),
-  title: z.string(),
+  title: z
+    .string()
+    .min(1)
+    .max(BLOCK_TITLE_MAX_LENGTH, { message: `ブロックタイトルは最大${BLOCK_TITLE_MAX_LENGTH}文字です` }),
   startTime: z.date(),
   endTime: z.date().nullable(),
   detail: z.string().nullish(),

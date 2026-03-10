@@ -183,6 +183,10 @@
       display: none;
     }
   }
+
+  .fc-day-today {
+    background: none !important;
+  }
 }
 
 @layer base {

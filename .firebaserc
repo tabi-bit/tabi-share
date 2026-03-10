@@ -1,5 +1,21 @@
 {
   "projects": {
     "default": "tabi-share-8ef6b"
-  }
+  },
+  "targets": {
+    "tabi-share-8ef6b": {
+      "hosting": {
+        "staging": [
+          "tabishare-st"
+        ],
+        "production": [
+          "tabishare"
+        ],
+        "preview": [
+          "tabi-share-8ef6b"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }

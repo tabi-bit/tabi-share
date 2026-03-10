@@ -94,7 +94,13 @@ const TripPage = () => {
               編集モードからページを追加してください
             </div>
           )}
-          {selectedPageId != null && mode === 'view' && <ViewTripLayout selectedPageId={selectedPageId} />}
+          {selectedPageId != null && mode === 'view' && (
+            <ViewTripLayout
+              selectedPageId={selectedPageId}
+              tripDetail={trip.detail ?? null}
+              isFirstPage={selectedPageId === pages[0].id}
+            />
+          )}
           {selectedPageId != null && mode === 'edit' && (
             <EditTripLayout selectedPageId={selectedPageId} onDragStart={startDrag} onDragEnd={stopDrag} />
           )}

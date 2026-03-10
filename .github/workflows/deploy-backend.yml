@@ -109,6 +109,7 @@ jobs:
               --region="${{ env.REGION }}" \
               --service-account="${{ env.RUNTIME_SA }}" \
               --set-secrets="DATABASE_URL=${SECRET}:latest" \
+              --clear-cloudsql-instances \
               --command="alembic" \
               --args="-n,production,upgrade,head" \
               --project="${{ env.PROJECT_ID }}"

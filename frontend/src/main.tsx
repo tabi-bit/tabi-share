@@ -5,8 +5,10 @@ import './index.css';
 import { App } from './App.tsx';
 import 'dayjs/locale/ja';
 import dayjs from 'dayjs';
+import { initEnvBranding } from './lib/envBranding.ts';
 
 dayjs.locale('ja');
+initEnvBranding();
 const rootElement = document.getElementById('root');
 if (rootElement) {
   createRoot(rootElement).render(

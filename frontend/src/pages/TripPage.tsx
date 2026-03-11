@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { HeaderSkeleton } from '@/components/HeaderSkeleton';
+import { Title } from '@/components/Title';
 import { TimelineSkeleton } from '@/components/timeline';
 import { useDragAutoScroll } from '@/hooks/useDragAutoScroll';
 import { usePages } from '@/hooks/usePages';
@@ -79,6 +80,7 @@ const TripPage = () => {
           ref={scrollContainerRef}
           className='flex h-dvh w-full flex-col items-center justify-between gap-4 overflow-auto overscroll-y-none'
         >
+          <Title>{trip.title}</Title>
           <Header
             variant='full'
             selectedPageId={selectedPageId}

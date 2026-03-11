@@ -48,6 +48,28 @@ const TripPage = () => {
     }
   }, [mode]);
 
+  // Editモード中のブラウザバックを阻止し、Viewモードに戻す
+  useEffect(() => {
+    if (mode !== 'edit') return;
+
+    history.pushState({ editMode: true }, '', location.href);
+    let poppedByBack = false;
+
+    const handlePopState = () => {
+      poppedByBack = true;
+      setMode('view');
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      // ボタン等でViewに戻った場合、pushStateで追加したエントリを消す
+      if (!poppedByBack) {
+        history.back();
+      }
+    };
+  }, [mode]);
+
   // Tripが読み込まれたら訪問済みリストに追加
   useEffect(() => {
     if (trip) {

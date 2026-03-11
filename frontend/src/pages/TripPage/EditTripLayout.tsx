@@ -144,19 +144,30 @@ export const EditTripLayout = ({ selectedPageId, onDragStart, onDragEnd, refresh
 
   // --- ドラッグ&ドロップ・リサイズ操作 ---
 
+  const SNAP_MINUTES = 15;
+
+  const snapToSlot = useCallback((date: Date): Date => {
+    const snapped = new Date(date);
+    const minutes = snapped.getMinutes();
+    snapped.setMinutes(Math.round(minutes / SNAP_MINUTES) * SNAP_MINUTES, 0, 0);
+    return snapped;
+  }, []);
+
   const updateBlockTime = useCallback(
     async (event: EventDropArg['event'] | EventResizeDoneArg['event']) => {
       const blockData = event.extendedProps.blockData as Block;
+      const startTime = event.start ? snapToSlot(event.start) : blockData.startTime;
+      const endTime = event.end ? snapToSlot(event.end) : blockData.endTime;
       await updateBlock({
         id: blockData.id,
         data: {
           ...blockData,
-          startTime: event.start ?? blockData.startTime,
-          endTime: event.end ?? blockData.endTime,
+          startTime,
+          endTime,
         },
       });
     },
-    [updateBlock]
+    [updateBlock, snapToSlot]
   );
 
   const handleEventDrop = useCallback(
@@ -218,6 +229,7 @@ export const EditTripLayout = ({ selectedPageId, onDragStart, onDragEnd, refresh
           eventDidMount={handleEventMount}
           // スロットと時間軸の設定
           allDaySlot={false}
+          snapDuration={'00:15:00'}
           slotDuration={'00:15:00'}
           slotMinTime={'00:00:00'}
           slotLabelInterval={'01:00:00'}

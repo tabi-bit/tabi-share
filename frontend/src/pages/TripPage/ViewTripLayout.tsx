@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { TimelineSkeleton } from '@/components/timeline';
 import { Timeline } from '@/components/timeline/Timeline';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { MarkdownViewer } from '@/components/ui/markdown';
@@ -22,7 +23,6 @@ const ViewTripLayout = ({ selectedPageId, tripDetail, isFirstPage }: ViewTripLay
 
   return (
     <>
-      {isBlocksLoading && <div>Loading Blocks ...</div>}
       <div className='flex h-full w-full max-w-3xl grow flex-col items-center px-2'>
         {tripDetail && (
           <Accordion
@@ -40,6 +40,7 @@ const ViewTripLayout = ({ selectedPageId, tripDetail, isFirstPage }: ViewTripLay
             </AccordionItem>
           </Accordion>
         )}
+        {isBlocksLoading && <TimelineSkeleton className='w-full max-w-3xl p-4' />}
         {!isBlocksLoading && blocks && <Timeline blocks={blocks} type='view' className='pb-4' />}
       </div>
       {blocksError && <div>Blocks Loading Error: {String(blocksError)}</div>}

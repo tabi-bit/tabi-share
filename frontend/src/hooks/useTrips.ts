@@ -1,9 +1,10 @@
-import type { AxiosError } from 'axios';
 import { useCallback } from 'react';
+import { toast } from 'sonner';
 import useSWR, { type SWRConfiguration, useSWRConfig } from 'swr';
 import useSWRMutation from 'swr/mutation';
 import z from 'zod';
 import { apiClient, fetcher } from '@/lib/apiClient';
+import { getErrorMessage } from '@/lib/errors';
 import { blockToApi } from '@/types';
 import { pageFromApi, pageMutationToApi } from '@/types/page';
 import {
@@ -105,9 +106,12 @@ export const useCreateTrip = () => {
     return newTrip;
   }, []);
 
-  const { trigger, isMutating, error, data } = useSWRMutation<CreateTripFromApi, AxiosError, string, CreateTripArg>(
+  const { trigger, isMutating, error, data } = useSWRMutation<CreateTripFromApi, Error, string, CreateTripArg>(
     TRIPS_BASE_PATH,
-    createTrip
+    createTrip,
+    {
+      onError: err => toast.error(getErrorMessage(err)),
+    }
   );
 
   return {
@@ -137,6 +141,7 @@ export const useUpdateTrip = () => {
     TRIPS_BASE_PATH, // リストの再検証トリガーとして利用
     updateTripFetcher,
     {
+      onError: (err: unknown) => toast.error(getErrorMessage(err)),
       // 更新成功時、APIレスポンスを使ってキャッシュを操作
       onSuccess: (updatedTrip: Trip) => {
         // 個別IDのキャッシュを更新 (populate)
@@ -179,7 +184,10 @@ export const useDeleteTrip = () => {
 
   const { trigger, isMutating, error } = useSWRMutation(
     TRIPS_BASE_PATH, // リストのキー（削除完了後のリスト自動再検証のため）
-    deleteTripFetcher
+    deleteTripFetcher,
+    {
+      onError: (err: unknown) => toast.error(getErrorMessage(err)),
+    }
   );
 
   const deleteTrip = useCallback(

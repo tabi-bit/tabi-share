@@ -1,9 +1,10 @@
-import type { AxiosError } from 'axios';
 import { useCallback } from 'react';
+import { toast } from 'sonner';
 import useSWR, { type SWRConfiguration, useSWRConfig } from 'swr';
 import useSWRMutation from 'swr/mutation';
 import { z } from 'zod';
 import { apiClient, fetcher } from '@/lib/apiClient';
+import { getErrorMessage } from '@/lib/errors';
 import { type Block, BlockSchema, blockFromApi, blockToApi } from '@/types/block';
 
 const PAGES_BASE_PATH = '/pages';
@@ -65,10 +66,11 @@ export const useCreateBlock = (pageId: number | null) => {
     [pageId]
   );
 
-  const { trigger, isMutating, error, data } = useSWRMutation<Block, AxiosError, string | null, CreateBlockArg>(
+  const { trigger, isMutating, error, data } = useSWRMutation<Block, Error, string | null, CreateBlockArg>(
     listKey, // リストの更新
     createBlockFetcher,
     {
+      onError: err => toast.error(getErrorMessage(err)),
       onSuccess: (newBlock: Block) =>
         mutate(
           listKey,
@@ -131,7 +133,10 @@ export const useUpdateBlock = (pageId: number | null) => {
         },
         revalidate: false,
         rollbackOnError: true,
-        onError: () => mutate(`${BLOCKS_BASE_PATH}/${arg.id}`), // 個別データのロールバック
+        onError: (err: unknown) => {
+          toast.error(getErrorMessage(err));
+          mutate(`${BLOCKS_BASE_PATH}/${arg.id}`); // 個別データのロールバック
+        },
       });
     },
     [trigger, mutate]
@@ -183,7 +188,10 @@ export const useDeleteBlock = (pageId: number | null) => {
         },
         revalidate: false,
         rollbackOnError: true,
-        onError: () => mutate(individualKey), // エラー時に個別データを再検証して戻す
+        onError: (err: unknown) => {
+          toast.error(getErrorMessage(err));
+          mutate(individualKey); // エラー時に個別データを再検証して戻す
+        },
       });
     },
     [trigger, mutate]

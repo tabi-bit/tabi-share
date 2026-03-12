@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
+import { Toaster } from 'sonner';
 import './index.css';
 import { App } from './App.tsx';
 import 'dayjs/locale/ja';
@@ -15,6 +16,7 @@ if (rootElement) {
     <StrictMode>
       <BrowserRouter>
         <App />
+        <Toaster position='bottom-center' richColors />
       </BrowserRouter>
     </StrictMode>
   );

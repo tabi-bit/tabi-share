@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { FetchErrorView } from '@/components/FetchErrorView';
 import { Header } from '@/components/Header';
 import { HeaderSkeleton } from '@/components/HeaderSkeleton';
 import { Title } from '@/components/Title';
@@ -25,7 +26,7 @@ const TripPage = () => {
   const { pages, error: pagesError, isLoading: isPagesLoading } = usePages(trip?.id ?? null, { refreshInterval });
   const { addVisitedTrip } = useVisitedTrips();
 
-  const isLoading = isTripLoading || isPagesLoading || trip == null || pages == null || !minLoadingComplete;
+  const isLoading = isTripLoading || isPagesLoading || !minLoadingComplete;
   const isError = tripError || pagesError;
 
   // 1秒間の最小ローディング表示を管理
@@ -77,6 +78,15 @@ const TripPage = () => {
     }
   }, [trip, addVisitedTrip]);
 
+  if (isError) {
+    return (
+      <div className='flex h-dvh w-full flex-col items-center overflow-auto'>
+        <HeaderSkeleton />
+        <FetchErrorView error={tripError ?? pagesError} className='w-full max-w-3xl p-4' />
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className='flex h-dvh w-full flex-col items-center overflow-auto'>
@@ -86,17 +96,10 @@ const TripPage = () => {
     );
   }
 
-  if (isError) {
-    return (
-      <div>
-        {tripError && `Trip Loading Error: ${String(tripError)}`}
-        {pagesError && `Pages Loading Error: ${String(pagesError)}`}
-      </div>
-    );
-  }
-
   return (
     <>
+      {isError && <div>Error</div>}
+      {isLoading && <div>Loading...</div>}
       {trip && pages && (
         <div
           ref={scrollContainerRef}

@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     environment: str = "development"
     cors_origins: list[str] = [
         "http://localhost:5173",
+        "https://localhost:5173",
         "http://localhost:3000",
         "https://tabishare.net",
         "https://st.tabishare.net",

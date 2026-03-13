@@ -50,5 +50,8 @@ build/
 logs/
 *.log
 
+# Local SSL certificates
+*.pem
+
 # firebase
 .firebase

@@ -47,6 +47,19 @@ npx dotenvx set KEY value -f .env.stg
 npx dotenvx set VITE_API_BASE_URL https://api.example.com -f .env.stg
 ```
 
+### PWA開発（HTTPS）
+
+モバイル端末からプライベートIPでPWAのスタンドアロン動作を確認する場合、HTTPSが必要です。
+
+```bash
+# HTTPS有効で開発サーバーを起動（初回は証明書を自動生成）
+cd frontend && npm run dev:https
+```
+
+- 通常の `npm run dev` はHTTPで起動（証明書ファイルがなければHTTPSは無効）
+- `npm run dev:https` は `scripts/setup-https.sh` で mkcert 証明書を生成してHTTPS起動
+- Service WorkerとPWAインストールはHTTPS（またはlocalhost）が必須
+
 ### リンター・フォーマッター・型チェック
 
 ```bash

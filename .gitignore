@@ -45,6 +45,7 @@ Thumbs.db
 dist/
 build/
 *.tsbuildinfo
+dev-dist/
 
 # Logs
 logs/

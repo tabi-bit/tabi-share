@@ -5,6 +5,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import './index.css';
 import { App } from './App.tsx';
+import { SWRProvider } from './components/SWRProvider.tsx';
 import 'dayjs/locale/ja';
 import dayjs from 'dayjs';
 import { pwaPromptEventAtom } from './atoms/pwa';
@@ -33,8 +34,10 @@ if (rootElement) {
     <StrictMode>
       <JotaiProvider store={jotaiStore}>
         <BrowserRouter>
-          <App />
-          <Toaster position='bottom-center' richColors />
+          <SWRProvider>
+            <App />
+            <Toaster position='bottom-center' richColors />
+          </SWRProvider>
         </BrowserRouter>
       </JotaiProvider>
     </StrictMode>

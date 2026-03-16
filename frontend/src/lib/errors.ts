@@ -67,5 +67,16 @@ export const getErrorMessage = (error: unknown): string => {
   return '不明なエラーが発生しました';
 };
 
+/** オフライン時の操作エラー */
+export class OfflineError extends AppError {
+  constructor() {
+    super('オフラインモードのため操作できません', 0, 'offline');
+    this.name = 'OfflineError';
+  }
+}
+
+/** OfflineError の型ガード */
+export const isOfflineError = (err: unknown): err is OfflineError => err instanceof OfflineError;
+
 /** axios の型ガード（インターセプターから使用） */
 export const isAxiosError = axios.isAxiosError;

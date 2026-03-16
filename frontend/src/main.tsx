@@ -1,4 +1,4 @@
-import { createStore, Provider as JotaiProvider } from 'jotai';
+import { Provider as JotaiProvider } from 'jotai';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
@@ -13,12 +13,12 @@ import { pwaPromptEventAtom } from './atoms/pwa';
 import { initEnvBranding } from './lib/envBranding.ts';
 import { evaluateNetwork } from './lib/networkDetection';
 import type { BeforeInstallPromptEvent } from './lib/pwa';
+import { appStore } from './lib/store';
 
 dayjs.locale('ja');
 initEnvBranding();
 
-// Jotai ストア（テスト時に差し替え可能）
-const jotaiStore = createStore();
+const jotaiStore = appStore;
 
 // React マウント前に発火する可能性があるため、React外でイベントを登録
 window.addEventListener('beforeinstallprompt', e => {

@@ -44,7 +44,7 @@ const ViewTripLayout = ({ selectedPageId, tripDetail, isFirstPage }: ViewTripLay
               collapsible
               value={accordionValue}
               onValueChange={setAccordionValue}
-              className='mb-4 w-full rounded-lg border'
+              className='mb-4 w-full rounded-lg border bg-white'
             >
               <AccordionItem value='trip-detail' className='px-3'>
                 <AccordionTrigger>旅程全体メモ</AccordionTrigger>

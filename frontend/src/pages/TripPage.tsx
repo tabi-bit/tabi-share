@@ -74,6 +74,13 @@ const TripPage = () => {
     };
   }, [mode]);
 
+  // オフライン時は編集モードを強制解除
+  useEffect(() => {
+    if (isOffline && mode === 'edit') {
+      setMode('view');
+    }
+  }, [isOffline, mode]);
+
   // Tripが読み込まれたら訪問済みリストに追加
   useEffect(() => {
     if (trip) {

@@ -1,6 +1,8 @@
+import { useAtomValue } from 'jotai';
 import type React from 'react';
 import { useId, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { isOfflineReadAtom } from '@/atoms/network';
 import { Header } from '@/components/Header';
 import { PwaInstallBanner } from '@/components/PwaInstallBanner';
 import { Button } from '@/components/ui/button';
@@ -12,6 +14,7 @@ const HomePage = () => {
   const { trips, isLoading } = useVisitedTrips();
   const navigate = useNavigate();
   const [addTripDialogOpen, setAddTripDialogOpen] = useState(false);
+  const isOffline = useAtomValue(isOfflineReadAtom);
 
   const hasTrips = trips != null && trips.length > 0;
 
@@ -24,7 +27,7 @@ const HomePage = () => {
           {/* ヘッダー行 */}
           <div className='mb-6 flex items-center justify-between'>
             <h2 className='font-bold text-2xl text-gray-800'>最近見た旅程一覧</h2>
-            <Button onClick={() => setAddTripDialogOpen(true)} size='sm'>
+            <Button onClick={() => setAddTripDialogOpen(true)} size='sm' disabled={isOffline}>
               + 新しく旅に出る
             </Button>
           </div>

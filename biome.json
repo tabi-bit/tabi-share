@@ -1,5 +1,5 @@
 {
-  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "$schema": "frontend/node_modules/@biomejs/biome/configuration_schema.json",
   "vcs": {
     "enabled": true,
     "clientKind": "git",
@@ -7,7 +7,7 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "includes": ["**/*", "!dist/**", "!node_modules/**", "!**/*.d.ts"]
+    "includes": ["frontend/**/*", "*.json", "!**/dist/**", "!**/node_modules/**", "!**/*.d.ts"]
   },
   "formatter": {
     "enabled": true,
@@ -34,8 +34,17 @@
     "enabled": true,
     "rules": {
       "recommended": true,
+      "nursery": {
+        "useSortedClasses": {
+          "level": "error",
+          "fix": "safe",
+          "options": {
+            "attributes": ["classList", "className"],
+            "functions": ["cva"]
+          }
+        }
+      },
       "complexity": {
-        "noExcessiveCognitiveComplexity": "warn",
         "noExtraBooleanCast": "error",
         "noStaticOnlyClass": "error",
         "noUselessCatch": "error",
@@ -93,14 +102,13 @@
         "noClassAssign": "error",
         "noCommentText": "error",
         "noCompareNegZero": "error",
-        "noConsole": "warn",
         "noDebugger": "error",
         "noDuplicateCase": "error",
         "noDuplicateClassMembers": "error",
         "noDuplicateObjectKeys": "error",
         "noDuplicateParameters": "error",
         "noEmptyBlockStatements": "error",
-        "noExplicitAny": "warn",
+        "noExplicitAny": "off",
         "noExtraNonNullAssertion": "error",
         "noFallthroughSwitchClause": "error",
         "noFunctionAssign": "error",

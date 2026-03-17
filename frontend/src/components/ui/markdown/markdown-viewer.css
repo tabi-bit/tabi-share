@@ -1,0 +1,123 @@
+@reference "../../../index.css";
+
+:is(.markdown-body, .tiptap-editor .tiptap) {
+  & p {
+    margin-bottom: 0.5em;
+    line-height: 1.5;
+  }
+
+  & strong {
+    font-weight: 600;
+  }
+
+  & em {
+    font-style: italic;
+  }
+
+  & a {
+    @apply text-sky-500;
+
+    &:visited {
+      @apply text-purple-500;
+    }
+
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
+  }
+
+  & ul {
+    list-style: disc;
+    padding-left: 1.5em;
+    margin-bottom: 0.5em;
+  }
+
+  & ol {
+    list-style: decimal;
+    padding-left: 1.5em;
+    margin-bottom: 0.5em;
+  }
+
+  & li {
+    margin-top: 0.15em;
+  }
+
+  & li > p {
+    margin-top: 0.25em;
+  }
+
+  & h1,
+  & h2,
+  & h3,
+  & h4,
+  & h5,
+  & h6 {
+    margin-top: 0.5em;
+    margin-bottom: 0.25em;
+    color: inherit;
+  }
+
+  & h1 {
+    font-size: 1.4em;
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+
+  & h2 {
+    font-size: 1.2em;
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+
+  & h3 {
+    font-size: 1.1em;
+  }
+
+  & h6 {
+    color: inherit;
+    opacity: 0.7;
+  }
+
+  & blockquote {
+    color: inherit;
+    opacity: 0.85;
+    padding: 0 0.75em;
+    border-left: 0.2em solid currentColor;
+    margin-bottom: 0.5em;
+  }
+
+  & code,
+  & tt {
+    font-size: 0.85em;
+    background-color: color-mix(in srgb, currentColor 10%, transparent);
+    padding: 0.15em 0.35em;
+    border-radius: 0.25em;
+  }
+
+  & pre {
+    font-size: 0.85em;
+    background-color: color-mix(in srgb, currentColor 7%, transparent);
+    border-radius: 0.375em;
+    margin-bottom: 0.5em;
+    overflow: auto;
+    padding: 0.75em;
+    max-height: 40vh;
+  }
+
+  & pre > code {
+    background: transparent;
+    font-size: inherit;
+  }
+
+  & hr {
+    margin: 0.75em 0;
+    height: 0.0625rem;
+    background-color: color-mix(in srgb, currentColor 20%, transparent);
+    opacity: 1;
+    border: none;
+  }
+
+  & img {
+    max-width: 100%;
+    background-color: transparent;
+  }
+}

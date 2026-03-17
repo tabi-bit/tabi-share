@@ -3,9 +3,12 @@
   "editor.formatOnSave": true,
   "editor.defaultFormatter": "biomejs.biome",
   "editor.codeActionsOnSave": {
-    "source.fixAll.eslint": "explicit",
+    "source.fixAll.biome": "explicit",
     "source.organizeImports.biome": "never"
   },
+  "files.insertFinalNewline": true,
+  "files.trimFinalNewlines": true,
+  "files.trimTrailingWhitespace": true,
   "[javascript]": {
     "editor.defaultFormatter": "biomejs.biome"
   },
@@ -33,5 +36,22 @@
   "[markdown]": {
     "editor.defaultFormatter": "vscode.markdown-language-features"
   },
-  "biome.lsp.bin": "node_modules/@biomejs/cli-linux-x64/biome"
+  "biome.lsp.bin": "frontend/node_modules/@biomejs/biome/bin/biome",
+  "tailwindCSS.experimental.classRegex": [
+    ["cva\\(([^;]*)[\\);]", "[`'\"`]([^'\"`;]*)[`'\"`]"],
+    ["(?:twMerge|twJoin)\\(([^;]*)[\\);]", "[`'\"`]([^'\"`;]*)[`'\"`]"]
+  ],
+  "cSpell.words": ["shadcn"],
+  "remote.localPortHost": "allInterfaces",
+  "editor.rulers": [88],
+  "python-envs.defaultEnvManager": "ms-python.python:venv",
+  "python-envs.pythonProjects": [],
+  "python.analysis.extraPaths": [
+    "./server"
+  ],
+  "python.testing.unittestEnabled": false,
+  "python.testing.pytestEnabled": true,
+  "python.testing.pytestArgs": ["./server/tests", "-svvv"],
+  "python.testing.autoTestDiscoverOnSaveEnabled": true,
+  "python.defaultInterpreterPath": "${workspaceFolder}/server/.venv/bin/python"
 }

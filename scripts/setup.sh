@@ -1,29 +1,22 @@
 #!/bin/bash
 
+
 # TabiShare開発環境セットアップスクリプト
 echo "🚀 TabiShare開発環境をセットアップしています..."
 
 # 現在のディレクトリを取得
 CURRENT_DIR=$(pwd)
 
-# このスクリプトの実行ディレクトリを取得
+# プロジェクトルートディレクトリに移動
 SCRIPT_DIR=$(cd $(dirname $0) && pwd)
 cd "$SCRIPT_DIR"
+cd ..
+ROOT_DIR=$(pwd)
 
-# ルートディレクトリのNode.js依存関係をインストール
-echo "📦 ルートディレクトリのパッケージをインストール中..."
-cd ../
-npm ci
-
-# フロントエンドディレクトリのNode.js依存関係をインストール
-echo "📦 フロントエンドのパッケージをインストール中..."
-cd front
-npm ci
-
-# バックエンドディレクトリのPython依存関係をインストール
-echo "🐍 バックエンドのPython依存関係をインストール中..."
-cd ../server
-pip install -r requirements.txt
+# パッケージ依存関係をインストール
+echo "📦 パッケージをインストール中..."
+cd "$ROOT_DIR"
+npm run sync
 
 echo "✅ セットアップが完了しました！"
 echo ""

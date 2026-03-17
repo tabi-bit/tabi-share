@@ -1,0 +1,113 @@
+name: Pull Request Discord Notification
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set Event Context Variables
+        id: set_context
+        run: |
+          COMMENT_BODY=""
+          NOTIFICATION_TITLE=""
+          NOTIFICATION_URL=""
+          NOTIFICATION_AUTHOR=""
+          NOTIFICATION_TYPE=""
+
+          DELIMITER="EOF"
+
+          if [ "${{ github.event_name }}" == "issue_comment" ]; then
+            # issue_comment イベントの場合
+            COMMENT_BODY="${{ github.event.comment.body }}"
+            NOTIFICATION_AUTHOR="${{ github.event.sender.login }}"
+
+            # コメントがプルリクエストに紐付いているかを確認
+            if [ -n "${{ github.event.issue.pull_request }}" ]; then
+              # プルリクエストへのコメントの場合
+              NOTIFICATION_TITLE="PR: ${{ github.event.issue.title }}"
+              NOTIFICATION_URL="${{ github.event.issue.html_url }}"
+              NOTIFICATION_TYPE="Pull Request Comment"
+            else
+              # 通常のIssueへのコメントの場合
+              NOTIFICATION_TITLE="ISSUE: ${{ github.event.issue.title }}"
+              NOTIFICATION_URL="${{ github.event.issue.html_url }}"
+              NOTIFICATION_TYPE="Issue Comment"
+            fi
+          elif [ "${{ github.event_name }}" == "pull_request_review_comment" ]; then
+            # pull_request_review_comment イベントの場合
+            COMMENT_BODY="${{ github.event.comment.body }}"
+            NOTIFICATION_TITLE="PR Review: ${{ github.event.pull_request.title }}"
+            NOTIFICATION_URL="${{ github.event.comment.html_url }}" # レビューコメント自体のURL
+            NOTIFICATION_AUTHOR="${{ github.event.sender.login }}"
+            NOTIFICATION_TYPE="Pull Request Review Comment"
+          else
+            echo "Unsupported event type: ${{ github.event_name }}. Skipping notification."
+            exit 0
+          fi
+
+          # 取得した情報を次のステップで使えるように出力
+          echo "COMMENT_BODY<<$DELIMITER" >> "$GITHUB_OUTPUT"
+          echo "$COMMENT_BODY" >> "$GITHUB_OUTPUT"
+          echo "$DELIMITER" >> "$GITHUB_OUTPUT"
+          echo "NOTIFICATION_TITLE=$NOTIFICATION_TITLE" >> "$GITHUB_OUTPUT"
+          echo "NOTIFICATION_URL=$NOTIFICATION_URL" >> "$GITHUB_OUTPUT"
+          echo "NOTIFICATION_AUTHOR=$NOTIFICATION_AUTHOR" >> "$GITHUB_OUTPUT"
+          echo "NOTIFICATION_TYPE=$NOTIFICATION_TYPE" >> "$GITHUB_OUTPUT"
+
+      - name: Check for Mentions and Send Discord Notification
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          DISCORD_MENTION_MEMBERS: ${{ secrets.DISCORD_MENTION_MEMBERS }}
+
+          COMMENT_BODY: ${{ steps.set_context.outputs.COMMENT_BODY }}
+          NOTIFICATION_TITLE: ${{ steps.set_context.outputs.NOTIFICATION_TITLE }}
+          NOTIFICATION_URL: ${{ steps.set_context.outputs.NOTIFICATION_URL }}
+          NOTIFICATION_AUTHOR: ${{ steps.set_context.outputs.NOTIFICATION_AUTHOR }}
+          NOTIFICATION_TYPE: ${{ steps.set_context.outputs.NOTIFICATION_TYPE }}
+        run: |
+          # Discordメンションマップを読み込む
+          MENTION_MAP=$(echo "$DISCORD_MENTION_MEMBERS")
+
+          # Discord用に変換されたメンションを格納する変数
+          DISCORD_MENTIONS=""
+
+          # コメント本文からメンションを検出
+          DETECTED_MENTIONS=$(echo "$COMMENT_BODY" | grep -oE '@[a-zA-Z0-9_-]+' | tr '\n' ' ')
+
+          if [ -z "$DETECTED_MENTIONS" ]; then
+            echo "メンションが検出されませんでした。Discord通知をスキップします。"
+            exit 0
+          fi
+
+          FORMATTED_COMMENT_BODY=$(echo "$COMMENT_BODY" | sed -E ':a;N;$!ba;s/\n/\n\n/g')
+
+          for github_mention in $DETECTED_MENTIONS; do
+            github_id="${github_mention#@}"
+
+            discord_user_id=$(echo "$MENTION_MAP" | jq -r ".\"$github_id\" // \"\"")
+
+            if [ -n "$discord_user_id" ]; then
+              DISCORD_MENTIONS+="<@${discord_user_id}> "
+            else
+              DISCORD_MENTIONS+="${github_mention} (未登録) "
+            fi
+          done
+
+          DISCORD_MENTIONS=$(echo "$DISCORD_MENTIONS" | xargs)
+
+          printf -v MESSAGE "新しい%sでメンションがあります！\n\n**タイトル:** %s\n**作成者:** %s\n**メンション:** %s\n**URL:** %s\n\n**コメント内容:**\n%s" \
+            "$NOTIFICATION_TYPE" \
+            "$NOTIFICATION_TITLE" \
+            "$NOTIFICATION_AUTHOR" \
+            "$DISCORD_MENTIONS" \
+            "$NOTIFICATION_URL" \
+            "$FORMATTED_COMMENT_BODY"
+
+          PAYLOAD=$(jq -n --arg msg "$MESSAGE" '{"content": $msg}')
+
+          curl -X POST -H "Content-Type: application/json" -d "$PAYLOAD" "$DISCORD_WEBHOOK_URL"

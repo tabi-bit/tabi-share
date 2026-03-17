@@ -3,24 +3,27 @@
   "private": true,
   "version": "0.0.0",
   "scripts": {
-    "dev": "concurrently --names \"FRONT,SERVER,STORYBOOK\" --prefix-colors \"cyan,yellow\" \"npm run dev:front\" \"npm run dev:server\" \"npm run dev:storybook\"",
-    "dev:front": "cd front && npm run dev",
-    "dev:server": "cd server && python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload",
-    "dev:storybook": "cd front && npm run storybook",
-    "install:all": "npm install && cd front && npm install",
-    "build": "cd front && npm run build",
-    "lint": "cd front && npm run lint",
-    "lint:fix": "cd front && npm run lint:fix",
-    "biome:check": "biome check .",
-    "biome:fix": "biome check --write .",
-    "format": "biome format --write .",
-    "format:check": "biome format .",
-    "check": "biome check . && cd front && npm run lint",
-    "fix": "biome check --write . && cd front && npm run lint:fix",
-    "preview": "cd front && npm run preview"
+    "dev": "concurrently --names \"FRONT,SERVER,STORYBOOK\" --prefix-colors \"cyan,yellow,magenta\" \"npm run dev:front\" \"npm run dev:server\" \"npm run dev:storybook\"",
+    "dev:https": "concurrently --names \"FRONT,SERVER,STORYBOOK\" --prefix-colors \"cyan,yellow,magenta\" \"npm run dev:front:https\" \"npm run dev:server\" \"npm run dev:storybook\"",
+    "dev:front": "npx dotenvx run -- sh -c 'cd frontend && npm run dev'",
+    "dev:front:https": "npx dotenvx run -- sh -c 'cd frontend && npm run dev:https'",
+    "dev:server": "npx dotenvx run -- sh -c 'cd server && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload'",
+    "dev:storybook": "cd frontend && npm run storybook",
+    "install:all": "npm ci && cd frontend && npm ci",
+    "sync": "npm run install:all && cd server && uv sync",
+    "build": "cd frontend && npm run build",
+    "build:stg": "npx dotenvx run --env-file .env.stg -- sh -c 'cd frontend && npm run build'",
+    "build:prod": "npx dotenvx run --env-file .env.prod -- sh -c 'cd frontend && npm run build'",
+    "type-check": "cd frontend && npm run type-check",
+    "lint:check": "cd frontend && npm run lint:check",
+    "lint:fix": "cd frontend && npm run lint:fix",
+    "format:check": "cd frontend && npm run format:check",
+    "format:fix": "cd frontend && npm run format:fix",
+    "preview": "cd frontend && npm run preview",
+    "db:connect": "npx dotenvx run -- sh -c 'psql -U $POSTGRES_USER -h $POSTGRES_HOST -d $POSTGRES_DB'"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.0.6",
+    "@dotenvx/dotenvx": "^1.48.4",
     "concurrently": "^9.1.0"
   }
 }

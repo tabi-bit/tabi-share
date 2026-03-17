@@ -1,7 +1,10 @@
+import { useAtomValue } from 'jotai';
 import type React from 'react';
 import { useId, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { isOfflineReadAtom } from '@/atoms/network';
 import { Header } from '@/components/Header';
+import { PwaInstallBanner } from '@/components/PwaInstallBanner';
 import { Button } from '@/components/ui/button';
 import { AddTripDialog } from '@/dialogs/AddTripDialog';
 import { useVisitedTrips } from '@/hooks/useVisitedTrips';
@@ -11,6 +14,7 @@ const HomePage = () => {
   const { trips, isLoading } = useVisitedTrips();
   const navigate = useNavigate();
   const [addTripDialogOpen, setAddTripDialogOpen] = useState(false);
+  const isOffline = useAtomValue(isOfflineReadAtom);
 
   const hasTrips = trips != null && trips.length > 0;
 
@@ -23,10 +27,26 @@ const HomePage = () => {
           {/* ヘッダー行 */}
           <div className='mb-6 flex items-center justify-between'>
             <h2 className='font-bold text-2xl text-gray-800'>最近見た旅程一覧</h2>
-            <Button onClick={() => setAddTripDialogOpen(true)} size='sm'>
+            <Button onClick={() => setAddTripDialogOpen(true)} size='sm' disabled={isOffline}>
               + 新しく旅に出る
             </Button>
           </div>
+
+          {!(isLoading || hasTrips) && (
+            <div className='relative flex flex-col items-center px-24 sm:px-0'>
+              <p className='relative mt-8 w-full text-center text-gray-500'>
+                旅程がまだありません。
+                <br />
+                共有してもらうか新しく作りましょう！
+              </p>
+              {/* テキストから右上ボタンへの点線カーブ矢印 */}
+              <CurvedArrow className='-top-6 absolute right-4 h-24 text-gray-400 sm:right-16' />
+            </div>
+          )}
+
+          {/* PWAインストールバナー */}
+          <PwaInstallBanner className='mt-4 mb-2' />
+
           {/* Trip一覧 */}
           {!isLoading && hasTrips && (
             <div className='space-y-3'>
@@ -39,17 +59,6 @@ const HomePage = () => {
                   <h3 className='mb-1 font-semibold text-gray-900 text-lg'>{trip.title}</h3>
                 </Link>
               ))}
-            </div>
-          )}
-          {!(isLoading || hasTrips) && (
-            <div className='relative flex flex-col items-center px-24 sm:px-0'>
-              <p className='relative mt-8 w-full text-center text-gray-500'>
-                旅程がまだありません。
-                <br />
-                共有してもらうか新しく作りましょう！
-              </p>
-              {/* テキストから右上ボタンへの点線カーブ矢印 */}
-              <CurvedArrow className='-top-6 absolute right-4 h-24 text-gray-400 sm:right-16' />
             </div>
           )}
         </div>

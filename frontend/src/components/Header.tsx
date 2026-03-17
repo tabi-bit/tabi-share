@@ -1,9 +1,11 @@
+import { useAtomValue } from 'jotai';
 import { Pencil } from 'lucide-react';
 import React, { type Dispatch, type SetStateAction, useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import editScheduleIcon from '@/assets/icons/edit-schedule-white.svg';
 import eyeSolidIcon from '@/assets/icons/eye-solid-white.svg';
 import penToSquareSolidIcon from '@/assets/icons/pen-to-square-solid-white.svg';
+import { isOfflineReadAtom } from '@/atoms/network';
 import { AddPageDialog } from '@/dialogs/AddPageDialog';
 import { EditPageDialog } from '@/dialogs/EditPageDialog';
 import { EditTripDialog } from '@/dialogs/EditTripDialog';
@@ -11,6 +13,7 @@ import { cn } from '@/lib/utils';
 import type { Page } from '@/types';
 import type { Trip } from '@/types/trip';
 import { Logo } from './Logo';
+import { NetworkStatusButton } from './NetworkStatusButton';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
@@ -42,12 +45,13 @@ function HeaderLogoOnly({ className, ...props }: HeaderLogoOnlyProps) {
     <div
       data-component='header'
       className={cn(
-        'sticky top-0 right-0 left-0 z-10 flex w-full flex-col items-center justify-center bg-teal-50/80 px-6 py-3 backdrop-blur-sm',
+        'sticky top-0 right-0 left-0 z-10 flex w-full items-center justify-center bg-teal-50/80 px-6 py-3 backdrop-blur-sm',
         className
       )}
       {...props}
     >
       <Logo size='medium' className='mx-auto' />
+      <NetworkStatusButton className='absolute right-4' />
     </div>
   );
 }
@@ -64,6 +68,7 @@ function HeaderFull({
   isDraggingRef,
   ...props
 }: Omit<HeaderFullProps, 'variant'>) {
+  const isOffline = useAtomValue(isOfflineReadAtom);
   const [isScrolled, setIsScrolled] = useState(false);
   const [editPageDialogOpen, setEditPageDialogOpen] = useState(false);
   const [editTripDialogOpen, setEditTripDialogOpen] = useState(false);
@@ -137,8 +142,9 @@ function HeaderFull({
       onClick={handleHeaderClick}
       {...props}
     >
-      <div className='flex w-full flex-row justify-center'>
+      <div className='relative flex w-full flex-row justify-center'>
         <Logo size={isScrolled ? 'small' : 'medium'} />
+        <NetworkStatusButton className='-translate-y-1/2 absolute top-1/2 right-2' />
       </div>
       <div className='grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-[1fr_auto_1fr] sm:items-center'>
         {/* 左カラム */}
@@ -207,7 +213,7 @@ function HeaderFull({
                 <PageInfoEditButton isScrolled={isScrolled} onClick={() => setEditPageDialogOpen(true)} />
               </>
             ) : (
-              <EditModeButton isScrolled={isScrolled} setMode={setMode} />
+              <EditModeButton isScrolled={isScrolled} setMode={setMode} disabled={isOffline} />
             )}
           </div>
         </div>
@@ -296,9 +302,11 @@ const HeaderButtonBase = ({
 const EditModeButton = ({
   isScrolled,
   setMode,
+  disabled,
 }: {
   isScrolled: boolean;
   setMode: Dispatch<SetStateAction<'view' | 'edit'>>;
+  disabled?: boolean;
 }) => (
   <HeaderButtonBase
     variant='default'
@@ -306,6 +314,7 @@ const EditModeButton = ({
     iconSrc={editScheduleIcon}
     iconAlt='編集モード'
     onClick={() => setMode('edit')}
+    disabled={disabled}
   >
     編集モード
   </HeaderButtonBase>

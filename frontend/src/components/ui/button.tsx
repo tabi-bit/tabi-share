@@ -56,8 +56,14 @@ function Button({
       disabled={loading || disabled}
       {...props}
     >
-      {loading && <LoaderCircle className='animate-spin' />}
-      {children}
+      {asChild ? (
+        children
+      ) : (
+        <>
+          {loading && <LoaderCircle className='animate-spin' />}
+          {children}
+        </>
+      )}
     </Comp>
   );
 }

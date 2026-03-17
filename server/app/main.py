@@ -1,4 +1,6 @@
-from fastapi import FastAPI
+import asyncio
+
+from fastapi import FastAPI, Query
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -38,6 +40,8 @@ app.add_exception_handler(RequestValidationError, validation_exception_handler)
 
 
 @app.get("/health", tags=["Health"])
-async def health_check():
+async def health_check(delay: float = Query(0, ge=0, le=30, description="デバッグ用: レスポンス遅延(秒)")):
     """Renderのヘルスチェック用エンドポイント"""
+    if delay > 0:
+        await asyncio.sleep(delay)
     return {"status": "healthy"}

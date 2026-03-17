@@ -1,5 +1,7 @@
+import { useAtomValue } from 'jotai';
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { isOfflineReadAtom } from '@/atoms/network';
 import { FetchErrorView } from '@/components/FetchErrorView';
 import { Header } from '@/components/Header';
 import { HeaderSkeleton } from '@/components/HeaderSkeleton';
@@ -21,7 +23,8 @@ const TripPage = () => {
   const [minLoadingComplete, setMinLoadingComplete] = useState(false);
   const { urlId } = useParams<{ urlId: string }>();
 
-  const refreshInterval = mode === 'edit' ? 5000 : 0;
+  const isOffline = useAtomValue(isOfflineReadAtom);
+  const refreshInterval = isOffline ? 0 : mode === 'edit' ? 5000 : 0;
   const { trip, error: tripError, isLoading: isTripLoading } = useTripByUrlId(urlId ?? null, { refreshInterval });
   const { pages, error: pagesError, isLoading: isPagesLoading } = usePages(trip?.id ?? null, { refreshInterval });
   const { addVisitedTrip } = useVisitedTrips();
@@ -70,6 +73,13 @@ const TripPage = () => {
       }
     };
   }, [mode]);
+
+  // オフライン時は編集モードを強制解除
+  useEffect(() => {
+    if (isOffline && mode === 'edit') {
+      setMode('view');
+    }
+  }, [isOffline, mode]);
 
   // Tripが読み込まれたら訪問済みリストに追加
   useEffect(() => {

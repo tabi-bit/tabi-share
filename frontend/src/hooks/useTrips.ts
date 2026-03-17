@@ -1,3 +1,4 @@
+import dayjs from 'dayjs';
 import { useCallback } from 'react';
 import { toast } from 'sonner';
 import useSWR, { type SWRConfiguration, useSWRConfig } from 'swr';
@@ -91,13 +92,18 @@ export const useCreateTrip = () => {
     const pageRes = await apiClient.post(`${TRIPS_BASE_PATH}/${newTrip.id}/pages`, pageData);
     const newPage = pageFromApi.parse(pageRes.data);
 
+    const INITIAL_BLOCK_START_HOUR = 10;
     const blockFullData = blockToApi.parse({
       id: 0, // idは仮値
       title: 'サンプルスケジュール',
       detail: '編集モードから旅程を編集できます',
       type: 'schedule',
-      startTime: new Date(),
-      endTime: new Date(),
+      startTime: dayjs().hour(10).minute(0).second(0).toDate(),
+      endTime: dayjs()
+        .hour(INITIAL_BLOCK_START_HOUR + 1)
+        .minute(0)
+        .second(0)
+        .toDate(),
       pageId: newPage.id,
     });
     const { id: _, ...blockPayload } = blockFullData; // API送信用にidを除外

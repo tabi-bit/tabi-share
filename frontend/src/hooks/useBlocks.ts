@@ -1,9 +1,10 @@
-import type { AxiosError } from 'axios';
 import { useCallback } from 'react';
-import useSWR, { useSWRConfig } from 'swr';
+import { toast } from 'sonner';
+import useSWR, { type SWRConfiguration, useSWRConfig } from 'swr';
 import useSWRMutation from 'swr/mutation';
 import { z } from 'zod';
 import { apiClient, fetcher } from '@/lib/apiClient';
+import { getErrorMessage } from '@/lib/errors';
 import { type Block, BlockSchema, blockFromApi, blockToApi } from '@/types/block';
 
 const PAGES_BASE_PATH = '/pages';
@@ -12,13 +13,14 @@ const BLOCKS_BASE_PATH = '/blocks';
 /**
  * pageId に紐づく Block をすべて取得するフック
  */
-export const useBlocks = (pageId: number | null) => {
+export const useBlocks = (pageId: number | null, options?: Pick<SWRConfiguration, 'refreshInterval'>) => {
   const { data, error, isLoading } = useSWR<Block[]>(
     pageId ? `${PAGES_BASE_PATH}/${pageId}/blocks` : null,
     async (url: string) => {
       const res = await fetcher(url);
       return z.array(blockFromApi).parse(res);
-    }
+    },
+    options
   );
 
   return {
@@ -64,10 +66,11 @@ export const useCreateBlock = (pageId: number | null) => {
     [pageId]
   );
 
-  const { trigger, isMutating, error, data } = useSWRMutation<Block, AxiosError, string | null, CreateBlockArg>(
+  const { trigger, isMutating, error, data } = useSWRMutation<Block, Error, string | null, CreateBlockArg>(
     listKey, // リストの更新
     createBlockFetcher,
     {
+      onError: err => toast.error(getErrorMessage(err)),
       onSuccess: (newBlock: Block) =>
         mutate(
           listKey,
@@ -130,7 +133,10 @@ export const useUpdateBlock = (pageId: number | null) => {
         },
         revalidate: false,
         rollbackOnError: true,
-        onError: () => mutate(`${BLOCKS_BASE_PATH}/${arg.id}`), // 個別データのロールバック
+        onError: (err: unknown) => {
+          toast.error(getErrorMessage(err));
+          mutate(`${BLOCKS_BASE_PATH}/${arg.id}`); // 個別データのロールバック
+        },
       });
     },
     [trigger, mutate]
@@ -182,7 +188,10 @@ export const useDeleteBlock = (pageId: number | null) => {
         },
         revalidate: false,
         rollbackOnError: true,
-        onError: () => mutate(individualKey), // エラー時に個別データを再検証して戻す
+        onError: (err: unknown) => {
+          toast.error(getErrorMessage(err));
+          mutate(individualKey); // エラー時に個別データを再検証して戻す
+        },
       });
     },
     [trigger, mutate]

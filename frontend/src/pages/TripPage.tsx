@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { FetchErrorView } from '@/components/FetchErrorView';
 import { Header } from '@/components/Header';
 import { HeaderSkeleton } from '@/components/HeaderSkeleton';
+import { Title } from '@/components/Title';
 import { TimelineSkeleton } from '@/components/timeline';
 import { useDragAutoScroll } from '@/hooks/useDragAutoScroll';
 import { usePages } from '@/hooks/usePages';
@@ -19,11 +21,12 @@ const TripPage = () => {
   const [minLoadingComplete, setMinLoadingComplete] = useState(false);
   const { urlId } = useParams<{ urlId: string }>();
 
-  const { trip, error: tripError, isLoading: isTripLoading } = useTripByUrlId(urlId ?? null);
-  const { pages, error: pagesError, isLoading: isPagesLoading } = usePages(trip?.id ?? null);
+  const refreshInterval = mode === 'edit' ? 5000 : 0;
+  const { trip, error: tripError, isLoading: isTripLoading } = useTripByUrlId(urlId ?? null, { refreshInterval });
+  const { pages, error: pagesError, isLoading: isPagesLoading } = usePages(trip?.id ?? null, { refreshInterval });
   const { addVisitedTrip } = useVisitedTrips();
 
-  const isLoading = isTripLoading || isPagesLoading || trip == null || pages == null || !minLoadingComplete;
+  const isLoading = isTripLoading || isPagesLoading || !minLoadingComplete;
   const isError = tripError || pagesError;
 
   // 1秒間の最小ローディング表示を管理
@@ -46,12 +49,43 @@ const TripPage = () => {
     }
   }, [mode]);
 
+  // Editモード中のブラウザバックを阻止し、Viewモードに戻す
+  useEffect(() => {
+    if (mode !== 'edit') return;
+
+    history.pushState({ editMode: true }, '', location.href);
+    let poppedByBack = false;
+
+    const handlePopState = () => {
+      poppedByBack = true;
+      setMode('view');
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      // ボタン等でViewに戻った場合、pushStateで追加したエントリを消す
+      if (!poppedByBack) {
+        history.back();
+      }
+    };
+  }, [mode]);
+
   // Tripが読み込まれたら訪問済みリストに追加
   useEffect(() => {
     if (trip) {
       addVisitedTrip(trip.urlId);
     }
   }, [trip, addVisitedTrip]);
+
+  if (isError) {
+    return (
+      <div className='flex h-dvh w-full flex-col items-center overflow-auto'>
+        <HeaderSkeleton />
+        <FetchErrorView error={tripError ?? pagesError} className='w-full max-w-3xl p-4' />
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -62,22 +96,16 @@ const TripPage = () => {
     );
   }
 
-  if (isError) {
-    return (
-      <div>
-        {tripError && `Trip Loading Error: ${String(tripError)}`}
-        {pagesError && `Pages Loading Error: ${String(pagesError)}`}
-      </div>
-    );
-  }
-
   return (
     <>
+      {isError && <div>Error</div>}
+      {isLoading && <div>Loading...</div>}
       {trip && pages && (
         <div
           ref={scrollContainerRef}
           className='flex h-dvh w-full flex-col items-center justify-between gap-4 overflow-auto overscroll-y-none'
         >
+          <Title>{trip.title}</Title>
           <Header
             variant='full'
             selectedPageId={selectedPageId}
@@ -102,7 +130,12 @@ const TripPage = () => {
             />
           )}
           {selectedPageId != null && mode === 'edit' && (
-            <EditTripLayout selectedPageId={selectedPageId} onDragStart={startDrag} onDragEnd={stopDrag} />
+            <EditTripLayout
+              selectedPageId={selectedPageId}
+              onDragStart={startDrag}
+              onDragEnd={stopDrag}
+              refreshInterval={refreshInterval}
+            />
           )}
         </div>
       )}

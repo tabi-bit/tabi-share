@@ -1,3 +1,4 @@
+import dayjs from 'dayjs';
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -36,6 +37,16 @@ const minutesToHoursAndMinutes = (totalMinutes: number): { hours: number; minute
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
   return { hours, minutes };
+};
+
+// ユーティリティ関数: 開始時間と所要時間から終了時間文字列を算出
+const calculateEndTimeStr = (startTimeStr: string, durationH: string, durationM: string): string | null => {
+  const h = Number.parseInt(durationH) || 0;
+  const m = Number.parseInt(durationM) || 0;
+  if (h === 0 && m === 0) return null;
+  const start = dayjs(`2000-01-01 ${startTimeStr}`);
+  if (!start.isValid()) return null;
+  return start.add(h, 'hour').add(m, 'minute').format('HH:mm');
 };
 
 export const AddBlockDialog = ({
@@ -253,6 +264,12 @@ export const AddBlockDialog = ({
                     className='w-20'
                   />
                   <span className='text-sm'>分</span>
+                  {!scheduleNoEndTime &&
+                    calculateEndTimeStr(scheduleStartTime, scheduleDurationHours, scheduleDurationMinutes) && (
+                      <span className='ml-1 font-normal text-muted-foreground'>
+                        （〜{calculateEndTimeStr(scheduleStartTime, scheduleDurationHours, scheduleDurationMinutes)}）
+                      </span>
+                    )}
                 </div>
                 <div className='flex items-center space-x-2'>
                   <Checkbox
@@ -341,6 +358,22 @@ export const AddBlockDialog = ({
                     className='w-20'
                   />
                   <span className='text-sm'>分</span>
+                  {!transportationNoEndTime &&
+                    calculateEndTimeStr(
+                      transportationStartTime,
+                      transportationDurationHours,
+                      transportationDurationMinutes
+                    ) && (
+                      <span className='ml-1 font-normal text-muted-foreground'>
+                        （〜
+                        {calculateEndTimeStr(
+                          transportationStartTime,
+                          transportationDurationHours,
+                          transportationDurationMinutes
+                        )}
+                        ）
+                      </span>
+                    )}
                 </div>
                 <div className='flex items-center space-x-2'>
                   <Checkbox

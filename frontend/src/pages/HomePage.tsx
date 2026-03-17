@@ -8,9 +8,11 @@ import { useVisitedTrips } from '@/hooks/useVisitedTrips';
 import { cn } from '@/lib/utils';
 
 const HomePage = () => {
-  const { trips } = useVisitedTrips();
+  const { trips, isLoading } = useVisitedTrips();
   const navigate = useNavigate();
   const [addTripDialogOpen, setAddTripDialogOpen] = useState(false);
+
+  const hasTrips = trips != null && trips.length > 0;
 
   return (
     <div className='flex h-dvh w-full flex-col overflow-auto bg-teal-50'>
@@ -25,9 +27,8 @@ const HomePage = () => {
               + 新しく旅に出る
             </Button>
           </div>
-
           {/* Trip一覧 */}
-          {trips != null && trips.length > 0 ? (
+          {!isLoading && hasTrips && (
             <div className='space-y-3'>
               {trips.map(trip => (
                 <Link
@@ -39,7 +40,8 @@ const HomePage = () => {
                 </Link>
               ))}
             </div>
-          ) : (
+          )}
+          {!(isLoading || hasTrips) && (
             <div className='relative flex flex-col items-center px-24 sm:px-0'>
               <p className='relative mt-8 w-full text-center text-gray-500'>
                 旅程がまだありません。

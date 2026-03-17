@@ -27,8 +27,13 @@ export function ViewTimeline({ blocks, className }: ViewTimelineProps) {
     const previousBlock = i > 0 ? sortedBlocks[i - 1] : null;
     const nextBlock = i < sortedBlocks.length - 1 ? sortedBlocks[i + 1] : null;
 
-    // 前のブロックとの間に時間間隔がある場合、破線ブロックを追加
-    if (previousBlock && previousBlock.endTime?.getTime() !== currentBlock.startTime.getTime()) {
+    // 前のブロックとの間に時間間隔があるかが設定されていない場合、破線ブロックを追加
+    // ただし、前ブロックが終了時間を持たない場合は間隔を入れない（例: 終了時間が未定のスケジュール）
+    if (
+      previousBlock &&
+      previousBlock.endTime != null &&
+      previousBlock.endTime.getTime() !== currentBlock.startTime.getTime()
+    ) {
       timelineItems.push({
         type: 'gap',
         id: `gap-${previousBlock.id}-${currentBlock.id}`,
@@ -84,6 +89,7 @@ function ViewTimelineBlock({ item }: ViewTimelineBlockProps) {
       {item.type === 'block' && item.block?.startTime && (
         <div className='flex flex-row gap-2'>
           <div className='flex flex-col justify-between'>
+            {/* 時間ラベル */}
             <div className='flex h-6 flex-row items-center font-medium text-14px text-gray-700 sm:h-8 sm:text-18px'>
               {formatTime(item.block.startTime)}
             </div>
@@ -94,20 +100,20 @@ function ViewTimelineBlock({ item }: ViewTimelineBlockProps) {
             )}
           </div>
           <div className='flex min-h-24 flex-col items-center justify-between'>
+            {/* ●およびライン */}
             <div className={cn('h-6 w-6 shrink-0 rounded-full sm:h-8 sm:w-8', themeColor)} />
-            <div className={cn('-my-4 h-full w-2', themeColor)}></div>
-            {!item.isConnectedWithNextBlock && (
+            {item.block.endTime ? (
+              <div className={cn('-my-4 h-full w-2', themeColor)}></div>
+            ) : (
+              <DottedLine className='h-full self-end' />
+            )}
+            {!item.isConnectedWithNextBlock && item.block.endTime && (
               <div className={cn('h-6 w-6 shrink-0 rounded-full sm:h-8 sm:w-8', themeColor)} />
             )}
           </div>
         </div>
       )}
-      {item.type === 'gap' && (
-        <div className='flex h-8 flex-row'>
-          <div className='grow border-neutral-600 border-r-2 border-dashed' />
-          <div className='w-3 border-neutral-600 border-l-2 border-dashed sm:w-4'></div>
-        </div>
-      )}
+      {item.type === 'gap' && <DottedLine />}
 
       {/* ブロック内容(右) */}
       {item.type === 'block' && item.block && <div className='pb-4'>{renderBlock(item.block)}</div>}
@@ -115,3 +121,14 @@ function ViewTimelineBlock({ item }: ViewTimelineBlockProps) {
     </div>
   );
 }
+
+const DottedLine = ({ ...props }: React.ComponentProps<'div'>) => {
+  const { className, ...rest } = props;
+
+  return (
+    <div className={cn('flex h-8 flex-row pe-2.5 sm:pe-3.5', className)} {...rest}>
+      <div className='grow border-neutral-600 border-r-2 border-dashed' />
+      <div className='border-neutral-600 border-l-2 border-dashed'></div>
+    </div>
+  );
+};

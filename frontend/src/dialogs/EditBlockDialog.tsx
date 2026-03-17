@@ -1,3 +1,4 @@
+import dayjs from 'dayjs';
 import { useEffect, useState } from 'react';
 import {
   AlertDialog,
@@ -45,6 +46,16 @@ const minutesToHoursAndMinutes = (totalMinutes: number): { hours: number; minute
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
   return { hours, minutes };
+};
+
+// ユーティリティ関数: 開始時間と所要時間から終了時間文字列を算出
+const calculateEndTimeStr = (startTimeStr: string, durationH: string, durationM: string): string | null => {
+  const h = Number.parseInt(durationH) || 0;
+  const m = Number.parseInt(durationM) || 0;
+  if (h === 0 && m === 0) return null;
+  const start = dayjs(`2000-01-01 ${startTimeStr}`);
+  if (!start.isValid()) return null;
+  return start.add(h, 'hour').add(m, 'minute').format('HH:mm');
 };
 
 export const EditBlockDialog = ({ open, onOpenChange, block, onSubmit, onDelete }: EditBlockDialogProps) => {
@@ -220,6 +231,11 @@ export const EditBlockDialog = ({ open, onOpenChange, block, onSubmit, onDelete 
                   className='w-20'
                 />
                 <span className='text-sm'>分</span>
+                {!noEndTime && calculateEndTimeStr(startTime, durationHours, durationMinutes) && (
+                  <span className='ml-1 font-normal text-muted-foreground'>
+                    （〜{calculateEndTimeStr(startTime, durationHours, durationMinutes)}）
+                  </span>
+                )}
               </div>
               <div className='flex items-center space-x-2'>
                 <Checkbox id='edit-no-end' checked={noEndTime} onCheckedChange={checked => setNoEndTime(!!checked)} />
@@ -245,7 +261,7 @@ export const EditBlockDialog = ({ open, onOpenChange, block, onSubmit, onDelete 
           {/* 左側: 削除ボタン */}
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant='destructive' className='mr-0 sm:mr-auto'>
+              <Button variant='destructive' className='mr-auto'>
                 削除
               </Button>
             </AlertDialogTrigger>

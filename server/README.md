@@ -34,8 +34,12 @@ FastAPI + PostgreSQL + Alembicを使用したバックエンドAPI
 ### アクセス先
 - フロントエンド: http://localhost:3000 (または5173)
 - バックエンドAPI: http://localhost:8000
-- API自動ドキュメント: http://localhost:8000/docs
-- 代替ドキュメント: http://localhost:8000/redoc
+- API自動ドキュメント: http://localhost:8000/docs （Basic認証あり）
+- 代替ドキュメント: http://localhost:8000/redoc （Basic認証あり）
+
+> **APIドキュメントの認証情報**
+> ローカル開発時はデフォルト値 `admin` / `admin` が使われます。
+> 変更する場合は環境変数 `API_DOCS_USERNAME` / `API_DOCS_PASSWORD` を設定してください。
 
 ## 開発ワークフロー（devcontainer環境）
 

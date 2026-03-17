@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     test_postgres_port: str = "5432"
     test_postgres_db: str | None = None
 
+    # APIドキュメント Basic 認証設定
+    api_docs_username: str = "admin"
+    api_docs_password: str = "admin"
+
     # アプリケーション設定
     environment: str = "development"
     cors_origins: list[str] = [

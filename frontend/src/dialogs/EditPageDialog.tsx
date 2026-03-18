@@ -80,7 +80,9 @@ export const EditPageDialog = ({ open, onOpenChange, page, onDeleted }: EditPage
 
         <DialogBody>
           <div className='space-y-2'>
-            <Label htmlFor='edit-page-title'>タイトル</Label>
+            <Label htmlFor='edit-page-title'>
+              タイトル<span className='text-red-500'>*</span>
+            </Label>
             <Input
               id='edit-page-title'
               value={title}

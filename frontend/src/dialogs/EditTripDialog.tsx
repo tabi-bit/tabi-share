@@ -94,7 +94,9 @@ export const EditTripDialog = ({ open, onOpenChange, trip, onDeleted }: EditTrip
         <DialogBody>
           <div className='space-y-4'>
             <div className='space-y-2'>
-              <Label htmlFor='edit-trip-title'>旅程タイトル</Label>
+              <Label htmlFor='edit-trip-title'>
+                旅程タイトル<span className='text-red-500'>*</span>
+              </Label>
               <Input
                 id='edit-trip-title'
                 value={tripTitle}
@@ -111,7 +113,7 @@ export const EditTripDialog = ({ open, onOpenChange, trip, onDeleted }: EditTrip
                 id='edit-trip-detail'
                 value={tripDetail}
                 onChange={setTripDetail}
-                placeholder='旅程の詳細や目的など'
+                placeholder='旅程の詳細や目的など（任意）'
               />
             </div>
           </div>

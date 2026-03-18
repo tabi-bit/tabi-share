@@ -188,7 +188,9 @@ export const EditBlockDialog = ({ open, onOpenChange, block, onSubmit, onDelete 
         <DialogBody>
           <div className='space-y-4'>
             <div className='space-y-2'>
-              <Label htmlFor='edit-title'>タイトル</Label>
+              <Label htmlFor='edit-title'>
+                タイトル<span className='text-red-500'>*</span>
+              </Label>
               <Input
                 id='edit-title'
                 value={title}

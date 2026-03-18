@@ -59,7 +59,9 @@ export const AddPageDialog = ({ open, onOpenChange, tripId, onCreated }: AddPage
         <DialogBody>
           <div className='space-y-4'>
             <div className='space-y-2'>
-              <Label htmlFor='add-page-title'>タイトル</Label>
+              <Label htmlFor='add-page-title'>
+                タイトル<span className='text-red-500'>*</span>
+              </Label>
               <Input
                 id='add-page-title'
                 value={title}

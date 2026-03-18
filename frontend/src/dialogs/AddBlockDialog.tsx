@@ -183,7 +183,9 @@ export const AddBlockDialog = ({
             {/* 予定ブロック */}
             <TabsContent value='schedule' className='space-y-4'>
               <div className='space-y-2'>
-                <Label htmlFor='schedule-title'>タイトル</Label>
+                <Label htmlFor='schedule-title'>
+                  タイトル<span className='text-red-500'>*</span>
+                </Label>
                 <Input
                   id='schedule-title'
                   value={title}
@@ -264,7 +266,7 @@ export const AddBlockDialog = ({
                   id='transportation-title'
                   value={title}
                   onChange={e => setTitle(e.target.value)}
-                  placeholder='移動のタイトル'
+                  placeholder='移動のタイトル（省略可）'
                 />
               </div>
 
@@ -345,7 +347,7 @@ export const AddBlockDialog = ({
                   id='transportation-detail'
                   value={detail}
                   onChange={setDetail}
-                  placeholder='詳細情報（任意）'
+                  placeholder='詳細情報（省略可）'
                 />
               </div>
             </TabsContent>

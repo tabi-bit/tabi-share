@@ -87,9 +87,10 @@ export const AddTripDialog = ({ open, onOpenChange, onCreated }: AddTripDialogPr
                 id='add-trip-detail'
                 value={detail}
                 onChange={setDetail}
-                placeholder='旅程の詳細や目的など'
+                placeholder='旅程の詳細や目的など（省略可）'
               />
             </div>
+            {/* 人数フィールドは一旦非表示
             <div className='space-y-2'>
               <Label htmlFor='add-trip-people-num'>人数</Label>
               <Input
@@ -101,9 +102,10 @@ export const AddTripDialog = ({ open, onOpenChange, onCreated }: AddTripDialogPr
                   const parsed = parseInt(e.target.value, 10);
                   setPeopleNum(!Number.isNaN(parsed) && parsed >= 1 ? parsed : undefined);
                 }}
-                placeholder='例: 4'
+                placeholder='例: 4（省略可）'
               />
             </div>
+            */}
           </div>
         </DialogBody>
 

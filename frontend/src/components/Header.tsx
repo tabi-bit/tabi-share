@@ -1,7 +1,8 @@
 import { useAtomValue } from 'jotai';
-import { Pencil } from 'lucide-react';
+import { Pencil, Share2 } from 'lucide-react';
 import React, { type Dispatch, type SetStateAction, useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import editScheduleIcon from '@/assets/icons/edit-schedule-white.svg';
 import eyeSolidIcon from '@/assets/icons/eye-solid-white.svg';
 import penToSquareSolidIcon from '@/assets/icons/pen-to-square-solid-white.svg';
@@ -225,6 +226,7 @@ function HeaderFull({
           ) : (
             <EditModeButton isScrolled={isScrolled} setMode={setMode} disabled={isOffline} />
           )}
+          <ShareButton />
         </div>
       </div>
 
@@ -346,6 +348,20 @@ const ViewModeButton = ({
     閲覧モード
   </HeaderButtonBase>
 );
+
+const ShareButton = () => {
+  const handleShare = useCallback(async () => {
+    // モバイル端末ではhttps環境でしか有効でない場合がある
+    await navigator.clipboard.writeText(window.location.href);
+    toast.success('URLをコピーしました');
+  }, []);
+
+  return (
+    <Button variant='default' size='icon' className='size-7 sm:size-9' onClick={handleShare}>
+      <Share2 className='size-4 sm:size-5' />
+    </Button>
+  );
+};
 
 const PageInfoEditButton = ({ isScrolled, onClick }: { isScrolled: boolean; onClick?: () => void }) => (
   <HeaderButtonBase

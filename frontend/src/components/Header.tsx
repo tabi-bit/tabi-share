@@ -1,6 +1,6 @@
 import { useAtomValue } from 'jotai';
 import { Pencil } from 'lucide-react';
-import React, { type Dispatch, type SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { type Dispatch, type SetStateAction, useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import editScheduleIcon from '@/assets/icons/edit-schedule-white.svg';
 import eyeSolidIcon from '@/assets/icons/eye-solid-white.svg';
@@ -44,7 +44,10 @@ function HeaderLogoOnly({ className, ...props }: HeaderLogoOnlyProps) {
   return (
     <div
       data-component='header'
-      className={cn('z-10 flex w-full items-center justify-center bg-teal-50/80 px-6 py-3 backdrop-blur-sm', className)}
+      className={cn(
+        'relative z-10 flex w-full items-center justify-center bg-teal-50/80 px-6 py-3 backdrop-blur-sm',
+        className
+      )}
       {...props}
     >
       <Logo size='medium' className='mx-auto' />

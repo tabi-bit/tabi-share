@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { useSWRConfig } from 'swr';
 import { isOfflineAtom } from '@/atoms/network';
+import { setForcedOffline } from '@/lib/forcedOffline';
 import { evaluateNetwork } from '@/lib/networkDetection';
 import { appStore } from '@/lib/store';
 
@@ -24,6 +25,7 @@ export const useRefresh = (): UseRefreshReturn => {
     setIsRefreshing(true);
     try {
       const isOffline = appStore.get(isOfflineAtom);
+      setForcedOffline(appStore, false); // 強制オフラインモードを解除して再接続を試みる
       if (isOffline) {
         await evaluateNetwork(appStore);
         const stillOffline = appStore.get(isOfflineAtom);

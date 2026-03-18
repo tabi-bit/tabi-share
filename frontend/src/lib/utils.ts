@@ -1,4 +1,5 @@
 import { type ClassValue, clsx } from 'clsx';
+import dayjs from 'dayjs';
 import { extendTailwindMerge } from 'tailwind-merge';
 
 /**
@@ -50,3 +51,29 @@ const customTwMerge = extendTailwindMerge({
 export function cn(...inputs: ClassValue[]) {
   return customTwMerge(clsx(inputs));
 }
+
+/**
+ * 開始時刻と所要時間から終了時刻の文字列を算出する。
+ *
+ * @param startTimeStr - 開始時刻（`"HH:mm"` 形式）
+ * @param durationH - 所要時間の「時」部分（数値文字列）
+ * @param durationM - 所要時間の「分」部分（数値文字列）
+ * @returns 終了時刻の文字列（`"HH:mm"` 形式）。所要時間が 0 または開始時刻が不正な場合は `null`
+ *
+ * @example
+ * ```ts
+ * calculateEndTimeStr('09:00', '1', '30');
+ * // => '10:30'
+ *
+ * calculateEndTimeStr('09:00', '0', '0');
+ * // => null
+ * ```
+ */
+export const calculateEndTimeStr = (startTimeStr: string, durationH: string, durationM: string): string | null => {
+  const h = Number.parseInt(durationH) || 0;
+  const m = Number.parseInt(durationM) || 0;
+  if (h === 0 && m === 0) return null;
+  const start = dayjs(`2000-01-01 ${startTimeStr}`);
+  if (!start.isValid()) return null;
+  return start.add(h, 'hour').add(m, 'minute').format('HH:mm');
+};

@@ -1,4 +1,3 @@
-import dayjs from 'dayjs';
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -8,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { LazyMarkdownEditor } from '@/components/ui/markdown';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { calculateEndTimeStr } from '@/lib/utils';
 import type { Block, ScheduleBlock, TransportationBlock, TransportationType } from '@/types/block';
 import { BLOCK_TITLE_MAX_LENGTH, TRANSPORTATION_OPTIONS } from '@/types/block';
 
@@ -37,16 +37,6 @@ const minutesToHoursAndMinutes = (totalMinutes: number): { hours: number; minute
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
   return { hours, minutes };
-};
-
-// ユーティリティ関数: 開始時間と所要時間から終了時間文字列を算出
-const calculateEndTimeStr = (startTimeStr: string, durationH: string, durationM: string): string | null => {
-  const h = Number.parseInt(durationH) || 0;
-  const m = Number.parseInt(durationM) || 0;
-  if (h === 0 && m === 0) return null;
-  const start = dayjs(`2000-01-01 ${startTimeStr}`);
-  if (!start.isValid()) return null;
-  return start.add(h, 'hour').add(m, 'minute').format('HH:mm');
 };
 
 export const AddBlockDialog = ({

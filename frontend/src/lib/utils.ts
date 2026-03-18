@@ -1,6 +1,10 @@
 import { type ClassValue, clsx } from 'clsx';
 import { extendTailwindMerge } from 'tailwind-merge';
 
+/**
+ * プロジェクト固有のピクセル指定フォントサイズクラス（`text-10px` 等）を
+ * 正しくマージできるようカスタマイズした `tailwind-merge` インスタンス。
+ */
 const customTwMerge = extendTailwindMerge({
   extend: {
     classGroups: {
@@ -31,6 +35,18 @@ const customTwMerge = extendTailwindMerge({
   },
 });
 
+/**
+ * 複数のクラス名を結合し、Tailwind CSS のクラス競合を自動解決する。
+ *
+ * @param inputs - クラス名、配列、オブジェクト等（{@link ClassValue} 形式）
+ * @returns マージ済みのクラス名文字列
+ *
+ * @example
+ * ```ts
+ * cn('px-4 py-2', isActive && 'bg-blue-500', 'bg-red-500');
+ * // => 'px-4 py-2 bg-red-500'（後勝ちでマージ）
+ * ```
+ */
 export function cn(...inputs: ClassValue[]) {
   return customTwMerge(clsx(inputs));
 }

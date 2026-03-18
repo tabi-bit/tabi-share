@@ -63,55 +63,35 @@ export const AddBlockDialog = ({
   // タブの状態
   const [blockType, setBlockType] = useState<'schedule' | 'transportation'>('schedule');
 
-  // 予定ブロック用のstate
-  const [scheduleTitle, setScheduleTitle] = useState('');
-  const [scheduleStartTime, setScheduleStartTime] = useState(formatTimeInput(initialStartTime));
-  const [scheduleDurationHours, setScheduleDurationHours] = useState(() => {
+  // 共通のState
+  const [title, setTitle] = useState('');
+  const [startTime, setStartTime] = useState(formatTimeInput(initialStartTime));
+  const [durationHours, setDurationHours] = useState(() => {
     const duration = calculateDurationMinutes(initialStartTime, initialEndTime);
     return minutesToHoursAndMinutes(duration).hours.toString();
   });
-  const [scheduleDurationMinutes, setScheduleDurationMinutes] = useState(() => {
+  const [durationMinutes, setDurationMinutes] = useState(() => {
     const duration = calculateDurationMinutes(initialStartTime, initialEndTime);
     return minutesToHoursAndMinutes(duration).minutes.toString();
   });
-  const [scheduleNoEndTime, setScheduleNoEndTime] = useState(false);
-  const [scheduleDetail, setScheduleDetail] = useState('');
+  const [noEndTime, setNoEndTime] = useState(false);
+  const [detail, setDetail] = useState('');
 
-  // 移動ブロック用のstate
+  // 移動ブロック専用Sのstate
   const [transportationType, setTransportationType] = useState<TransportationType>('car');
-  const [transportationTitle, setTransportationTitle] = useState(
-    TRANSPORTATION_OPTIONS.find(opt => opt.value === 'car')?.label ?? '移動'
-  );
-  const [transportationStartTime, setTransportationStartTime] = useState(formatTimeInput(initialStartTime));
-  const [transportationDurationHours, setTransportationDurationHours] = useState(() => {
-    const duration = calculateDurationMinutes(initialStartTime, initialEndTime);
-    return minutesToHoursAndMinutes(duration).hours.toString();
-  });
-  const [transportationDurationMinutes, setTransportationDurationMinutes] = useState(() => {
-    const duration = calculateDurationMinutes(initialStartTime, initialEndTime);
-    return minutesToHoursAndMinutes(duration).minutes.toString();
-  });
-  const [transportationNoEndTime, setTransportationNoEndTime] = useState(false);
-  const [transportationDetail, setTransportationDetail] = useState('');
 
   // フォームをリセットする関数
   const resetForm = useCallback(() => {
     setBlockType('schedule');
-    setScheduleTitle('');
-    setScheduleStartTime(formatTimeInput(initialStartTime));
+    setTitle('');
+    setStartTime(formatTimeInput(initialStartTime));
     const duration = calculateDurationMinutes(initialStartTime, initialEndTime);
     const { hours, minutes } = minutesToHoursAndMinutes(duration);
-    setScheduleDurationHours(hours.toString());
-    setScheduleDurationMinutes(minutes.toString());
-    setScheduleNoEndTime(false);
-    setScheduleDetail('');
+    setDurationHours(hours.toString());
+    setDurationMinutes(minutes.toString());
+    setNoEndTime(false);
+    setDetail('');
     setTransportationType('car');
-    setTransportationTitle('');
-    setTransportationStartTime(formatTimeInput(initialStartTime));
-    setTransportationDurationHours(hours.toString());
-    setTransportationDurationMinutes(minutes.toString());
-    setTransportationNoEndTime(false);
-    setTransportationDetail('');
   }, [initialStartTime, initialEndTime]);
 
   // ダイアログが開いたときにフォームを新しい初期値で初期化（送信中はリセットしない）
@@ -131,75 +111,52 @@ export const AddBlockDialog = ({
   const handleSubmit = async () => {
     if (isSubmitting) return;
 
-    if (blockType === 'schedule') {
-      // 予定ブロックの処理
-      if (!scheduleTitle.trim()) {
-        return;
-      }
+    if (blockType === 'schedule' && !title.trim()) {
+      return;
+    }
 
-      // startTimeを構築
-      const [hours, minutes] = scheduleStartTime.split(':').map(Number);
-      const startTime = new Date(initialStartTime);
-      startTime.setHours(hours, minutes, 0, 0);
+    // startTimeを構築
+    const [hours, minutes] = startTime.split(':').map(Number);
+    const newStartTime = new Date(initialStartTime);
+    newStartTime.setHours(hours, minutes, 0, 0);
 
-      // endTimeを計算
-      let endTime: Date | null = null;
-      if (!scheduleNoEndTime) {
-        const durationHours = Number.parseInt(scheduleDurationHours) || 0;
-        const durationMinutes = Number.parseInt(scheduleDurationMinutes) || 0;
-        const totalMinutes = durationHours * 60 + durationMinutes;
-        endTime = new Date(startTime.getTime() + totalMinutes * 60 * 1000);
-      }
+    // endTimeを計算
+    let endTime: Date | null = null;
+    if (!noEndTime) {
+      const durationH = Number.parseInt(durationHours) || 0;
+      const durationM = Number.parseInt(durationMinutes) || 0;
+      const totalMinutes = durationH * 60 + durationM;
+      endTime = new Date(newStartTime.getTime() + totalMinutes * 60 * 1000);
+    }
 
-      const block: Omit<ScheduleBlock, 'id'> = {
-        type: 'schedule',
-        title: scheduleTitle.trim(),
-        startTime,
-        endTime,
-        detail: scheduleDetail.trim() || null,
-        pageId,
-      };
+    const transportationLabel = `${TRANSPORTATION_OPTIONS.find(opt => opt.value === transportationType)?.label ?? ''}移動`;
 
-      setIsSubmitting(true);
-      try {
-        await onSubmit(block);
-        onOpenChange(false);
-      } finally {
-        setIsSubmitting(false);
-      }
-    } else {
-      // 移動ブロックの処理
-      const transportationLabel = TRANSPORTATION_OPTIONS.find(opt => opt.value === transportationType)?.label ?? '移動';
+    const block: Omit<Block, 'id'> =
+      blockType === 'schedule'
+        ? ({
+            type: blockType,
+            title: title.trim(),
+            startTime: newStartTime,
+            endTime,
+            detail: detail.trim() || null,
+            pageId,
+          } as Omit<ScheduleBlock, 'id'>)
+        : ({
+            type: blockType,
+            transportationType,
+            title: title.trim() || transportationLabel,
+            startTime: newStartTime,
+            endTime,
+            detail: detail.trim() || null,
+            pageId,
+          } as Omit<TransportationBlock, 'id'>);
 
-      // startTimeを構築（移動ブロックでは初期時間をそのまま使用）
-      const startTime = new Date(initialStartTime);
-
-      // endTimeを計算
-      let endTime: Date | null = null;
-      if (!transportationNoEndTime) {
-        const durationHours = Number.parseInt(transportationDurationHours) || 0;
-        const durationMinutes = Number.parseInt(transportationDurationMinutes) || 0;
-        const totalMinutes = durationHours * 60 + durationMinutes;
-        endTime = new Date(startTime.getTime() + totalMinutes * 60 * 1000);
-      }
-
-      const block: Omit<TransportationBlock, 'id'> = {
-        type: 'transportation',
-        transportationType,
-        title: transportationLabel,
-        startTime,
-        endTime,
-        detail: transportationDetail.trim() || null,
-        pageId,
-      };
-
-      setIsSubmitting(true);
-      try {
-        await onSubmit(block);
-        onOpenChange(false);
-      } finally {
-        setIsSubmitting(false);
-      }
+    setIsSubmitting(true);
+    try {
+      await onSubmit(block);
+      onOpenChange(false);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -229,8 +186,8 @@ export const AddBlockDialog = ({
                 <Label htmlFor='schedule-title'>タイトル</Label>
                 <Input
                   id='schedule-title'
-                  value={scheduleTitle}
-                  onChange={e => setScheduleTitle(e.target.value)}
+                  value={title}
+                  onChange={e => setTitle(e.target.value)}
                   placeholder='予定のタイトル'
                   required
                   maxLength={BLOCK_TITLE_MAX_LENGTH}
@@ -242,8 +199,8 @@ export const AddBlockDialog = ({
                 <Input
                   id='schedule-start-time'
                   type='time'
-                  value={scheduleStartTime}
-                  onChange={e => setScheduleStartTime(e.target.value)}
+                  value={startTime}
+                  onChange={e => setStartTime(e.target.value)}
                 />
               </div>
 
@@ -253,9 +210,9 @@ export const AddBlockDialog = ({
                   <Input
                     type='number'
                     min='0'
-                    value={scheduleDurationHours}
-                    onChange={e => setScheduleDurationHours(e.target.value)}
-                    disabled={scheduleNoEndTime}
+                    value={durationHours}
+                    onChange={e => setDurationHours(e.target.value)}
+                    disabled={noEndTime}
                     className='w-20'
                   />
                   <span className='text-sm'>時間</span>
@@ -263,24 +220,23 @@ export const AddBlockDialog = ({
                     type='number'
                     min='0'
                     max='59'
-                    value={scheduleDurationMinutes}
-                    onChange={e => setScheduleDurationMinutes(e.target.value)}
-                    disabled={scheduleNoEndTime}
+                    value={durationMinutes}
+                    onChange={e => setDurationMinutes(e.target.value)}
+                    disabled={noEndTime}
                     className='w-20'
                   />
                   <span className='text-sm'>分</span>
-                  {!scheduleNoEndTime &&
-                    calculateEndTimeStr(scheduleStartTime, scheduleDurationHours, scheduleDurationMinutes) && (
-                      <span className='ml-1 font-normal text-muted-foreground'>
-                        （〜{calculateEndTimeStr(scheduleStartTime, scheduleDurationHours, scheduleDurationMinutes)}）
-                      </span>
-                    )}
+                  {!noEndTime && calculateEndTimeStr(startTime, durationHours, durationMinutes) && (
+                    <span className='ml-1 font-normal text-muted-foreground'>
+                      （〜{calculateEndTimeStr(startTime, durationHours, durationMinutes)}）
+                    </span>
+                  )}
                 </div>
                 <div className='flex items-center space-x-2'>
                   <Checkbox
                     id='schedule-no-end'
-                    checked={scheduleNoEndTime}
-                    onCheckedChange={checked => setScheduleNoEndTime(!!checked)}
+                    checked={noEndTime}
+                    onCheckedChange={checked => setNoEndTime(!!checked)}
                   />
                   <Label htmlFor='schedule-no-end' className='font-normal text-sm'>
                     設定しない
@@ -293,8 +249,8 @@ export const AddBlockDialog = ({
                 <LazyMarkdownEditor
                   className='max-h-72'
                   id='schedule-detail'
-                  value={scheduleDetail}
-                  onChange={setScheduleDetail}
+                  value={detail}
+                  onChange={setDetail}
                   placeholder='詳細情報（任意）'
                 />
               </div>
@@ -306,8 +262,8 @@ export const AddBlockDialog = ({
                 <Label htmlFor='transportation-title'>タイトル</Label>
                 <Input
                   id='transportation-title'
-                  value={transportationTitle}
-                  onChange={e => setTransportationTitle(e.target.value)}
+                  value={title}
+                  onChange={e => setTitle(e.target.value)}
                   placeholder='移動のタイトル'
                 />
               </div>
@@ -336,8 +292,8 @@ export const AddBlockDialog = ({
                 <Input
                   id='transportation-start-time'
                   type='time'
-                  value={transportationStartTime}
-                  onChange={e => setTransportationStartTime(e.target.value)}
+                  value={startTime}
+                  onChange={e => setStartTime(e.target.value)}
                 />
               </div>
 
@@ -347,9 +303,9 @@ export const AddBlockDialog = ({
                   <Input
                     type='number'
                     min='0'
-                    value={transportationDurationHours}
-                    onChange={e => setTransportationDurationHours(e.target.value)}
-                    disabled={transportationNoEndTime}
+                    value={durationHours}
+                    onChange={e => setDurationHours(e.target.value)}
+                    disabled={noEndTime}
                     className='w-20'
                   />
                   <span className='text-sm'>時間</span>
@@ -357,34 +313,24 @@ export const AddBlockDialog = ({
                     type='number'
                     min='0'
                     max='59'
-                    value={transportationDurationMinutes}
-                    onChange={e => setTransportationDurationMinutes(e.target.value)}
-                    disabled={transportationNoEndTime}
+                    value={durationMinutes}
+                    onChange={e => setDurationMinutes(e.target.value)}
+                    disabled={noEndTime}
                     className='w-20'
                   />
                   <span className='text-sm'>分</span>
-                  {!transportationNoEndTime &&
-                    calculateEndTimeStr(
-                      transportationStartTime,
-                      transportationDurationHours,
-                      transportationDurationMinutes
-                    ) && (
-                      <span className='ml-1 font-normal text-muted-foreground'>
-                        （〜
-                        {calculateEndTimeStr(
-                          transportationStartTime,
-                          transportationDurationHours,
-                          transportationDurationMinutes
-                        )}
-                        ）
-                      </span>
-                    )}
+                  {!noEndTime && calculateEndTimeStr(startTime, durationHours, durationMinutes) && (
+                    <span className='ml-1 font-normal text-muted-foreground'>
+                      （〜
+                      {calculateEndTimeStr(startTime, durationHours, durationMinutes)}）
+                    </span>
+                  )}
                 </div>
                 <div className='flex items-center space-x-2'>
                   <Checkbox
                     id='transportation-no-end'
-                    checked={transportationNoEndTime}
-                    onCheckedChange={checked => setTransportationNoEndTime(!!checked)}
+                    checked={noEndTime}
+                    onCheckedChange={checked => setNoEndTime(!!checked)}
                   />
                   <Label htmlFor='transportation-no-end' className='font-normal text-sm'>
                     設定しない
@@ -397,8 +343,8 @@ export const AddBlockDialog = ({
                 <LazyMarkdownEditor
                   className='max-h-72'
                   id='transportation-detail'
-                  value={transportationDetail}
-                  onChange={setTransportationDetail}
+                  value={detail}
+                  onChange={setDetail}
                   placeholder='詳細情報（任意）'
                 />
               </div>

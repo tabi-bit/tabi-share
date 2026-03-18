@@ -50,8 +50,8 @@ export function ViewTimeline({ blocks, className }: ViewTimelineProps) {
 
   return (
     <div className={cn('grid w-full grid-cols-[auto_1fr] gap-x-4', className)}>
-      {timelineItems.map(item => (
-        <ViewTimelineBlock key={item.id} item={item} />
+      {timelineItems.map((item, index) => (
+        <ViewTimelineBlock key={item.id} item={item} isLastBlock={index === timelineItems.length - 1} />
       ))}
     </div>
   );
@@ -59,9 +59,10 @@ export function ViewTimeline({ blocks, className }: ViewTimelineProps) {
 
 interface ViewTimelineBlockProps {
   item: TimelineItem;
+  isLastBlock?: boolean;
 }
 
-function ViewTimelineBlock({ item }: ViewTimelineBlockProps) {
+function ViewTimelineBlock({ item, isLastBlock = false }: ViewTimelineBlockProps) {
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString('ja-JP', {
       hour: '2-digit',
@@ -105,7 +106,7 @@ function ViewTimelineBlock({ item }: ViewTimelineBlockProps) {
             {item.block.endTime ? (
               <div className={cn('-my-4 h-full w-2', themeColor)}></div>
             ) : (
-              <DottedLine className='h-full self-end' />
+              !isLastBlock && <DottedLine className='h-full self-end' />
             )}
             {!item.isConnectedWithNextBlock && item.block.endTime && (
               <div className={cn('h-6 w-6 shrink-0 rounded-full sm:h-8 sm:w-8', themeColor)} />

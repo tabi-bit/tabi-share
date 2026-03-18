@@ -7,7 +7,16 @@ export const BLOCK_TITLE_MAX_LENGTH = 32;
 /**
  * 交通手段の列挙型スキーマ
  */
-export const TransportationTypeEnum = z.enum(['car', 'bicycle', 'walk', 'ship', 'train', 'bus', 'flight']);
+export const TransportationTypeEnum = z.enum([
+  'car',
+  'bicycle',
+  'walk',
+  'ship',
+  'train',
+  'bus',
+  'flight',
+  'shinkansen',
+]);
 /**
  * 交通手段の型
  */
@@ -19,6 +28,7 @@ export type TransportationType = z.infer<typeof TransportationTypeEnum>;
 export const TRANSPORTATION_OPTIONS = [
   { value: 'car', label: '車' },
   { value: 'train', label: '電車' },
+  { value: 'shinkansen', label: '新幹線' },
   { value: 'bus', label: 'バス' },
   { value: 'walk', label: '徒歩' },
   { value: 'bicycle', label: '自転車' },

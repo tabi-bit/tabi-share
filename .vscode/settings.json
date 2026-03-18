@@ -41,7 +41,10 @@
     ["cva\\(([^;]*)[\\);]", "[`'\"`]([^'\"`;]*)[`'\"`]"],
     ["(?:twMerge|twJoin)\\(([^;]*)[\\);]", "[`'\"`]([^'\"`;]*)[`'\"`]"]
   ],
-  "cSpell.words": ["shadcn"],
+  "cSpell.words": [
+    "shadcn",
+    "shinkansen"
+  ],
   "remote.localPortHost": "allInterfaces",
   "editor.rulers": [88],
   "python-envs.defaultEnvManager": "ms-python.python:venv",

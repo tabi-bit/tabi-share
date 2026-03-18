@@ -90,31 +90,30 @@ const TripPage = () => {
 
   if (isError) {
     return (
-      <div className='flex h-dvh w-full flex-col items-center overflow-auto'>
+      <div className='flex h-dvh w-full flex-col'>
         <HeaderSkeleton />
-        <FetchErrorView error={tripError ?? pagesError} className='w-full max-w-3xl p-4' />
+        <div className='flex flex-1 flex-col items-center overflow-auto'>
+          <FetchErrorView error={tripError ?? pagesError} className='w-full max-w-3xl p-4' />
+        </div>
       </div>
     );
   }
 
   if (isLoading) {
     return (
-      <div className='flex h-dvh w-full flex-col items-center overflow-auto'>
+      <div className='flex h-dvh w-full flex-col'>
         <HeaderSkeleton />
-        <TimelineSkeleton className='w-full max-w-3xl p-4' />
+        <div className='flex flex-1 flex-col items-center overflow-auto'>
+          <TimelineSkeleton className='w-full max-w-3xl p-4' />
+        </div>
       </div>
     );
   }
 
   return (
     <>
-      {isError && <div>Error</div>}
-      {isLoading && <div>Loading...</div>}
       {trip && pages && (
-        <div
-          ref={scrollContainerRef}
-          className='flex h-dvh w-full flex-col items-center justify-between gap-4 overflow-auto overscroll-y-none'
-        >
+        <div className='flex h-dvh w-full flex-col'>
           <Title>{trip.title}</Title>
           <Header
             variant='full'
@@ -127,26 +126,31 @@ const TripPage = () => {
             scrollContainerRef={scrollContainerRef}
             isDraggingRef={isDraggingRef}
           />
-          {pages.length === 0 && (
-            <div className='flex h-full items-center justify-center text-gray-500'>
-              編集モードからページを追加してください
-            </div>
-          )}
-          {selectedPageId != null && mode === 'view' && (
-            <ViewTripLayout
-              selectedPageId={selectedPageId}
-              tripDetail={trip.detail ?? null}
-              isFirstPage={selectedPageId === pages[0].id}
-            />
-          )}
-          {selectedPageId != null && mode === 'edit' && (
-            <EditTripLayout
-              selectedPageId={selectedPageId}
-              onDragStart={startDrag}
-              onDragEnd={stopDrag}
-              refreshInterval={refreshInterval}
-            />
-          )}
+          <div
+            ref={scrollContainerRef}
+            className='flex flex-1 flex-col items-center overflow-auto overscroll-y-none pt-4'
+          >
+            {pages.length === 0 && (
+              <div className='flex h-full items-center justify-center text-gray-500'>
+                編集モードからページを追加してください
+              </div>
+            )}
+            {selectedPageId != null && mode === 'view' && (
+              <ViewTripLayout
+                selectedPageId={selectedPageId}
+                tripDetail={trip.detail ?? null}
+                isFirstPage={selectedPageId === pages[0].id}
+              />
+            )}
+            {selectedPageId != null && mode === 'edit' && (
+              <EditTripLayout
+                selectedPageId={selectedPageId}
+                onDragStart={startDrag}
+                onDragEnd={stopDrag}
+                refreshInterval={refreshInterval}
+              />
+            )}
+          </div>
         </div>
       )}
     </>

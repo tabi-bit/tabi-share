@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 // --- 共通の型定義 ---
 
-export const BLOCK_TITLE_MAX_LENGTH = 32;
+export const BLOCK_TITLE_MAX_LENGTH = 64;
 
 /**
  * 交通手段の列挙型スキーマ

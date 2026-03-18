@@ -1,6 +1,6 @@
 import { useAtomValue } from 'jotai';
 import { Pencil } from 'lucide-react';
-import React, { type Dispatch, type SetStateAction, useCallback, useEffect, useRef, useState } from 'react';
+import React, { type Dispatch, type SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import editScheduleIcon from '@/assets/icons/edit-schedule-white.svg';
 import eyeSolidIcon from '@/assets/icons/eye-solid-white.svg';
@@ -44,10 +44,7 @@ function HeaderLogoOnly({ className, ...props }: HeaderLogoOnlyProps) {
   return (
     <div
       data-component='header'
-      className={cn(
-        'sticky top-0 right-0 left-0 z-10 flex w-full items-center justify-center bg-teal-50/80 px-6 py-3 backdrop-blur-sm',
-        className
-      )}
+      className={cn('z-10 flex w-full items-center justify-center bg-teal-50/80 px-6 py-3 backdrop-blur-sm', className)}
       {...props}
     >
       <Logo size='medium' className='mx-auto' />
@@ -102,7 +99,18 @@ function HeaderFull({
     if (scrollTop < 50) {
       // ページ最上部では常に表示
       nextIsScrolled = false;
-    } else if (Math.abs(deltaY) > 10) {
+    }
+
+    // スクロール末端のバウンスを無視
+    const maxScroll = container.scrollHeight - container.clientHeight;
+    const isNearBottom = maxScroll - scrollTop < 50;
+
+    if (isNearBottom && isScrolled && deltaY < 0) {
+      // 最下部バウンスではヘッダー展開しない（ベースラインも更新しない）
+      return;
+    }
+
+    if (scrollTop >= 50 && Math.abs(deltaY) > 10) {
       if (deltaY < 0 && isScrolled) {
         // 上スクロール and ヘッダーが非表示中 -> 表示させる
         nextIsScrolled = false;
@@ -136,7 +144,7 @@ function HeaderFull({
     <header
       data-component='header'
       className={cn(
-        'sticky top-0 right-0 left-0 z-10 flex w-full flex-col justify-center gap-1 bg-teal-50/80 px-2 py-2 backdrop-blur-sm',
+        'z-10 flex w-full flex-col justify-center gap-1 bg-teal-50/80 px-2 py-2 backdrop-blur-sm',
         className
       )}
       onClick={handleHeaderClick}
@@ -161,61 +169,59 @@ function HeaderFull({
               className='inline-flex cursor-pointer items-center gap-1 underline decoration-dotted underline-offset-4 hover:decoration-solid'
               onClick={() => setEditTripDialogOpen(true)}
             >
-              {trip.title}
-              <Pencil className='size-3 opacity-60' />
+              <div className='text-left'>{trip.title}</div>
+              <Pencil className='size-3 shrink-0 opacity-60' />
             </button>
           ) : (
             trip.title
           )}
         </div>
 
-        <div className='flex flex-row items-center justify-start gap-x-2 sm:contents'>
-          {/* 中央カラム */}
-          {isScrolled ? (
-            selectedPage && (
-              <Badge variant='outline' className='bg-white'>
-                {selectedPage.title}
-              </Badge>
-            )
+        {/* 中央カラム */}
+        {isScrolled ? (
+          selectedPage && (
+            <Badge variant='outline' className='max-w-[90vw] justify-start bg-white sm:max-w-[30vw]'>
+              {selectedPage.title}
+            </Badge>
+          )
+        ) : (
+          <Select
+            value={selectedPageId != null ? String(selectedPageId) : undefined}
+            onValueChange={v => {
+              if (v === 'add-new') {
+                setAddPageDialogOpen(true);
+              } else {
+                onSelectPage(Number(v));
+              }
+            }}
+          >
+            <SelectTrigger className='max-w-[90vw] bg-white sm:max-w-[30vw]'>
+              <SelectValue placeholder='ページ選択' />
+            </SelectTrigger>
+            <SelectContent className='max-w-[90vw]'>
+              {pages.map(page => (
+                <SelectItem key={page.id} value={String(page.id)}>
+                  {page.title}
+                </SelectItem>
+              ))}
+              {mode === 'edit' && (
+                <SelectItem value='add-new' className='text-nowrap text-primary'>
+                  + ページを追加
+                </SelectItem>
+              )}
+            </SelectContent>
+          </Select>
+        )}
+        {/* 右カラム */}
+        <div className={cn('flex flex-row justify-start', isScrolled ? 'gap-x-2' : 'gap-x-2 sm:gap-x-4')}>
+          {mode === 'edit' ? (
+            <>
+              <ViewModeButton isScrolled={isScrolled} setMode={setMode} />
+              <PageInfoEditButton isScrolled={isScrolled} onClick={() => setEditPageDialogOpen(true)} />
+            </>
           ) : (
-            <Select
-              value={selectedPageId != null ? String(selectedPageId) : undefined}
-              onValueChange={v => {
-                if (v === 'add-new') {
-                  setAddPageDialogOpen(true);
-                } else {
-                  onSelectPage(Number(v));
-                }
-              }}
-            >
-              <SelectTrigger className='bg-white'>
-                <SelectValue placeholder='ページ選択' />
-              </SelectTrigger>
-              <SelectContent>
-                {pages.map(page => (
-                  <SelectItem key={page.id} value={String(page.id)}>
-                    {page.title}
-                  </SelectItem>
-                ))}
-                {mode === 'edit' && (
-                  <SelectItem value='add-new' className='text-nowrap text-primary'>
-                    + ページを追加
-                  </SelectItem>
-                )}
-              </SelectContent>
-            </Select>
+            <EditModeButton isScrolled={isScrolled} setMode={setMode} disabled={isOffline} />
           )}
-          {/* 右カラム */}
-          <div className={cn('flex flex-row justify-start', isScrolled ? 'gap-x-2' : 'gap-x-2 sm:gap-x-4')}>
-            {mode === 'edit' ? (
-              <>
-                <ViewModeButton isScrolled={isScrolled} setMode={setMode} />
-                <PageInfoEditButton isScrolled={isScrolled} onClick={() => setEditPageDialogOpen(true)} />
-              </>
-            ) : (
-              <EditModeButton isScrolled={isScrolled} setMode={setMode} disabled={isOffline} />
-            )}
-          </div>
         </div>
       </div>
 

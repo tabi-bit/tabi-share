@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import angleDownIcon from '@/assets/icons/angle-down.svg';
 import { MarkdownViewer } from '@/components/ui/markdown';
 import { useResizeObserver } from '@/hooks/useResizeObserver';
-import { cn } from '@/lib/utils';
+import { calculateDuration, cn } from '@/lib/utils';
 import { TransportationIcon } from '../TransportationIcon';
 import type { TransportationBlockComponentProps } from '../types';
 
@@ -15,6 +15,8 @@ export function BlockTransportationView({ block, className }: BlockTransportatio
   const [isOverflowDetail, setIsOverflowDetail] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const detailDivRef = useRef<HTMLDivElement>(null);
+
+  const duration = block.startTime && block.endTime ? calculateDuration(block.startTime, block.endTime) : null;
 
   const onResize = () => {
     const scrollHeight = detailDivRef.current?.scrollHeight ?? 0;
@@ -43,7 +45,7 @@ export function BlockTransportationView({ block, className }: BlockTransportatio
     <div
       ref={resizeRef}
       className={cn(
-        'flex w-full flex-col gap-2 rounded-lg bg-gradient-to-r from-sky-50 px-4 py-2',
+        'flex w-full flex-col gap-2 rounded-lg bg-gradient-to-r from-sky-50 px-2 py-2 sm:px-4',
         isHovered ? 'to-sky-50' : 'to-sky-100',
         isHovered ? 'drop-shadow-xl' : 'drop-shadow-lg',
         className
@@ -52,6 +54,12 @@ export function BlockTransportationView({ block, className }: BlockTransportatio
       <div className='flex items-center gap-2'>
         <TransportationIcon type={block.transportationType} />
         <div className='font-bold text-14px text-neutral-800 sm:text-16px'>{block.title}</div>
+        {duration && (
+          <div className='shrink-0 text-12px text-neutral-500'>
+            ({duration.hours != null ? `${duration.hours}時間` : ''}
+            {`${duration.minutes.toString().padStart(2, '0')}分`})
+          </div>
+        )}
       </div>
       {block.detail && (
         <div

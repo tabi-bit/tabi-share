@@ -32,3 +32,27 @@ describe('calculateEndTimeStr', () => {
     expect(calculateEndTimeStr('invalid', '1', '0')).toBeNull();
   });
 });
+
+describe('calculateDuration', () => {
+  it('時間と分を含む所要時間を返す', () => {
+    expect(calculateDuration('09:00', '10:30')).toEqual({ hours: 1, minutes: 30 });
+  });
+
+  it('分のみの場合はhoursがnullになる', () => {
+    expect(calculateDuration('09:00', '09:45')).toEqual({ hours: null, minutes: 45 });
+  });
+
+  it('ちょうど1時間の場合', () => {
+    expect(calculateDuration('09:00', '10:00')).toEqual({ hours: 1, minutes: 0 });
+  });
+
+  it('Dateオブジェクトを受け付ける', () => {
+    const start = new Date('2025-01-01T09:00:00');
+    const end = new Date('2025-01-01T11:15:00');
+    expect(calculateDuration(start, end)).toEqual({ hours: 2, minutes: 15 });
+  });
+
+  it('不正な値の場合はnullを返す', () => {
+    expect(calculateDuration('invalid', '10:00')).toBeNull();
+  });
+});

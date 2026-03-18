@@ -77,3 +77,28 @@ export const calculateEndTimeStr = (startTimeStr: string, durationH: string, dur
   if (!start.isValid()) return null;
   return start.add(h, 'hour').add(m, 'minute').format('HH:mm');
 };
+
+/**
+ * 開始時刻と終了時刻から所要時間（時・分）を算出する。
+ *
+ * @param startTimeStr - 開始時刻（`"HH:mm"` 形式の文字列または `Date`）
+ * @param endTimeStr - 終了時刻（`"HH:mm"` 形式の文字列または `Date`）
+ * @returns `{ hours, minutes }` — パース失敗時は `hours: null, minutes: 0`
+ *
+ * @example
+ * ```ts
+ * calculateDuration('09:00', '10:30');
+ * // => { hours: 1, minutes: 30 }
+ * ```
+ */
+export const calculateDuration = (
+  startTimeStr: string | Date,
+  endTimeStr: string | Date
+): { hours: number | null; minutes: number } | null => {
+  const start = dayjs(startTimeStr instanceof Date ? startTimeStr : `2000-01-01 ${startTimeStr}`);
+  const end = dayjs(endTimeStr instanceof Date ? endTimeStr : `2000-01-01 ${endTimeStr}`);
+  if (!(start.isValid() && end.isValid())) return null;
+  const diffMinutes = end.diff(start, 'minute');
+  const hours = Math.floor(diffMinutes / 60);
+  return { hours: hours > 0 ? hours : null, minutes: diffMinutes % 60 };
+};

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -19,6 +19,15 @@ export const AddTripDialog = ({ open, onOpenChange, onCreated }: AddTripDialogPr
   const [peopleNum, setPeopleNum] = useState<number | undefined>(undefined);
   const { createTrip, isCreating } = useCreateTrip();
 
+  // ダイアログが開いたときにフォームを初期化
+  useEffect(() => {
+    if (open && !isCreating) {
+      setTitle('');
+      setDetail('');
+      setPeopleNum(undefined);
+    }
+  }, [open, isCreating]);
+
   const handleSubmit = async () => {
     if (!title.trim()) {
       return;
@@ -36,18 +45,22 @@ export const AddTripDialog = ({ open, onOpenChange, onCreated }: AddTripDialogPr
     }
   };
 
+  // 作成中はダイアログを閉じない
   const handleOpenChange = (open: boolean) => {
-    if (!open) {
-      setTitle('');
-      setDetail('');
-      setPeopleNum(undefined);
-    }
+    if (!open && isCreating) return;
     onOpenChange(open);
   };
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent>
+      <DialogContent
+        onInteractOutside={e => {
+          if (isCreating) e.preventDefault();
+        }}
+        onEscapeKeyDown={e => {
+          if (isCreating) e.preventDefault();
+        }}
+      >
         <DialogHeader>
           <DialogTitle>旅程を追加</DialogTitle>
         </DialogHeader>

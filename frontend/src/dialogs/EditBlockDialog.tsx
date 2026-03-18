@@ -87,9 +87,9 @@ export const EditBlockDialog = ({ open, onOpenChange, block, onSubmit, onDelete 
     block.type === 'transportation' ? block.transportationType : 'car'
   );
 
-  // ダイアログが開いたときにフォームを初期化
+  // ダイアログが開いたときにフォームを初期化（送信中はリセットしない）
   useEffect(() => {
-    if (open) {
+    if (open && !isSubmitting) {
       setTitle(block.title);
       setStartTime(formatTimeInput(block.startTime));
       if (block.endTime) {
@@ -107,7 +107,7 @@ export const EditBlockDialog = ({ open, onOpenChange, block, onSubmit, onDelete 
         setTransportationType(block.transportationType);
       }
     }
-  }, [open, block]);
+  }, [open, block, isSubmitting]);
 
   // 削除処理
   const handleDelete = async () => {
@@ -164,8 +164,21 @@ export const EditBlockDialog = ({ open, onOpenChange, block, onSubmit, onDelete 
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+    <Dialog
+      open={open}
+      onOpenChange={open => {
+        if (!open && isSubmitting) return;
+        onOpenChange(open);
+      }}
+    >
+      <DialogContent
+        onInteractOutside={e => {
+          if (isSubmitting) e.preventDefault();
+        }}
+        onEscapeKeyDown={e => {
+          if (isSubmitting) e.preventDefault();
+        }}
+      >
         <DialogHeader>
           <DialogTitle>ブロックの編集</DialogTitle>
           {/* ブロックタイプのラベル */}

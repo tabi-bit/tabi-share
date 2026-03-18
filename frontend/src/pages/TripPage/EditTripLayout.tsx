@@ -86,6 +86,15 @@ export const EditTripLayout = ({ selectedPageId, onDragStart, onDragEnd, refresh
     isFirstEventMount.current = false;
   };
 
+  // Date参照の安定化（親re-renderで新しいDateが生成されないようにする）
+  const addDialogTimes = useMemo(
+    () =>
+      addDialogSelectInfo
+        ? { start: new Date(addDialogSelectInfo.startStr), end: new Date(addDialogSelectInfo.endStr) }
+        : null,
+    [addDialogSelectInfo]
+  );
+
   // --- ブロック追加ダイアログ ---
 
   const handleSelect = (selectInfo: DateSelectArg) => {
@@ -242,12 +251,12 @@ export const EditTripLayout = ({ selectedPageId, onDragStart, onDragEnd, refresh
         />
       </div>
 
-      {addDialogSelectInfo && (
+      {addDialogSelectInfo && addDialogTimes && (
         <AddBlockDialog
           open={addDialogOpen}
           onOpenChange={handleAddDialogOpenChange}
-          initialStartTime={new Date(addDialogSelectInfo.startStr)}
-          initialEndTime={new Date(addDialogSelectInfo.endStr)}
+          initialStartTime={addDialogTimes.start}
+          initialEndTime={addDialogTimes.end}
           pageId={selectedPageId}
           onSubmit={handleDialogSubmit}
         />

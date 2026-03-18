@@ -34,13 +34,15 @@ export const EditTripDialog = ({ open, onOpenChange, trip, onDeleted }: EditTrip
   const { deleteTrip, isDeleting } = useDeleteTrip();
   const { removeVisitedTrip } = useVisitedTrips();
 
-  // ダイアログが開いたときにフォームを初期化
+  const isMutating = isUpdating || isDeleting;
+
+  // ダイアログが開いたときにフォームを初期化（mutation中はリセットしない）
   useEffect(() => {
-    if (open) {
+    if (open && !isMutating) {
       setTripTitle(trip.title);
       setTripDetail(trip.detail ?? '');
     }
-  }, [open, trip]);
+  }, [open, trip, isMutating]);
 
   // 削除処理
   const handleDelete = async () => {
@@ -70,8 +72,21 @@ export const EditTripDialog = ({ open, onOpenChange, trip, onDeleted }: EditTrip
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+    <Dialog
+      open={open}
+      onOpenChange={open => {
+        if (!open && isMutating) return;
+        onOpenChange(open);
+      }}
+    >
+      <DialogContent
+        onInteractOutside={e => {
+          if (isMutating) e.preventDefault();
+        }}
+        onEscapeKeyDown={e => {
+          if (isMutating) e.preventDefault();
+        }}
+      >
         <DialogHeader>
           <DialogTitle>旅程情報の編集</DialogTitle>
         </DialogHeader>

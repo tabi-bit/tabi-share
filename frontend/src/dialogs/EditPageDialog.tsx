@@ -29,12 +29,14 @@ export const EditPageDialog = ({ open, onOpenChange, page, onDeleted }: EditPage
   const { updatePage, isUpdating } = useUpdatePage(page.tripId);
   const { deletePage, isDeleting } = useDeletePage(page.tripId);
 
-  // ダイアログが開いたときにフォームを初期化
+  const isMutating = isUpdating || isDeleting;
+
+  // ダイアログが開いたときにフォームを初期化（mutation中はリセットしない）
   useEffect(() => {
-    if (open) {
+    if (open && !isMutating) {
       setTitle(page.title);
     }
-  }, [open, page]);
+  }, [open, page, isMutating]);
 
   // 削除処理
   const handleDelete = async () => {
@@ -57,8 +59,21 @@ export const EditPageDialog = ({ open, onOpenChange, page, onDeleted }: EditPage
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+    <Dialog
+      open={open}
+      onOpenChange={open => {
+        if (!open && isMutating) return;
+        onOpenChange(open);
+      }}
+    >
+      <DialogContent
+        onInteractOutside={e => {
+          if (isMutating) e.preventDefault();
+        }}
+        onEscapeKeyDown={e => {
+          if (isMutating) e.preventDefault();
+        }}
+      >
         <DialogHeader>
           <DialogTitle>ページ情報の編集</DialogTitle>
         </DialogHeader>

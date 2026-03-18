@@ -31,6 +31,15 @@ paths:
 - レスポンシブ対応: `sm`ブレイクポイントを起点に、モバイルではデスクトップ/タブレットから **-2px** を基本とする（例: `text-14px sm:text-16px`）
 - 高さに `h-screen` や `h-[100vh]` は使わず、`h-dvh` を使用する（モバイルブラウザのアドレスバー対応）
 
+## ダイアログ（Dialog）
+
+- Shadcn/uiの`Dialog`を使用し、`Dialog > DialogContent > DialogHeader + DialogBody + DialogFooter`で構成
+- 親が`open`/`onOpenChange`で開閉を制御する（制御コンポーネントパターン）
+- `useEffect`で`open === true`時にフォームを初期化する。送信中はリセットしない
+- 送信中の閉じ防止: `onOpenChange`・`onInteractOutside`・`onEscapeKeyDown`の3箇所でガード
+- Edit系で更新・削除両方ある場合は`isMutating = isUpdating || isDeleting`でまとめてガード
+- 削除は`AlertDialog`で確認を挟む
+
 ## PWA
 
 - Service WorkerとPWAインストールはHTTPS（またはlocalhost）が必須

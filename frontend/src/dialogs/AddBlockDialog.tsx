@@ -114,18 +114,16 @@ export const AddBlockDialog = ({
     setTransportationDetail('');
   }, [initialStartTime, initialEndTime]);
 
-  // ダイアログが開いたときにフォームを新しい初期値で初期化
+  // ダイアログが開いたときにフォームを新しい初期値で初期化（送信中はリセットしない）
   useEffect(() => {
-    if (open) {
+    if (open && !isSubmitting) {
       resetForm();
     }
-  }, [open, resetForm]);
+  }, [open, resetForm, isSubmitting]);
 
-  // ダイアログが閉じたときにフォームをリセット
+  // 送信中はダイアログを閉じない
   const handleOpenChange = (newOpen: boolean) => {
-    if (!newOpen) {
-      resetForm();
-    }
+    if (!newOpen && isSubmitting) return;
     onOpenChange(newOpen);
   };
 
@@ -165,7 +163,7 @@ export const AddBlockDialog = ({
       setIsSubmitting(true);
       try {
         await onSubmit(block);
-        handleOpenChange(false);
+        onOpenChange(false);
       } finally {
         setIsSubmitting(false);
       }
@@ -198,7 +196,7 @@ export const AddBlockDialog = ({
       setIsSubmitting(true);
       try {
         await onSubmit(block);
-        handleOpenChange(false);
+        onOpenChange(false);
       } finally {
         setIsSubmitting(false);
       }
@@ -208,7 +206,14 @@ export const AddBlockDialog = ({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <Tabs value={blockType} onValueChange={value => setBlockType(value as 'schedule' | 'transportation')}>
-        <DialogContent>
+        <DialogContent
+          onInteractOutside={e => {
+            if (isSubmitting) e.preventDefault();
+          }}
+          onEscapeKeyDown={e => {
+            if (isSubmitting) e.preventDefault();
+          }}
+        >
           <DialogHeader>
             <DialogTitle>ブロックの追加</DialogTitle>
             <TabsList className='grid w-full grid-cols-2'>

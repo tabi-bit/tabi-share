@@ -48,6 +48,7 @@
     "date-fns": "^4.1.0",
     "dayjs": "^1.11.18",
     "dexie": "^4.3.0",
+    "embla-carousel-react": "^8.6.0",
     "install": "^0.13.0",
     "jotai": "^2.18.1",
     "lodash-es": "^4.17.21",

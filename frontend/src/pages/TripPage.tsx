@@ -5,6 +5,7 @@ import { isOfflineReadAtom } from '@/atoms/network';
 import { FetchErrorView } from '@/components/FetchErrorView';
 import { Header } from '@/components/Header';
 import { HeaderSkeleton } from '@/components/HeaderSkeleton';
+import { PageSwipeContainer } from '@/components/PageSwipeContainer';
 import { Title } from '@/components/Title';
 import { TimelineSkeleton } from '@/components/timeline';
 import { useDragAutoScroll } from '@/hooks/useDragAutoScroll';
@@ -126,31 +127,44 @@ const TripPage = () => {
             scrollContainerRef={scrollContainerRef}
             isDraggingRef={isDraggingRef}
           />
-          <div
-            ref={scrollContainerRef}
-            className='flex flex-1 flex-col items-center overflow-auto overscroll-y-none pt-4'
-          >
-            {pages.length === 0 && (
-              <div className='flex h-full items-center justify-center text-gray-500'>
-                編集モードからページを追加してください
-              </div>
-            )}
-            {selectedPageId != null && mode === 'view' && (
-              <ViewTripLayout
-                selectedPageId={selectedPageId}
-                tripDetail={trip.detail ?? null}
-                isFirstPage={selectedPageId === pages[0].id}
-              />
-            )}
-            {selectedPageId != null && mode === 'edit' && (
-              <EditTripLayout
-                selectedPageId={selectedPageId}
-                onDragStart={startDrag}
-                onDragEnd={stopDrag}
-                refreshInterval={refreshInterval}
-              />
-            )}
-          </div>
+          {pages.length === 0 && (
+            <div className='flex flex-1 items-center justify-center text-gray-500'>
+              編集モードからページを追加してください
+            </div>
+          )}
+          {pages.length > 0 && mode === 'view' && (
+            <PageSwipeContainer
+              pages={pages}
+              selectedPageId={selectedPageId}
+              onSelectPage={setSelectedPageId}
+              activeSlideScrollRef={scrollContainerRef}
+              className='min-h-0 flex-1'
+              renderPage={page => (
+                <div className='flex h-full flex-col items-center pt-4'>
+                  <ViewTripLayout
+                    selectedPageId={page.id}
+                    tripDetail={trip.detail ?? null}
+                    isFirstPage={page.id === pages[0].id}
+                  />
+                </div>
+              )}
+            />
+          )}
+          {mode === 'edit' && (
+            <div
+              ref={scrollContainerRef}
+              className='flex flex-1 flex-col items-center overflow-auto overscroll-y-none pt-4'
+            >
+              {selectedPageId != null && (
+                <EditTripLayout
+                  selectedPageId={selectedPageId}
+                  onDragStart={startDrag}
+                  onDragEnd={stopDrag}
+                  refreshInterval={refreshInterval}
+                />
+              )}
+            </div>
+          )}
         </div>
       )}
     </>

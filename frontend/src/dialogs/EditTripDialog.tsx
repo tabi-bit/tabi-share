@@ -30,30 +30,28 @@ interface EditTripDialogProps {
 export const EditTripDialog = ({ open, onOpenChange, trip, onDeleted }: EditTripDialogProps) => {
   const [tripTitle, setTripTitle] = useState(trip.title);
   const [tripDetail, setTripDetail] = useState(trip.detail ?? '');
-  const { updateTrip, isUpdating } = useUpdateTrip();
-  const { deleteTrip, isDeleting } = useDeleteTrip();
+  const { updateTrip } = useUpdateTrip();
+  const { deleteTrip } = useDeleteTrip();
   const { removeVisitedTrip } = useVisitedTrips();
 
-  const isMutating = isUpdating || isDeleting;
-
-  // ダイアログが開いたときにフォームを初期化（mutation中はリセットしない）
+  // ダイアログが開いたときにフォームを初期化
   useEffect(() => {
-    if (open && !isMutating) {
+    if (open) {
       setTripTitle(trip.title);
       setTripDetail(trip.detail ?? '');
     }
-  }, [open, trip, isMutating]);
+  }, [open, trip]);
 
-  // 削除処理
-  const handleDelete = async () => {
-    await deleteTrip(trip.id);
+  // 削除処理（楽観更新のためfire-and-forget）
+  const handleDelete = () => {
+    deleteTrip(trip.id);
     removeVisitedTrip(trip.urlId);
     onDeleted?.();
     onOpenChange(false);
   };
 
-  // サブミット処理
-  const handleSubmit = async () => {
+  // サブミット処理（楽観更新のためfire-and-forget）
+  const handleSubmit = () => {
     const trimmedTitle = tripTitle.trim();
     const trimmedDetail = tripDetail.trim();
 
@@ -62,7 +60,7 @@ export const EditTripDialog = ({ open, onOpenChange, trip, onDeleted }: EditTrip
     }
 
     if (trimmedTitle !== trip.title || trimmedDetail !== (trip.detail ?? '')) {
-      await updateTrip({
+      updateTrip({
         id: trip.id,
         data: { title: trimmedTitle, detail: trimmedDetail || undefined, peopleNum: trip.peopleNum },
       });
@@ -72,21 +70,8 @@ export const EditTripDialog = ({ open, onOpenChange, trip, onDeleted }: EditTrip
   };
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={open => {
-        if (!open && isMutating) return;
-        onOpenChange(open);
-      }}
-    >
-      <DialogContent
-        onInteractOutside={e => {
-          if (isMutating) e.preventDefault();
-        }}
-        onEscapeKeyDown={e => {
-          if (isMutating) e.preventDefault();
-        }}
-      >
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>旅程情報の編集</DialogTitle>
         </DialogHeader>
@@ -138,7 +123,7 @@ export const EditTripDialog = ({ open, onOpenChange, trip, onDeleted }: EditTrip
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>キャンセル</AlertDialogCancel>
-                <AlertDialogAction variant='destructive' onClick={handleDelete} disabled={isDeleting}>
+                <AlertDialogAction variant='destructive' onClick={handleDelete}>
                   削除
                 </AlertDialogAction>
               </AlertDialogFooter>
@@ -148,9 +133,7 @@ export const EditTripDialog = ({ open, onOpenChange, trip, onDeleted }: EditTrip
           <Button variant='outline' onClick={() => onOpenChange(false)}>
             キャンセル
           </Button>
-          <Button onClick={handleSubmit} loading={isUpdating}>
-            更新
-          </Button>
+          <Button onClick={handleSubmit}>更新</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

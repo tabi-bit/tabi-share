@@ -50,7 +50,6 @@ const minutesToHoursAndMinutes = (totalMinutes: number): { hours: number; minute
 
 export const EditBlockDialog = ({ open, onOpenChange, block, onSubmit, onDelete }: EditBlockDialogProps) => {
   const isSchedule = block.type === 'schedule';
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // 共通のstate
   const [title, setTitle] = useState(block.title);
@@ -77,9 +76,9 @@ export const EditBlockDialog = ({ open, onOpenChange, block, onSubmit, onDelete 
     block.type === 'transportation' ? block.transportationType : 'car'
   );
 
-  // ダイアログが開いたときにフォームを初期化（送信中はリセットしない）
+  // ダイアログが開いたときにフォームを初期化
   useEffect(() => {
-    if (open && !isSubmitting) {
+    if (open) {
       setTitle(block.title);
       setStartTime(formatTimeInput(block.startTime));
       if (block.endTime) {
@@ -97,16 +96,16 @@ export const EditBlockDialog = ({ open, onOpenChange, block, onSubmit, onDelete 
         setTransportationType(block.transportationType);
       }
     }
-  }, [open, block, isSubmitting]);
+  }, [open, block]);
 
-  // 削除処理
-  const handleDelete = async () => {
-    await onDelete(block.id);
+  // 削除処理（楽観更新のためfire-and-forget）
+  const handleDelete = () => {
+    onDelete(block.id);
     onOpenChange(false);
   };
 
-  // サブミット処理
-  const handleSubmit = async () => {
+  // サブミット処理（楽観更新のためfire-and-forget）
+  const handleSubmit = () => {
     if (!title.trim()) {
       return;
     }
@@ -123,52 +122,34 @@ export const EditBlockDialog = ({ open, onOpenChange, block, onSubmit, onDelete 
       newEndTime = new Date(newStartTime.getTime() + totalMinutes * 60 * 1000);
     }
 
-    setIsSubmitting(true);
-    try {
-      if (isSchedule) {
-        const updatedBlock: Block = {
-          ...block,
-          title: title.trim(),
-          startTime: newStartTime,
-          endTime: newEndTime,
-          detail: detail.trim() || null,
-        };
-        await onSubmit(updatedBlock);
-      } else {
-        const updatedBlock: Block = {
-          ...block,
-          type: 'transportation',
-          title: title.trim(),
-          startTime: newStartTime,
-          endTime: newEndTime,
-          detail: detail.trim() || null,
-          transportationType,
-        } as TransportationBlock;
-        await onSubmit(updatedBlock);
-      }
-
-      onOpenChange(false);
-    } finally {
-      setIsSubmitting(false);
+    if (isSchedule) {
+      const updatedBlock: Block = {
+        ...block,
+        title: title.trim(),
+        startTime: newStartTime,
+        endTime: newEndTime,
+        detail: detail.trim() || null,
+      };
+      onSubmit(updatedBlock);
+    } else {
+      const updatedBlock: Block = {
+        ...block,
+        type: 'transportation',
+        title: title.trim(),
+        startTime: newStartTime,
+        endTime: newEndTime,
+        detail: detail.trim() || null,
+        transportationType,
+      } as TransportationBlock;
+      onSubmit(updatedBlock);
     }
+
+    onOpenChange(false);
   };
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={open => {
-        if (!open && isSubmitting) return;
-        onOpenChange(open);
-      }}
-    >
-      <DialogContent
-        onInteractOutside={e => {
-          if (isSubmitting) e.preventDefault();
-        }}
-        onEscapeKeyDown={e => {
-          if (isSubmitting) e.preventDefault();
-        }}
-      >
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>ブロックの編集</DialogTitle>
           {/* ブロックタイプのラベル */}
@@ -290,9 +271,7 @@ export const EditBlockDialog = ({ open, onOpenChange, block, onSubmit, onDelete 
           <Button variant='outline' onClick={() => onOpenChange(false)}>
             キャンセル
           </Button>
-          <Button onClick={handleSubmit} loading={isSubmitting}>
-            更新
-          </Button>
+          <Button onClick={handleSubmit}>更新</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

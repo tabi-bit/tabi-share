@@ -35,10 +35,10 @@ paths:
 
 - Shadcn/uiの`Dialog`を使用し、`Dialog > DialogContent > DialogHeader + DialogBody + DialogFooter`で構成
 - 親が`open`/`onOpenChange`で開閉を制御する（制御コンポーネントパターン）
-- `useEffect`で`open === true`時にフォームを初期化する。送信中はリセットしない
-- 送信中の閉じ防止: `onOpenChange`・`onInteractOutside`・`onEscapeKeyDown`の3箇所でガード
-- Edit系で更新・削除両方ある場合は`isMutating = isUpdating || isDeleting`でまとめてガード
+- `useEffect`で`open === true`時にフォームを初期化する
 - 削除は`AlertDialog`で確認を挟む
+- **楽観更新（`optimisticData`）を使うupdate/delete操作**: ローディング表示せず即座にダイアログを閉じる（fire-and-forget）。送信中の閉じ防止ガードも不要
+- **新規作成（create）操作**: サーバーからのID確定が必要なため楽観更新を行わない。ダイアログでローディングを表示し、送信中の閉じ防止（`onOpenChange`・`onInteractOutside`・`onEscapeKeyDown`の3箇所でガード）を行う
 
 ## PWA
 

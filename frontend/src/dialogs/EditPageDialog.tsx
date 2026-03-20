@@ -26,54 +26,39 @@ interface EditPageDialogProps {
 
 export const EditPageDialog = ({ open, onOpenChange, page, onDeleted }: EditPageDialogProps) => {
   const [title, setTitle] = useState(page.title);
-  const { updatePage, isUpdating } = useUpdatePage(page.tripId);
-  const { deletePage, isDeleting } = useDeletePage(page.tripId);
+  const { updatePage } = useUpdatePage(page.tripId);
+  const { deletePage } = useDeletePage(page.tripId);
 
-  const isMutating = isUpdating || isDeleting;
-
-  // ダイアログが開いたときにフォームを初期化（mutation中はリセットしない）
+  // ダイアログが開いたときにフォームを初期化
   useEffect(() => {
-    if (open && !isMutating) {
+    if (open) {
       setTitle(page.title);
     }
-  }, [open, page, isMutating]);
+  }, [open, page]);
 
-  // 削除処理
-  const handleDelete = async () => {
-    await deletePage(page.id);
+  // 削除処理（楽観更新のためfire-and-forget）
+  const handleDelete = () => {
+    deletePage(page.id);
     onDeleted?.(page.id);
     onOpenChange(false);
   };
 
-  // サブミット処理
-  const handleSubmit = async () => {
+  // サブミット処理（楽観更新のためfire-and-forget）
+  const handleSubmit = () => {
     if (!title.trim()) {
       return;
     }
 
     if (title.trim() !== page.title) {
-      await updatePage({ id: page.id, data: { title: title.trim(), detail: page.detail, tripId: page.tripId } });
+      updatePage({ id: page.id, data: { title: title.trim(), detail: page.detail, tripId: page.tripId } });
     }
 
     onOpenChange(false);
   };
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={open => {
-        if (!open && isMutating) return;
-        onOpenChange(open);
-      }}
-    >
-      <DialogContent
-        onInteractOutside={e => {
-          if (isMutating) e.preventDefault();
-        }}
-        onEscapeKeyDown={e => {
-          if (isMutating) e.preventDefault();
-        }}
-      >
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>ページ情報の編集</DialogTitle>
         </DialogHeader>
@@ -111,7 +96,7 @@ export const EditPageDialog = ({ open, onOpenChange, page, onDeleted }: EditPage
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>キャンセル</AlertDialogCancel>
-                <AlertDialogAction variant='destructive' onClick={handleDelete} disabled={isDeleting}>
+                <AlertDialogAction variant='destructive' onClick={handleDelete}>
                   削除
                 </AlertDialogAction>
               </AlertDialogFooter>
@@ -121,9 +106,7 @@ export const EditPageDialog = ({ open, onOpenChange, page, onDeleted }: EditPage
           <Button variant='outline' onClick={() => onOpenChange(false)}>
             キャンセル
           </Button>
-          <Button onClick={handleSubmit} loading={isUpdating}>
-            更新
-          </Button>
+          <Button onClick={handleSubmit}>更新</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

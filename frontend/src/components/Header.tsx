@@ -1,18 +1,18 @@
-import { useAtomValue } from 'jotai';
+import { useAtom, useAtomValue } from 'jotai';
 import { Pencil, Share2 } from 'lucide-react';
-import React, { type Dispatch, type SetStateAction, useCallback, useEffect, useRef, useState } from 'react';
+import type React from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import editScheduleIcon from '@/assets/icons/edit-schedule-white.svg';
 import eyeSolidIcon from '@/assets/icons/eye-solid-white.svg';
 import penToSquareSolidIcon from '@/assets/icons/pen-to-square-solid-white.svg';
 import { isOfflineReadAtom } from '@/atoms/network';
+import { selectedPageAtom, selectedPageIdAtom, tripAtom, tripModeAtom, tripPagesAtom } from '@/atoms/tripPage';
 import { AddPageDialog } from '@/dialogs/AddPageDialog';
 import { EditPageDialog } from '@/dialogs/EditPageDialog';
 import { EditTripDialog } from '@/dialogs/EditTripDialog';
 import { cn } from '@/lib/utils';
-import type { Page } from '@/types';
-import type { Trip } from '@/types/trip';
 import { Logo } from './Logo';
 import { NetworkStatusButton } from './NetworkStatusButton';
 import { Badge } from './ui/badge';
@@ -27,13 +27,7 @@ type HeaderLogoOnlyProps = HeaderBaseProps & {
 
 type HeaderFullProps = HeaderBaseProps & {
   variant: 'full';
-  trip: Trip;
-  pages: Page[];
-  mode?: 'view' | 'edit';
-  selectedPageId?: Page['id'];
-  onSelectPage: (pageId: Page['id']) => void;
   scrollContainerRef: React.RefObject<HTMLDivElement | null>;
-  setMode: Dispatch<SetStateAction<'view' | 'edit'>>;
   isDraggingRef: React.RefObject<boolean>;
 };
 
@@ -57,19 +51,14 @@ function HeaderLogoOnly({ className, ...props }: HeaderLogoOnlyProps) {
   );
 }
 
-function HeaderFull({
-  pages,
-  trip,
-  mode = 'view',
-  selectedPageId,
-  onSelectPage,
-  setMode,
-  className,
-  scrollContainerRef,
-  isDraggingRef,
-  ...props
-}: Omit<HeaderFullProps, 'variant'>) {
+function HeaderFull({ className, scrollContainerRef, isDraggingRef, ...props }: Omit<HeaderFullProps, 'variant'>) {
   const isOffline = useAtomValue(isOfflineReadAtom);
+  const trip = useAtomValue(tripAtom);
+  const pages = useAtomValue(tripPagesAtom);
+  const [selectedPageId, setSelectedPageId] = useAtom(selectedPageIdAtom);
+  const mode = useAtomValue(tripModeAtom);
+  const selectedPage = useAtomValue(selectedPageAtom);
+
   const [isScrolled, setIsScrolled] = useState(false);
   const [editPageDialogOpen, setEditPageDialogOpen] = useState(false);
   const [editTripDialogOpen, setEditTripDialogOpen] = useState(false);
@@ -141,7 +130,7 @@ function HeaderFull({
     return () => container.removeEventListener('scroll', handleScroll);
   }, [handleScroll, scrollContainerRef]);
 
-  const selectedPage = selectedPageId ? pages.find(page => page.id === selectedPageId) : (pages[0] ?? null);
+  if (!trip) return null;
 
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: ヘッダー領域クリックでスクロール縮小状態を解除するためのイベント委譲
@@ -195,7 +184,7 @@ function HeaderFull({
               if (v === 'add-new') {
                 setAddPageDialogOpen(true);
               } else {
-                onSelectPage(Number(v));
+                setSelectedPageId(Number(v));
               }
             }}
           >
@@ -220,27 +209,25 @@ function HeaderFull({
         <div className={cn('flex flex-row justify-start', isScrolled ? 'gap-x-2' : 'gap-x-2 sm:gap-x-4')}>
           {mode === 'edit' ? (
             <>
-              <ViewModeButton isScrolled={isScrolled} setMode={setMode} />
+              <ViewModeButton isScrolled={isScrolled} />
               <PageInfoEditButton isScrolled={isScrolled} onClick={() => setEditPageDialogOpen(true)} />
             </>
           ) : (
-            <EditModeButton isScrolled={isScrolled} setMode={setMode} disabled={isOffline} />
+            <EditModeButton isScrolled={isScrolled} disabled={isOffline} />
           )}
           <ShareButton />
         </div>
       </div>
 
       {/* ページ追加ダイアログ */}
-      {trip && (
-        <AddPageDialog
-          open={addPageDialogOpen}
-          onOpenChange={setAddPageDialogOpen}
-          tripId={trip.id}
-          onCreated={page => {
-            onSelectPage(page.id);
-          }}
-        />
-      )}
+      <AddPageDialog
+        open={addPageDialogOpen}
+        onOpenChange={setAddPageDialogOpen}
+        tripId={trip.id}
+        onCreated={page => {
+          setSelectedPageId(page.id);
+        }}
+      />
 
       {/* ページ編集ダイアログ */}
       {selectedPage && (
@@ -251,21 +238,19 @@ function HeaderFull({
           onDeleted={pageId => {
             const remainingPages = pages.filter(p => p.id !== pageId);
             if (remainingPages.length > 0) {
-              onSelectPage(remainingPages[0].id);
+              setSelectedPageId(remainingPages[0].id);
             }
           }}
         />
       )}
 
       {/* 旅程情報編集ダイアログ */}
-      {trip && (
-        <EditTripDialog
-          open={editTripDialogOpen}
-          onOpenChange={setEditTripDialogOpen}
-          trip={trip}
-          onDeleted={() => navigate('/')}
-        />
-      )}
+      <EditTripDialog
+        open={editTripDialogOpen}
+        onOpenChange={setEditTripDialogOpen}
+        trip={trip}
+        onDeleted={() => navigate('/')}
+      />
     </header>
   );
 }
@@ -310,44 +295,36 @@ const HeaderButtonBase = ({
   );
 };
 
-const EditModeButton = ({
-  isScrolled,
-  setMode,
-  disabled,
-}: {
-  isScrolled: boolean;
-  setMode: Dispatch<SetStateAction<'view' | 'edit'>>;
-  disabled?: boolean;
-}) => (
-  <HeaderButtonBase
-    variant='default'
-    isScrolled={isScrolled}
-    iconSrc={editScheduleIcon}
-    iconAlt='編集モード'
-    onClick={() => setMode('edit')}
-    disabled={disabled}
-  >
-    編集モード
-  </HeaderButtonBase>
-);
+const EditModeButton = ({ isScrolled, disabled }: { isScrolled: boolean; disabled?: boolean }) => {
+  const [, setMode] = useAtom(tripModeAtom);
+  return (
+    <HeaderButtonBase
+      variant='default'
+      isScrolled={isScrolled}
+      iconSrc={editScheduleIcon}
+      iconAlt='編集モード'
+      onClick={() => setMode('edit')}
+      disabled={disabled}
+    >
+      編集モード
+    </HeaderButtonBase>
+  );
+};
 
-const ViewModeButton = ({
-  isScrolled,
-  setMode,
-}: {
-  isScrolled: boolean;
-  setMode: Dispatch<SetStateAction<'view' | 'edit'>>;
-}) => (
-  <HeaderButtonBase
-    variant='default'
-    isScrolled={isScrolled}
-    iconSrc={eyeSolidIcon}
-    iconAlt='閲覧モード'
-    onClick={() => setMode('view')}
-  >
-    閲覧モード
-  </HeaderButtonBase>
-);
+const ViewModeButton = ({ isScrolled }: { isScrolled: boolean }) => {
+  const [, setMode] = useAtom(tripModeAtom);
+  return (
+    <HeaderButtonBase
+      variant='default'
+      isScrolled={isScrolled}
+      iconSrc={eyeSolidIcon}
+      iconAlt='閲覧モード'
+      onClick={() => setMode('view')}
+    >
+      閲覧モード
+    </HeaderButtonBase>
+  );
+};
 
 const ShareButton = () => {
   const handleShare = useCallback(async () => {

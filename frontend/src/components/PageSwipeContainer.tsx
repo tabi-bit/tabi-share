@@ -1,26 +1,20 @@
 import useEmblaCarousel from 'embla-carousel-react';
+import { useAtom, useAtomValue } from 'jotai';
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import { selectedPageIdAtom, tripPagesAtom } from '@/atoms/tripPage';
 import { cn } from '@/lib/utils';
 import type { Page } from '@/types';
 
 type PageSwipeContainerProps = {
-  pages: Page[];
-  selectedPageId: Page['id'] | undefined;
-  onSelectPage: (pageId: Page['id']) => void;
   renderPage: (page: Page) => ReactNode;
   /** 現在アクティブなスライドのスクロールコンテナの ref を外部に公開する */
   activeSlideScrollRef?: React.RefObject<HTMLDivElement | null>;
   className?: string;
 };
 
-const PageSwipeContainer = ({
-  pages,
-  selectedPageId,
-  onSelectPage,
-  renderPage,
-  activeSlideScrollRef,
-  className,
-}: PageSwipeContainerProps) => {
+const PageSwipeContainer = ({ renderPage, activeSlideScrollRef, className }: PageSwipeContainerProps) => {
+  const pages = useAtomValue(tripPagesAtom);
+  const [selectedPageId, setSelectedPageId] = useAtom(selectedPageIdAtom);
   const selectedIndex = pages.findIndex(p => p.id === selectedPageId);
   const [activeSnapIndex, setActiveSnapIndex] = useState(selectedIndex >= 0 ? selectedIndex : 0);
   const slideRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -37,9 +31,9 @@ const PageSwipeContainer = ({
     setActiveSnapIndex(index);
     const page = pages[index];
     if (page && page.id !== selectedPageId) {
-      onSelectPage(page.id);
+      setSelectedPageId(page.id);
     }
-  }, [emblaApi, pages, selectedPageId, onSelectPage]);
+  }, [emblaApi, pages, selectedPageId, setSelectedPageId]);
 
   useEffect(() => {
     if (!emblaApi) return;
@@ -62,8 +56,8 @@ const PageSwipeContainer = ({
   useEffect(() => {
     if (!activeSlideScrollRef) return;
     const activeSlide = slideRefs.current[activeSnapIndex] ?? null;
-    // MutableRefObject として current を書き換え
-    (activeSlideScrollRef as React.MutableRefObject<HTMLDivElement | null>).current = activeSlide;
+    // RefObject の current を書き換え
+    (activeSlideScrollRef as { current: HTMLDivElement | null }).current = activeSlide;
   }, [activeSnapIndex, activeSlideScrollRef]);
 
   return (
@@ -94,7 +88,7 @@ const PageSwipeContainer = ({
                 'size-2 rounded-full transition-colors',
                 index === activeSnapIndex ? 'bg-teal-600' : 'bg-gray-300'
               )}
-              onClick={() => onSelectPage(page.id)}
+              onClick={() => setSelectedPageId(page.id)}
               aria-label={page.title}
             />
           ))}

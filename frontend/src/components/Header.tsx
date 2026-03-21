@@ -328,9 +328,13 @@ const ViewModeButton = ({ isScrolled }: { isScrolled: boolean }) => {
 
 const ShareButton = () => {
   const handleShare = useCallback(async () => {
-    // モバイル端末ではhttps環境でしか有効でない場合がある
-    await navigator.clipboard.writeText(window.location.href);
-    toast.success('URLをコピーしました');
+    const url = window.location.href;
+    if (navigator.canShare?.({ url })) {
+      await navigator.share({ url });
+    } else {
+      await navigator.clipboard.writeText(url);
+      toast.success('URLをコピーしました');
+    }
   }, []);
 
   return (

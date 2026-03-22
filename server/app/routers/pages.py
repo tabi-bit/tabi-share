@@ -45,7 +45,7 @@ async def get_pages(trip_id: int, db: AsyncSession = Depends(get_db_session)) ->
 
     - 特定の旅行プランに関連するすべてのページを取得する
     """
-    return await pages_cruds.get_pages(db=db, trip_id=trip_id)
+    return await pages_cruds.find_pages(db=db, trip_id=trip_id)
 
 
 @router.get(

@@ -53,7 +53,7 @@ class ErrorResponseException(Exception):
         self,
         message: str,
         code: str,
-        detail: dict[str, Any] | None = {},
+        detail: dict[str, Any] | None = None,
         description: str = "",
     ):
         self.message = message

@@ -94,7 +94,9 @@ async def update_block(
     operation_id="blocks-delete",
     status_code=204,
 )
-async def delete_block(block_id: int, db: AsyncSession = Depends(get_db_session)) -> None:
+async def delete_block(
+    block_id: int, db: AsyncSession = Depends(get_db_session)
+) -> None:
     """
     説明:
 

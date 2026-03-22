@@ -39,7 +39,9 @@ async def create_page(
     operation_id="pages-list",
     response_model=list[Page],
 )
-async def get_pages(trip_id: int, db: AsyncSession = Depends(get_db_session)) -> list[Page]:
+async def get_pages(
+    trip_id: int, db: AsyncSession = Depends(get_db_session)
+) -> list[Page]:
     """
     説明:
 

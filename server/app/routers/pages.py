@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.cruds import pages as pages_cruds
 from app.cruds import trips as trips_cruds
@@ -18,7 +18,7 @@ router = APIRouter(tags=["Pages"])
     response_model=Page,
 )
 async def create_page(
-    trip_id: int, page: PageCreate, db: Session = Depends(get_db_session)
+    trip_id: int, page: PageCreate, db: AsyncSession = Depends(get_db_session)
 ) -> Page:
     """
     説明:
@@ -38,7 +38,7 @@ async def create_page(
     operation_id="pages-list",
     response_model=list[Page],
 )
-async def get_pages(trip_id: int, db: Session = Depends(get_db_session)) -> list[Page]:
+async def get_pages(trip_id: int, db: AsyncSession = Depends(get_db_session)) -> list[Page]:
     """
     説明:
 
@@ -53,7 +53,7 @@ async def get_pages(trip_id: int, db: Session = Depends(get_db_session)) -> list
     operation_id="pages-get",
     response_model=Page,
 )
-async def get_page(page_id: int, db: Session = Depends(get_db_session)) -> Page:
+async def get_page(page_id: int, db: AsyncSession = Depends(get_db_session)) -> Page:
     """
     説明:
 
@@ -73,7 +73,7 @@ async def get_page(page_id: int, db: Session = Depends(get_db_session)) -> Page:
     response_model=Page,
 )
 async def update_page(
-    page_id: int, page: PageUpdate, db: Session = Depends(get_db_session)
+    page_id: int, page: PageUpdate, db: AsyncSession = Depends(get_db_session)
 ) -> Page:
     """
     説明:
@@ -93,7 +93,7 @@ async def update_page(
     operation_id="pages-delete",
     status_code=204,
 )
-async def delete_page(page_id: int, db: Session = Depends(get_db_session)):
+async def delete_page(page_id: int, db: AsyncSession = Depends(get_db_session)):
     """
     説明:
 

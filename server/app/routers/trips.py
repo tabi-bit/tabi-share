@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from nanoid import generate
-from sqlalchemy.orm.session import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.cruds import trips as trips_cruds
 from app.db_connection import get_db_session
@@ -18,7 +18,7 @@ URL_ID_SIZE = 16
     response_model=TripCreateOut,
 )
 async def create_trip(
-    trip_in: TripCreateIn, db: Session = Depends(get_db_session)
+    trip_in: TripCreateIn, db: AsyncSession = Depends(get_db_session)
 ) -> TripCreateOut:
     """
     説明:
@@ -38,7 +38,7 @@ async def create_trip(
     operation_id="trips-list",
     response_model=list[Trip],
 )
-async def list_trips(db: Session = Depends(get_db_session)) -> list[Trip]:
+async def list_trips(db: AsyncSession = Depends(get_db_session)) -> list[Trip]:
     """
     説明:
 
@@ -53,7 +53,7 @@ async def list_trips(db: Session = Depends(get_db_session)) -> list[Trip]:
     operation_id="trips-get",
     response_model=Trip,
 )
-async def get_trip(trip_id: int, db: Session = Depends(get_db_session)) -> Trip:
+async def get_trip(trip_id: int, db: AsyncSession = Depends(get_db_session)) -> Trip:
     """
     説明:
 
@@ -73,7 +73,7 @@ async def get_trip(trip_id: int, db: Session = Depends(get_db_session)) -> Trip:
     response_model=Trip,
 )
 async def get_trip_by_url_id(
-    url_id: str, db: Session = Depends(get_db_session)
+    url_id: str, db: AsyncSession = Depends(get_db_session)
 ) -> Trip:
     """
     説明:
@@ -94,7 +94,7 @@ async def get_trip_by_url_id(
     response_model=Trip,
 )
 async def update_trip(
-    trip_id: int, trip_in: TripUpdate, db: Session = Depends(get_db_session)
+    trip_id: int, trip_in: TripUpdate, db: AsyncSession = Depends(get_db_session)
 ) -> Trip:
     """
     説明:
@@ -114,7 +114,7 @@ async def update_trip(
     operation_id="trips-delete",
     status_code=204,
 )
-async def delete_trip(trip_id: int, db: Session = Depends(get_db_session)) -> None:
+async def delete_trip(trip_id: int, db: AsyncSession = Depends(get_db_session)) -> None:
     """
     説明:
 

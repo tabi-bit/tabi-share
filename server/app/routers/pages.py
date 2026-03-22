@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.cruds import pages as pages_cruds
 from app.cruds import trips as trips_cruds
 from app.db_connection import get_db_session
+from app.errors import NotFound
 from app.schemas.page import Page, PageCreate, PageUpdate
 
 # /trips/{trip_id}/pages で作成と一覧取得
@@ -27,7 +28,7 @@ async def create_page(
     """
     db_trip = await trips_cruds.get_trip(db, trip_id=trip_id)
     if db_trip is None:
-        raise HTTPException(status_code=404, detail="Trip not found")
+        raise NotFound(message="Trip not found")
 
     return await pages_cruds.create_page(db=db, page=page, trip_id=trip_id)
 
@@ -61,7 +62,7 @@ async def get_page(page_id: int, db: AsyncSession = Depends(get_db_session)) -> 
     """
     db_page = await pages_cruds.get_page(db, page_id=page_id)
     if db_page is None:
-        raise HTTPException(status_code=404, detail="Page not found")
+        raise NotFound(message="Page not found")
 
     return db_page
 
@@ -82,7 +83,7 @@ async def update_page(
     """
     db_page = await pages_cruds.update_page(db, page_id=page_id, page=page)
     if db_page is None:
-        raise HTTPException(status_code=404, detail="Page not found")
+        raise NotFound(message="Page not found")
 
     return db_page
 
@@ -100,6 +101,6 @@ async def delete_page(page_id: int, db: AsyncSession = Depends(get_db_session)):
     - IDで指定された単一のページを削除する
     """
     if not await pages_cruds.delete_page(db, page_id=page_id):
-        raise HTTPException(status_code=404, detail="Page not found")
+        raise NotFound(message="Page not found")
 
     return

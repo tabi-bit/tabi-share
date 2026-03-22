@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from nanoid import generate
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.cruds import trips as trips_cruds
 from app.db_connection import get_db_session
+from app.errors import NotFound
 from app.schemas.trip import Trip, TripCreateIn, TripCreateOut, TripUpdate
 
 router = APIRouter(tags=["Trips"], prefix="/trips")
@@ -61,7 +62,7 @@ async def get_trip(trip_id: int, db: AsyncSession = Depends(get_db_session)) -> 
     """
     db_trip = await trips_cruds.get_trip(db, trip_id=trip_id)
     if db_trip is None:
-        raise HTTPException(status_code=404, detail="Trip not found")
+        raise NotFound(message="Trip not found")
 
     return db_trip
 
@@ -82,7 +83,7 @@ async def get_trip_by_url_id(
     """
     db_trip = await trips_cruds.get_trip_by_url_id(db, url_id=url_id)
     if db_trip is None:
-        raise HTTPException(status_code=404, detail="Trip not found")
+        raise NotFound(message="Trip not found")
 
     return db_trip
 
@@ -103,7 +104,7 @@ async def update_trip(
     """
     db_trip = await trips_cruds.update_trip(db, trip_id=trip_id, trip=trip_in)
     if db_trip is None:
-        raise HTTPException(status_code=404, detail="Trip not found")
+        raise NotFound(message="Trip not found")
 
     return db_trip
 
@@ -121,6 +122,6 @@ async def delete_trip(trip_id: int, db: AsyncSession = Depends(get_db_session)) 
     - IDで指定された単一の旅行プランを削除する
     """
     if not await trips_cruds.delete_trip(db, trip_id=trip_id):
-        raise HTTPException(status_code=404, detail="Trip not found")
+        raise NotFound(message="Trip not found")
 
     return

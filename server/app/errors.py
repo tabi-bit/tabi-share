@@ -75,6 +75,29 @@ class ErrorResponseException(Exception):
         )
 
 
+class NotFound(ErrorResponseException):
+    """
+    リソースが見つからない場合のエラー
+
+    Attributes:
+      response_status (int): HTTP ステータスコード
+    """
+
+    response_status = status.HTTP_404_NOT_FOUND
+
+    def __init__(
+        self,
+        message: str,
+        code: str = "not_found",
+        detail: dict[str, Any] | None = None,
+        description: str = "",
+    ):
+        self.message = message
+        self.code = code
+        self.detail = detail
+        self.description = description
+
+
 class InvalidParam(ErrorResponseException):
     """
     無効なパラメータに対するエラー

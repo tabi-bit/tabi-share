@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.cruds import blocks as blocks_cruds
 from app.cruds import pages as pages_cruds
 from app.db_connection import get_db_session
+from app.errors import NotFound
 from app.schemas.block import Block, BlockCreate, BlockUpdate
 
 router = APIRouter(tags=["Blocks"])
@@ -25,7 +26,7 @@ async def create_block(
     """
     db_page = await pages_cruds.get_page(db, page_id=page_id)
     if db_page is None:
-        raise HTTPException(status_code=404, detail="Page not found")
+        raise NotFound(message="Page not found")
 
     return await blocks_cruds.create_block(db=db, block=block, page_id=page_id)
 
@@ -61,7 +62,7 @@ async def get_block(block_id: int, db: AsyncSession = Depends(get_db_session)) -
     """
     db_block = await blocks_cruds.get_block(db, block_id=block_id)
     if db_block is None:
-        raise HTTPException(status_code=404, detail="Block not found")
+        raise NotFound(message="Block not found")
 
     return db_block
 
@@ -82,7 +83,7 @@ async def update_block(
     """
     db_block = await blocks_cruds.update_block(db, block_id=block_id, block=block)
     if db_block is None:
-        raise HTTPException(status_code=404, detail="Block not found")
+        raise NotFound(message="Block not found")
 
     return db_block
 
@@ -100,6 +101,6 @@ async def delete_block(block_id: int, db: AsyncSession = Depends(get_db_session)
     - IDで指定された単一のブロックを削除する
     """
     if not await blocks_cruds.delete_block(db, block_id=block_id):
-        raise HTTPException(status_code=404, detail="Block not found")
+        raise NotFound(message="Block not found")
 
     return

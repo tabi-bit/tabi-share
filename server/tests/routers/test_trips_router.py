@@ -84,7 +84,7 @@ async def test_get_trip_non_existent_id(client: AsyncClient, db_session: AsyncSe
     """
     response = await client.get("/trips/999")
     assert response.status_code == 404
-    assert response.json()["detail"] == "Trip not found"
+    assert response.json()["message"] == "Trip not found"
 
 
 async def test_get_trip_by_url_id_non_existent(
@@ -95,7 +95,7 @@ async def test_get_trip_by_url_id_non_existent(
     """
     response = await client.get("/trips/url/non_existent_url")
     assert response.status_code == 404
-    assert response.json()["detail"] == "Trip not found"
+    assert response.json()["message"] == "Trip not found"
 
 
 async def test_update_trip(client: AsyncClient, db_session: AsyncSession):
@@ -126,7 +126,7 @@ async def test_update_trip_non_existent_id(
     update_data = {"title": "non existent", "detail": "update"}
     response = await client.put("/trips/999", json=update_data)
     assert response.status_code == 404
-    assert response.json()["detail"] == "Trip not found"
+    assert response.json()["message"] == "Trip not found"
 
 
 async def test_update_trip_invalid_input(client: AsyncClient, db_session: AsyncSession):

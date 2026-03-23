@@ -128,7 +128,7 @@ async def test_create_block_non_existent_page(
     }
     response = await client.post("/pages/999/blocks", json=block_data)
     assert response.status_code == 404
-    assert response.json()["detail"] == "Page not found"
+    assert response.json()["message"] == "Page not found"
 
 
 async def test_read_blocks(
@@ -169,7 +169,7 @@ async def test_get_block_non_existent_id(client: AsyncClient, db_session: AsyncS
     """
     response = await client.get("/blocks/999")
     assert response.status_code == 404
-    assert response.json()["detail"] == "Block not found"
+    assert response.json()["message"] == "Block not found"
 
 
 async def test_update_block(
@@ -218,7 +218,7 @@ async def test_update_block_non_existent_id(
     }
     response = await client.put("/blocks/999", json=update_data)
     assert response.status_code == 404
-    assert response.json()["detail"] == "Block not found"
+    assert response.json()["message"] == "Block not found"
 
 
 async def test_update_block_invalid_input(

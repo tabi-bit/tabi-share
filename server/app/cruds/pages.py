@@ -24,7 +24,7 @@ async def create_page(db: AsyncSession, page: PageCreate, trip_id: int) -> Page:
     return db_page
 
 
-async def get_pages(db: AsyncSession, trip_id: int) -> list[Page]:
+async def find_pages(db: AsyncSession, trip_id: int) -> list[Page]:
     """
     特定の旅行プランに関連するすべてのページを取得する関数
 
@@ -33,7 +33,7 @@ async def get_pages(db: AsyncSession, trip_id: int) -> list[Page]:
         trip_id (int): 旅行プランのID
 
     Returns:
-        List[Page]: ページリスト
+        list[Page]: ページリスト
     """
     result = await db.execute(select(Page).where(Page.trip_id == trip_id))
     return list(result.scalars().all())

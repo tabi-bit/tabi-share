@@ -81,7 +81,7 @@ function ClockTimePicker() {
     handleInteraction(e);
   };
 
-  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+  const handlePointerUp = (_e: React.PointerEvent<HTMLDivElement>) => {
     setIsDragging(false);
     // 指を離したとき、時モードなら分モードへ
     if (mode === 'hour' && hasHourShiftedRef.current) {

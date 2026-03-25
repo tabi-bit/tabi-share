@@ -90,7 +90,14 @@ function TimePicker() {
         </Button>
       </PopoverTrigger>
       <PopoverContent className='-translate-x-1/2 -translate-y-1/2 fixed top-1/2 left-1/2 w-auto p-0'>
-        <div className='flex items-center justify-center p-4'>
+        <div
+          className={cn('flex items-center justify-center p-4', 'touch-none select-none', 'webkit-touch-callout-none')}
+          style={{
+            WebkitUserSelect: 'none',
+            WebkitTouchCallout: 'none',
+            userSelect: 'none',
+          }}
+        >
           <Carousel
             setApi={setHourApi}
             opts={{
@@ -111,8 +118,8 @@ function TimePicker() {
           >
             <CarouselContent className='h-32'>
               {hours.map(hour => (
-                <CarouselItem key={hour} className='basis-1/3'>
-                  <div className='flex h-full select-none items-center justify-center text-lg'>{hour}</div>
+                <CarouselItem key={hour} className='flex basis-1/3 items-center justify-center'>
+                  <div className='flex h-full w-full items-center justify-center text-lg'>{hour}</div>
                 </CarouselItem>
               ))}
             </CarouselContent>
@@ -122,11 +129,14 @@ function TimePicker() {
             setApi={setMinuteApi}
             opts={{
               loop: true,
+              skipSnaps: false,
+              dragFree: true,
             }}
             orientation='vertical'
             className='w-full'
             style={{
               maskImage: 'linear-gradient(to bottom, transparent, black 25%, black 75%, transparent)',
+              touchAction: 'none',
             }}
             onWheel={e => {
               if (e.deltaY < 0) {
@@ -138,8 +148,8 @@ function TimePicker() {
           >
             <CarouselContent className='h-32'>
               {minutes.map(minute => (
-                <CarouselItem key={minute} className='basis-1/3'>
-                  <div className='flex h-full select-none items-center justify-center text-lg'>
+                <CarouselItem key={minute} className='flex basis-1/3 items-center justify-center'>
+                  <div className='flex h-full w-full items-center justify-center text-lg'>
                     {minute.toString().padStart(2, '0')}
                   </div>
                 </CarouselItem>

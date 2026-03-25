@@ -16,7 +16,6 @@ function ClockTimePicker() {
   const [mode, setMode] = React.useState<'hour' | 'minute'>('hour');
   const clockRef = React.useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = React.useState(false);
-  const dragStartTime = React.useRef<number>(0);
   const hasHourShiftedRef = React.useRef(false);
 
   const handleTimeUpdate = (newTime: { hour?: number; minute?: number }) => {
@@ -51,7 +50,7 @@ function ClockTimePicker() {
     });
   };
 
-  const handleInteraction = (e: React.MouseEvent<HTMLDivElement>) => {
+  const handleInteraction = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!clockRef.current) return;
     const rect = clockRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left - CLOCK_CENTER;
@@ -69,6 +68,28 @@ function ClockTimePicker() {
     }
   };
 
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    // ターゲット要素にポインターをロック（枠外に出ても追従）
+    e.currentTarget.setPointerCapture(e.pointerId);
+    setIsDragging(true);
+    hasHourShiftedRef.current = false;
+    handleInteraction(e);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDragging) return;
+    handleInteraction(e);
+  };
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    setIsDragging(false);
+    // 指を離したとき、時モードなら分モードへ
+    if (mode === 'hour' && hasHourShiftedRef.current) {
+      setMode('minute');
+    }
+    hasHourShiftedRef.current = false;
+  };
+
   const handleChangeAMPM = (v: string) => {
     setDate(prevDate => {
       const newDate = new Date(prevDate);
@@ -80,26 +101,6 @@ function ClockTimePicker() {
       }
       return newDate;
     });
-  };
-
-  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    setIsDragging(true);
-    dragStartTime.current = Date.now(); // ドラッグ開始時刻を記録
-    hasHourShiftedRef.current = false;
-    handleInteraction(e);
-  };
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!isDragging) return;
-    handleInteraction(e);
-  };
-
-  const handleMouseUp = () => {
-    setIsDragging(false);
-    if (mode === 'hour' && hasHourShiftedRef.current) {
-      setMode('minute');
-    }
-    hasHourShiftedRef.current = false;
   };
 
   const hours = Array.from({ length: 12 }, (_, i) => i + 1);
@@ -149,11 +150,10 @@ function ClockTimePicker() {
             tabIndex={0}
             ref={clockRef}
             className='relative cursor-pointer select-none rounded-full bg-blue-50'
-            style={{ width: CLOCK_SIZE, height: CLOCK_SIZE }}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
+            style={{ width: CLOCK_SIZE, height: CLOCK_SIZE, touchAction: 'none' }}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
           >
             {/* Numbers will be placed here */}
             {(mode === 'hour' ? hours : minutes).map(value => {

@@ -1,25 +1,55 @@
-import os
+"""
+データベース接続管理モジュール
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import declarative_base, sessionmaker
+非同期データベース接続とセッション管理を提供
+"""
 
-DEV_DB_USER = os.getenv("POSTGRES_USER")
-DEV_DB_PASSWORD = os.getenv("POSTGRES_PASSWORD")
-DEV_DB_HOST = os.getenv("POSTGRES_HOST", "localhost")
-DEV_DB_PORT = os.getenv("POSTGRES_PORT", "5432")
-DEV_DB_NAME = os.getenv("POSTGRES_DB")
-DEV_DATABASE_URL = f"postgresql+psycopg2://{DEV_DB_USER}:{DEV_DB_PASSWORD}@{DEV_DB_HOST}:{DEV_DB_PORT}/{DEV_DB_NAME}"
+from collections.abc import AsyncGenerator
 
-engine = create_engine(DEV_DATABASE_URL)
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
+from sqlalchemy.orm import declarative_base
 
-SessionLocal = sessionmaker(autocommit=False, autoflush=True, bind=engine)
+from app.config import get_settings
 
+settings = get_settings()
+
+# 非同期エンジンの作成
+engine: AsyncEngine = create_async_engine(
+    settings.get_database_url(),
+    echo=False,  # 本番環境では False
+    pool_pre_ping=True,  # 接続の健全性チェック
+    pool_size=5,  # 接続プールサイズ
+    max_overflow=10,  # 最大オーバーフロー接続数
+    connect_args={"ssl": True} if settings.ssl_required else {},
+)
+
+# 非同期セッションファクトリ
+AsyncSessionLocal = async_sessionmaker(
+    engine,
+    class_=AsyncSession,
+    expire_on_commit=False,  # コミット後もオブジェクトを使用可能
+    autoflush=True,
+    autocommit=False,
+)
+
+# SQLAlchemy Base クラス
 Base = declarative_base()
 
 
-def get_db_session():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
+    """
+    非同期データベースセッションを生成する依存性注入用関数
+
+    Yields:
+        AsyncSession: 非同期データベースセッション
+    """
+    async with AsyncSessionLocal() as session:
+        try:
+            yield session
+        finally:
+            await session.close()

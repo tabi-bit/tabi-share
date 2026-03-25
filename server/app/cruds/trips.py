@@ -1,15 +1,16 @@
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Trip
 from app.schemas.trip import TripCreateIn, TripUpdate
 
 
-async def create_trip(db: Session, trip: TripCreateIn, url_id: str) -> int:
+async def create_trip(db: AsyncSession, trip: TripCreateIn, url_id: str) -> int:
     """
     旅行オブジェクトをデータベースに作成する関数
 
     Args:
-        db (Session): データベースセッション
+        db (AsyncSession): 非同期データベースセッション
         trip (TripCreateIn): 旅行プラン作成用のスキーマ
         url_id (str): サーバーで生成されたユニークID
 
@@ -18,58 +19,61 @@ async def create_trip(db: Session, trip: TripCreateIn, url_id: str) -> int:
     """
     db_trip = Trip(**trip.model_dump(), url_id=url_id)
     db.add(db_trip)
-    db.commit()
-    db.refresh(db_trip)
+    await db.commit()
+    await db.refresh(db_trip)
     return db_trip.id
 
 
-async def list_trips(db: Session) -> list[Trip]:
+async def find_trips(db: AsyncSession) -> list[Trip]:
     """
     すべての旅行プランを取得する関数
 
     Args:
-        db (Session): データベースセッション
+        db (AsyncSession): 非同期データベースセッション
 
     Returns:
         list[Trip]: すべての旅行プラン
     """
-    return db.query(Trip).all()
+    result = await db.execute(select(Trip))
+    return list(result.scalars().all())
 
 
-async def get_trip(db: Session, trip_id: int) -> Trip | None:
+async def get_trip(db: AsyncSession, trip_id: int) -> Trip | None:
     """
     特定の旅行プランを取得する関数
 
     Args:
-        db (Session): データベースセッション
+        db (AsyncSession): 非同期データベースセッション
         trip_id (int): 旅行プランのID
 
     Returns:
         Trip | None: 特定の旅行プラン、見つからない場合はNone
     """
-    return db.query(Trip).filter(Trip.id == trip_id).first()
+    result = await db.execute(select(Trip).where(Trip.id == trip_id))
+    return result.scalar_one_or_none()
 
 
-async def get_trip_by_url_id(db: Session, url_id: str) -> Trip | None:
+async def get_trip_by_url_id(db: AsyncSession, url_id: str) -> Trip | None:
     """
     URL IDで特定の旅行プランを取得する関数
 
     Args:
-        db (Session): データベースセッション
+        db (AsyncSession): 非同期データベースセッション
         url_id (str): 旅行プランのURL ID
 
     Returns:
         Trip | None: 特定の旅行プラン、見つからない場合はNone
     """
-    return db.query(Trip).filter(Trip.url_id == url_id).first()
+    result = await db.execute(select(Trip).where(Trip.url_id == url_id))
+    return result.scalar_one_or_none()
 
 
-async def update_trip(db: Session, trip_id: int, trip: TripUpdate) -> Trip | None:
+async def update_trip(db: AsyncSession, trip_id: int, trip: TripUpdate) -> Trip | None:
     """
     特定の旅行プランを更新する関数
 
     Args:
-        db (Session): データベースセッション
+        db (AsyncSession): 非同期データベースセッション
         trip_id (int): 更新する旅行プランのID
         trip (TripUpdate): 更新内容
 
@@ -80,18 +84,18 @@ async def update_trip(db: Session, trip_id: int, trip: TripUpdate) -> Trip | Non
     if db_trip:
         for key, value in trip.model_dump().items():
             setattr(db_trip, key, value)
-        db.commit()
-        db.refresh(db_trip)
+        await db.commit()
+        await db.refresh(db_trip)
 
     return db_trip
 
 
-async def delete_trip(db: Session, trip_id: int) -> bool:
+async def delete_trip(db: AsyncSession, trip_id: int) -> bool:
     """
     特定の旅行プランを削除する関数
 
     Args:
-        db (Session): データベースセッション
+        db (AsyncSession): 非同期データベースセッション
         trip_id (int): 削除する旅行プランのID
 
     Returns:
@@ -99,8 +103,8 @@ async def delete_trip(db: Session, trip_id: int) -> bool:
     """
     db_trip = await get_trip(db, trip_id)
     if db_trip:
-        db.delete(db_trip)
-        db.commit()
+        await db.delete(db_trip)
+        await db.commit()
         return True
 
     return False

@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import angleDownIcon from '@/assets/icons/angle-down-white.svg';
+import { MarkdownViewer } from '@/components/ui/markdown';
 import { useResizeObserver } from '@/hooks/useResizeObserver';
 import { cn } from '@/lib/utils';
 import type { ScheduleBlockComponentProps } from '../types';
@@ -47,16 +48,16 @@ export function BlockScheduleView({ block, className }: BlockScheduleViewProps) 
         className
       )}
     >
-      <div className='font-bold text-16px text-white'>{block.title}</div>
+      <div className='font-bold text-14px text-white sm:text-16px'>{block.title}</div>
       {block.detail && (
         <div
           className={cn(
-            'overflow-hidden transition-[max-height] duration-300',
+            'ml-2 overflow-hidden text-12px transition-[max-height] duration-300 sm:text-16px',
             isExpanded ? 'max-h-[80vh]' : 'max-h-18'
           )}
           ref={detailDivRef}
         >
-          {block.detail}
+          <MarkdownViewer content={block.detail} variant='light-on-dark' />
         </div>
       )}
       {block.detail && isOverflowDetail && (

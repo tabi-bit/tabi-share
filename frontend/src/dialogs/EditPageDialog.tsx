@@ -11,11 +11,11 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useDeletePage, useUpdatePage } from '@/hooks/usePages';
-import type { Page } from '@/types';
+import { PAGE_TITLE_MAX_LENGTH, type Page } from '@/types';
 
 interface EditPageDialogProps {
   open: boolean;
@@ -26,8 +26,8 @@ interface EditPageDialogProps {
 
 export const EditPageDialog = ({ open, onOpenChange, page, onDeleted }: EditPageDialogProps) => {
   const [title, setTitle] = useState(page.title);
-  const { updatePage } = useUpdatePage(page.tripId);
-  const { deletePage } = useDeletePage(page.tripId);
+  const { updatePage, isUpdating } = useUpdatePage(page.tripId);
+  const { deletePage, isDeleting } = useDeletePage(page.tripId);
 
   // ダイアログが開いたときにフォームを初期化
   useEffect(() => {
@@ -49,18 +49,21 @@ export const EditPageDialog = ({ open, onOpenChange, page, onDeleted }: EditPage
       return;
     }
 
-    await updatePage({ id: page.id, data: { title: title.trim(), detail: page.detail, tripId: page.tripId } });
+    if (title.trim() !== page.title) {
+      await updatePage({ id: page.id, data: { title: title.trim(), detail: page.detail, tripId: page.tripId } });
+    }
+
     onOpenChange(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className='max-w-md'>
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>ページ情報の編集</DialogTitle>
         </DialogHeader>
 
-        <div className='space-y-4'>
+        <DialogBody>
           <div className='space-y-2'>
             <Label htmlFor='edit-page-title'>タイトル</Label>
             <Input
@@ -68,15 +71,19 @@ export const EditPageDialog = ({ open, onOpenChange, page, onDeleted }: EditPage
               value={title}
               onChange={e => setTitle(e.target.value)}
               placeholder='ページのタイトル'
+              required
+              maxLength={PAGE_TITLE_MAX_LENGTH}
             />
           </div>
-        </div>
+        </DialogBody>
 
         <DialogFooter className='flex justify-between'>
           {/* 左側: 削除ボタン */}
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant='destructive'>削除</Button>
+              <Button variant='destructive' className='mr-auto'>
+                削除
+              </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
@@ -87,20 +94,19 @@ export const EditPageDialog = ({ open, onOpenChange, page, onDeleted }: EditPage
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>キャンセル</AlertDialogCancel>
-                <AlertDialogAction variant='destructive' onClick={handleDelete}>
+                <AlertDialogAction variant='destructive' onClick={handleDelete} disabled={isDeleting}>
                   削除
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
 
-          {/* 右側: キャンセル・更新ボタン */}
-          <div className='flex gap-2'>
-            <Button variant='outline' onClick={() => onOpenChange(false)}>
-              キャンセル
-            </Button>
-            <Button onClick={handleSubmit}>更新</Button>
-          </div>
+          <Button variant='outline' onClick={() => onOpenChange(false)}>
+            キャンセル
+          </Button>
+          <Button onClick={handleSubmit} loading={isUpdating}>
+            更新
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -1,8 +1,8 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 import pytest
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.cruds import blocks as blocks_cruds
 from app.schemas.block import BlockCreate, BlockUpdate
@@ -10,15 +10,15 @@ from app.schemas.page import Page
 
 
 @pytest.mark.asyncio
-async def test_create_block(db_session: Session, test_create_page: Page):
+async def test_create_block(db_session: AsyncSession, test_create_page: Page):
     """
     create_block()/正常系
     """
     # arrange
     block_in = BlockCreate(
         title="test block",
-        start_time=datetime(2023, 1, 1, 10, 0),
-        end_time=datetime(2023, 1, 1, 12, 0),
+        start_time=datetime(2023, 1, 1, 10, 0, tzinfo=timezone.utc),
+        end_time=datetime(2023, 1, 1, 12, 0, tzinfo=timezone.utc),
         detail="test detail",
         block_type="event",
         transportation_type="car",
@@ -43,15 +43,15 @@ async def test_create_block(db_session: Session, test_create_page: Page):
 
 
 @pytest.mark.asyncio
-async def test_create_block_non_existent_page_id(db_session: Session):
+async def test_create_block_non_existent_page_id(db_session: AsyncSession):
     """
     create_block()/異常系/page_idが存在しない場合
     """
     # arrange
     block_in = BlockCreate(
         title="test block",
-        start_time=datetime(2023, 1, 1, 10, 0),
-        end_time=datetime(2023, 1, 1, 12, 0),
+        start_time=datetime(2023, 1, 1, 10, 0, tzinfo=timezone.utc),
+        end_time=datetime(2023, 1, 1, 12, 0, tzinfo=timezone.utc),
         detail="test detail",
         block_type="event",
     )
@@ -65,15 +65,15 @@ async def test_create_block_non_existent_page_id(db_session: Session):
 
 
 @pytest.mark.asyncio
-async def test_get_block(db_session: Session, test_create_page: Page):
+async def test_get_block(db_session: AsyncSession, test_create_page: Page):
     """
     get_block()/正常系
     """
     # arrange
     block_in = BlockCreate(
         title="test block",
-        start_time=datetime(2023, 1, 1, 10, 0),
-        end_time=datetime(2023, 1, 1, 12, 0),
+        start_time=datetime(2023, 1, 1, 10, 0, tzinfo=timezone.utc),
+        end_time=datetime(2023, 1, 1, 12, 0, tzinfo=timezone.utc),
         detail="test detail",
         block_type="event",
         transportation_type="car",
@@ -107,7 +107,7 @@ async def test_get_block(db_session: Session, test_create_page: Page):
 
 
 @pytest.mark.asyncio
-async def test_find_blocks(db_session: Session, test_create_page: Page):
+async def test_find_blocks(db_session: AsyncSession, test_create_page: Page):
     """
     find_blocks()/正常系
     """
@@ -116,7 +116,7 @@ async def test_find_blocks(db_session: Session, test_create_page: Page):
         db=db_session,
         block=BlockCreate(
             title="b1",
-            start_time=datetime(2023, 1, 1, 10, 0),
+            start_time=datetime(2023, 1, 1, 10, 0, tzinfo=timezone.utc),
             detail="d",
             block_type="event",
         ),
@@ -126,7 +126,7 @@ async def test_find_blocks(db_session: Session, test_create_page: Page):
         db=db_session,
         block=BlockCreate(
             title="b2",
-            start_time=datetime(2023, 1, 1, 11, 0),
+            start_time=datetime(2023, 1, 1, 11, 0, tzinfo=timezone.utc),
             detail="d",
             block_type="event",
         ),
@@ -143,14 +143,14 @@ async def test_find_blocks(db_session: Session, test_create_page: Page):
 
 
 @pytest.mark.asyncio
-async def test_update_block(db_session: Session, test_create_page: Page):
+async def test_update_block(db_session: AsyncSession, test_create_page: Page):
     """
     update_block()/正常系
     """
     # arrange
     block_in = BlockCreate(
         title="before",
-        start_time=datetime(2023, 1, 1, 10, 0),
+        start_time=datetime(2023, 1, 1, 10, 0, tzinfo=timezone.utc),
         detail="d",
         block_type="event",
     )
@@ -159,7 +159,7 @@ async def test_update_block(db_session: Session, test_create_page: Page):
     )
     update_data = BlockUpdate(
         title="after",
-        start_time=datetime(2023, 1, 1, 10, 0),
+        start_time=datetime(2023, 1, 1, 10, 0, tzinfo=timezone.utc),
         detail="d",
         block_type="event",
     )
@@ -183,14 +183,14 @@ async def test_update_block(db_session: Session, test_create_page: Page):
 
 
 @pytest.mark.asyncio
-async def test_delete_block(db_session: Session, test_create_page: Page):
+async def test_delete_block(db_session: AsyncSession, test_create_page: Page):
     """
     delete_block()/正常系
     """
     # arrange
     block_in = BlockCreate(
         title="delete",
-        start_time=datetime(2023, 1, 1, 10, 0),
+        start_time=datetime(2023, 1, 1, 10, 0, tzinfo=timezone.utc),
         detail="d",
         block_type="event",
     )

@@ -1,3 +1,4 @@
+import dayjs from 'dayjs';
 import { useEffect, useState } from 'react';
 import {
   AlertDialog,
@@ -12,13 +13,13 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { LazyMarkdownEditor } from '@/components/ui/markdown';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
 import type { Block, TransportationBlock, TransportationType } from '@/types/block';
-import { TRANSPORTATION_OPTIONS } from '@/types/block';
+import { BLOCK_TITLE_MAX_LENGTH, TRANSPORTATION_OPTIONS } from '@/types/block';
 
 interface EditBlockDialogProps {
   open: boolean;
@@ -47,8 +48,19 @@ const minutesToHoursAndMinutes = (totalMinutes: number): { hours: number; minute
   return { hours, minutes };
 };
 
+// ユーティリティ関数: 開始時間と所要時間から終了時間文字列を算出
+const calculateEndTimeStr = (startTimeStr: string, durationH: string, durationM: string): string | null => {
+  const h = Number.parseInt(durationH) || 0;
+  const m = Number.parseInt(durationM) || 0;
+  if (h === 0 && m === 0) return null;
+  const start = dayjs(`2000-01-01 ${startTimeStr}`);
+  if (!start.isValid()) return null;
+  return start.add(h, 'hour').add(m, 'minute').format('HH:mm');
+};
+
 export const EditBlockDialog = ({ open, onOpenChange, block, onSubmit, onDelete }: EditBlockDialogProps) => {
   const isSchedule = block.type === 'schedule';
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // 共通のstate
   const [title, setTitle] = useState(block.title);
@@ -121,127 +133,137 @@ export const EditBlockDialog = ({ open, onOpenChange, block, onSubmit, onDelete 
       newEndTime = new Date(newStartTime.getTime() + totalMinutes * 60 * 1000);
     }
 
-    if (isSchedule) {
-      const updatedBlock: Block = {
-        ...block,
-        title: title.trim(),
-        startTime: newStartTime,
-        endTime: newEndTime,
-        detail: detail.trim() || null,
-      };
-      await onSubmit(updatedBlock);
-    } else {
-      const updatedBlock: Block = {
-        ...block,
-        type: 'transportation',
-        title: title.trim(),
-        startTime: newStartTime,
-        endTime: newEndTime,
-        detail: detail.trim() || null,
-        transportationType,
-      } as TransportationBlock;
-      await onSubmit(updatedBlock);
-    }
+    setIsSubmitting(true);
+    try {
+      if (isSchedule) {
+        const updatedBlock: Block = {
+          ...block,
+          title: title.trim(),
+          startTime: newStartTime,
+          endTime: newEndTime,
+          detail: detail.trim() || null,
+        };
+        await onSubmit(updatedBlock);
+      } else {
+        const updatedBlock: Block = {
+          ...block,
+          type: 'transportation',
+          title: title.trim(),
+          startTime: newStartTime,
+          endTime: newEndTime,
+          detail: detail.trim() || null,
+          transportationType,
+        } as TransportationBlock;
+        await onSubmit(updatedBlock);
+      }
 
-    onOpenChange(false);
+      onOpenChange(false);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className='max-w-md'>
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>ブロックの編集</DialogTitle>
+          {/* ブロックタイプのラベル */}
+          <div className='text-muted-foreground text-sm'>{isSchedule ? '予定' : '移動'}</div>
         </DialogHeader>
 
-        {/* ブロックタイプのラベル */}
-        <div className='text-muted-foreground text-sm'>{isSchedule ? '予定' : '移動'}</div>
-
-        <div className='space-y-4'>
-          <div className='space-y-2'>
-            <Label htmlFor='edit-title'>タイトル</Label>
-            <Input
-              id='edit-title'
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              placeholder={isSchedule ? '予定のタイトル' : '移動のタイトル'}
-            />
-          </div>
-
-          {!isSchedule && (
+        <DialogBody>
+          <div className='space-y-4'>
             <div className='space-y-2'>
-              <Label htmlFor='edit-transportation-type'>移動手段</Label>
-              <Select
-                value={transportationType}
-                onValueChange={value => setTransportationType(value as TransportationType)}
-              >
-                <SelectTrigger id='edit-transportation-type'>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {TRANSPORTATION_OPTIONS.map(option => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          <div className='space-y-2'>
-            <Label htmlFor='edit-start-time'>開始時間</Label>
-            <Input id='edit-start-time' type='time' value={startTime} onChange={e => setStartTime(e.target.value)} />
-          </div>
-
-          <div className='space-y-2'>
-            <Label>所要時間</Label>
-            <div className='flex items-center gap-2'>
+              <Label htmlFor='edit-title'>タイトル</Label>
               <Input
-                type='number'
-                min='0'
-                value={durationHours}
-                onChange={e => setDurationHours(e.target.value)}
-                disabled={noEndTime}
-                className='w-20'
+                id='edit-title'
+                value={title}
+                onChange={e => setTitle(e.target.value)}
+                placeholder={isSchedule ? '予定のタイトル' : '移動のタイトル'}
+                required
+                maxLength={BLOCK_TITLE_MAX_LENGTH}
               />
-              <span className='text-sm'>時間</span>
-              <Input
-                type='number'
-                min='0'
-                max='59'
-                value={durationMinutes}
-                onChange={e => setDurationMinutes(e.target.value)}
-                disabled={noEndTime}
-                className='w-20'
-              />
-              <span className='text-sm'>分</span>
             </div>
-            <div className='flex items-center space-x-2'>
-              <Checkbox id='edit-no-end' checked={noEndTime} onCheckedChange={checked => setNoEndTime(!!checked)} />
-              <Label htmlFor='edit-no-end' className='font-normal text-sm'>
-                設定しない
-              </Label>
+            {!isSchedule && (
+              <div className='space-y-2'>
+                <Label htmlFor='edit-transportation-type'>移動手段</Label>
+                <Select
+                  value={transportationType}
+                  onValueChange={value => setTransportationType(value as TransportationType)}
+                >
+                  <SelectTrigger id='edit-transportation-type'>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TRANSPORTATION_OPTIONS.map(option => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            <div className='space-y-2'>
+              <Label htmlFor='edit-start-time'>開始時間</Label>
+              <Input id='edit-start-time' type='time' value={startTime} onChange={e => setStartTime(e.target.value)} />
+            </div>
+            <div className='space-y-2'>
+              <Label>所要時間</Label>
+              <div className='flex items-center gap-2'>
+                <Input
+                  type='number'
+                  min='0'
+                  value={durationHours}
+                  onChange={e => setDurationHours(e.target.value)}
+                  disabled={noEndTime}
+                  className='w-20'
+                />
+                <span className='text-sm'>時間</span>
+                <Input
+                  type='number'
+                  min='0'
+                  max='59'
+                  value={durationMinutes}
+                  onChange={e => setDurationMinutes(e.target.value)}
+                  disabled={noEndTime}
+                  className='w-20'
+                />
+                <span className='text-sm'>分</span>
+                {!noEndTime && calculateEndTimeStr(startTime, durationHours, durationMinutes) && (
+                  <span className='ml-1 font-normal text-muted-foreground'>
+                    （〜{calculateEndTimeStr(startTime, durationHours, durationMinutes)}）
+                  </span>
+                )}
+              </div>
+              <div className='flex items-center space-x-2'>
+                <Checkbox id='edit-no-end' checked={noEndTime} onCheckedChange={checked => setNoEndTime(!!checked)} />
+                <Label htmlFor='edit-no-end' className='font-normal text-sm'>
+                  設定しない
+                </Label>
+              </div>
+            </div>
+            <div className='space-y-2'>
+              <Label htmlFor='edit-detail'>詳細</Label>
+              <LazyMarkdownEditor
+                className='max-h-72'
+                id='edit-detail'
+                value={detail}
+                onChange={setDetail}
+                placeholder='詳細情報（任意）'
+              />
             </div>
           </div>
-
-          <div className='space-y-2'>
-            <Label htmlFor='edit-detail'>詳細</Label>
-            <Textarea
-              id='edit-detail'
-              value={detail}
-              onChange={e => setDetail(e.target.value)}
-              placeholder='詳細情報（任意）'
-              rows={3}
-              className='max-h-32'
-            />
-          </div>
-        </div>
+        </DialogBody>
 
         <DialogFooter className='flex justify-between'>
           {/* 左側: 削除ボタン */}
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant='destructive'>削除</Button>
+              <Button variant='destructive' className='mr-auto'>
+                削除
+              </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
@@ -260,12 +282,12 @@ export const EditBlockDialog = ({ open, onOpenChange, block, onSubmit, onDelete 
           </AlertDialog>
 
           {/* 右側: キャンセル・更新ボタン */}
-          <div className='flex gap-2'>
-            <Button variant='outline' onClick={() => onOpenChange(false)}>
-              キャンセル
-            </Button>
-            <Button onClick={handleSubmit}>更新</Button>
-          </div>
+          <Button variant='outline' onClick={() => onOpenChange(false)}>
+            キャンセル
+          </Button>
+          <Button onClick={handleSubmit} loading={isSubmitting}>
+            更新
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

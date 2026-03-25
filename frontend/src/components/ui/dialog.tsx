@@ -46,6 +46,9 @@ function DialogContent({
       <DialogOverlay />
       <DialogPrimitive.Content
         data-slot='dialog-content'
+        onOpenAutoFocus={e => {
+          e.preventDefault();
+        }}
         className={cn(
           'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 flex max-h-[80vh] w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] flex-col gap-4 overflow-hidden rounded-lg border bg-background p-6 shadow-lg duration-200 data-[state=closed]:animate-out data-[state=open]:animate-in sm:max-w-lg',
           className
@@ -77,14 +80,12 @@ function DialogHeader({ className, ...props }: React.ComponentProps<'div'>) {
   );
 }
 
+function DialogBody({ className, ...props }: React.ComponentProps<'div'>) {
+  return <div data-slot='dialog-body' className={cn('min-h-0 flex-1 overflow-y-auto', className)} {...props} />;
+}
+
 function DialogFooter({ className, ...props }: React.ComponentProps<'div'>) {
-  return (
-    <div
-      data-slot='dialog-footer'
-      className={cn('flex flex-col-reverse gap-2 sm:flex-row sm:justify-end', className)}
-      {...props}
-    />
-  );
+  return <div data-slot='dialog-footer' className={cn('flex flex-row justify-end gap-2', className)} {...props} />;
 }
 
 function DialogTitle({ className, ...props }: React.ComponentProps<typeof DialogPrimitive.Title>) {
@@ -109,6 +110,7 @@ function DialogDescription({ className, ...props }: React.ComponentProps<typeof 
 
 export {
   Dialog,
+  DialogBody,
   DialogClose,
   DialogContent,
   DialogDescription,

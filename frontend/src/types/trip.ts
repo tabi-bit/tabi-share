@@ -17,15 +17,20 @@ export type Trip = z.infer<typeof TripSchema>;
 
 // --- API層のスキーマ ---
 
+export const TRIP_TITLE_MAX_LENGTH = 16;
+
 /**
  * APIから返ってくる生のデータ形式を表すスキーマ
  */
 const ApiTripSchema = z.object({
   id: z.number(),
-  title: z.string(),
+  title: z
+    .string()
+    .min(1)
+    .max(TRIP_TITLE_MAX_LENGTH, { message: `タイトルは最大${TRIP_TITLE_MAX_LENGTH}文字です` }),
   detail: z.string().nullish(),
   people_num: z.number().nullish(),
-  url_id: z.string(),
+  url_id: z.string().max(100),
 });
 
 export type ApiTrip = z.infer<typeof ApiTripSchema>;
@@ -35,30 +40,26 @@ export type ApiTrip = z.infer<typeof ApiTripSchema>;
 /**
  * APIレスポンスをアプリケーション層のTripに変換するスキーマ
  */
-export const AppResponseTripSchema = ApiTripSchema.transform(
+export const tripFromApi = ApiTripSchema.transform(
   (apiData): Trip => ({
-    id: apiData.id,
-    title: apiData.title,
-    detail: apiData.detail,
+    ...apiData,
     peopleNum: apiData.people_num,
     urlId: apiData.url_id,
   })
 );
 
-// --- 変換スキーマ (アプリケーション -> API) ---
-
 /**
- * アプリケーション層のTripをAPI送信用の形式に変換するスキーマ
+ * APIからの新規作成レスポンスをアプリケーション層の形式に変換するスキーマ
+ * 作成時はidとurlIdのみが返ってくる想定
  */
-export const AppRequestTripSchema = TripSchema.transform(
-  (appData): ApiTrip => ({
-    id: appData.id,
-    title: appData.title,
-    detail: appData.detail,
-    people_num: appData.peopleNum,
-    url_id: appData.urlId,
+export const createTripFromApi = ApiTripSchema.pick({ id: true, url_id: true }).transform(
+  (apiData): Pick<Trip, 'id' | 'urlId'> => ({
+    id: apiData.id,
+    urlId: apiData.url_id,
   })
 );
+
+export type CreateTripFromApi = z.infer<typeof createTripFromApi>;
 
 // --- 作成/更新用のスキーマ ---
 
@@ -70,18 +71,12 @@ export const TripMutationSchema = TripSchema.omit({ id: true, urlId: true });
 export type TripMutation = z.infer<typeof TripMutationSchema>;
 
 /**
- * 作成/更新リクエスト用のAPI層スキーマ
- */
-const ApiTripMutationSchema = ApiTripSchema.omit({ id: true, url_id: true });
-export type ApiTripMutation = z.infer<typeof ApiTripMutationSchema>;
-
-/**
  * アプリケーション層の作成/更新データをAPI送信用に変換するスキーマ
  */
-export const AppRequestTripMutationSchema = TripMutationSchema.transform(
-  (appData): ApiTripMutation => ({
+export const tripMutationToApi = TripMutationSchema.transform(
+  (appData): Omit<ApiTrip, 'id' | 'url_id'> => ({
     title: appData.title,
-    detail: appData.detail,
+    detail: appData.detail ?? '',
     people_num: appData.peopleNum,
   })
 );

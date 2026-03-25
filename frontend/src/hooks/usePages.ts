@@ -1,10 +1,11 @@
-import type { AxiosError } from 'axios';
 import { useCallback } from 'react';
-import useSWR, { useSWRConfig } from 'swr';
+import { toast } from 'sonner';
+import useSWR, { type SWRConfiguration, useSWRConfig } from 'swr';
 import useSWRMutation from 'swr/mutation';
 import { z } from 'zod';
 import { apiClient, fetcher } from '@/lib/apiClient';
-import { AppRequestPageSchema, AppResponsePageSchema, type Page, PageSchema } from '@/types/page';
+import { getErrorMessage } from '@/lib/errors';
+import { type Page, PageSchema, pageFromApi, pageToApi } from '@/types/page';
 
 const TRIPS_BASE_PATH = '/trips';
 const PAGES_BASE_PATH = '/pages';
@@ -12,13 +13,14 @@ const PAGES_BASE_PATH = '/pages';
 /**
  * tripId に紐づく Page をすべて取得するフック
  */
-export const usePages = (tripId: number | null) => {
+export const usePages = (tripId: number | null, options?: Pick<SWRConfiguration, 'refreshInterval'>) => {
   const { data, error, isLoading } = useSWR<Page[]>(
     tripId ? `${TRIPS_BASE_PATH}/${tripId}/pages` : null,
     async (url: string) => {
       const res = await fetcher(url);
-      return z.array(AppResponsePageSchema).parse(res);
-    }
+      return z.array(pageFromApi).parse(res);
+    },
+    options
   );
 
   return {
@@ -34,7 +36,7 @@ export const usePages = (tripId: number | null) => {
 export const usePage = (id: number | null) => {
   const { data, error, isLoading } = useSWR<Page>(id ? `${PAGES_BASE_PATH}/${id}` : null, async (url: string) => {
     const res = await fetcher(url);
-    return AppResponsePageSchema.parse(res);
+    return pageFromApi.parse(res);
   });
 
   return {
@@ -58,18 +60,19 @@ export const useCreatePage = (tripId: number | null) => {
     async (_key: string | null, { arg: pageData }: { arg: CreatePageArg }) => {
       CreatePageSchema.parse(pageData);
       // アプリ層→API層に変換してからバリデーション・送信
-      const apiData = AppRequestPageSchema.parse({ ...pageData, id: 0 }); // idは仮値
+      const apiData = pageToApi.parse({ ...pageData, id: 0 }); // idは仮値
       const { id: _, ...payload } = apiData; // idを除外
       const response = await apiClient.post(`${TRIPS_BASE_PATH}/${tripId}/pages`, payload);
-      return AppResponsePageSchema.parse(response.data);
+      return pageFromApi.parse(response.data);
     },
     [tripId]
   );
 
-  const { trigger, isMutating, error, data } = useSWRMutation<Page, AxiosError, string | null, CreatePageArg>(
+  const { trigger, isMutating, error, data } = useSWRMutation<Page, Error, string | null, CreatePageArg>(
     listKey, // リストの更新
     createPageFetcher,
     {
+      onError: err => toast.error(getErrorMessage(err)),
       onSuccess: (newPage: Page) =>
         mutate(
           listKey,
@@ -104,10 +107,10 @@ export const useUpdatePage = (tripId: number | null) => {
     const { id, data } = arg;
     UpdatePageSchema.parse(data);
     // アプリ層→API層に変換してからバリデーション・送信
-    const apiData = AppRequestPageSchema.parse({ ...data, id });
+    const apiData = pageToApi.parse({ ...data, id });
     const { id: _, ...payload } = apiData; // idを除外（URLパスで指定）
     const response = await apiClient.put(`${PAGES_BASE_PATH}/${id}`, payload);
-    return AppResponsePageSchema.parse(response.data);
+    return pageFromApi.parse(response.data);
   }, []);
 
   const { trigger, isMutating, error, data } = useSWRMutation(listKey, updatePageFetcher, {
@@ -134,7 +137,10 @@ export const useUpdatePage = (tripId: number | null) => {
         },
         revalidate: false,
         rollbackOnError: true,
-        onError: () => mutate(`${PAGES_BASE_PATH}/${arg.id}`), // 個別データのロールバック
+        onError: (err: unknown) => {
+          toast.error(getErrorMessage(err));
+          mutate(`${PAGES_BASE_PATH}/${arg.id}`); // 個別データのロールバック
+        },
       });
     },
     [trigger, mutate]
@@ -186,7 +192,10 @@ export const useDeletePage = (tripId: number | null) => {
         },
         revalidate: false,
         rollbackOnError: true,
-        onError: () => mutate(individualKey), // エラー時に個別データを再検証して戻す
+        onError: (err: unknown) => {
+          toast.error(getErrorMessage(err));
+          mutate(individualKey); // エラー時に個別データを再検証して戻す
+        },
       });
     },
     [trigger, mutate]

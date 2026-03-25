@@ -53,7 +53,7 @@ class ErrorResponseException(Exception):
         self,
         message: str,
         code: str,
-        detail: dict[str, Any] | None = {},
+        detail: dict[str, Any] | None = None,
         description: str = "",
     ):
         self.message = message
@@ -73,6 +73,29 @@ class ErrorResponseException(Exception):
             code=self.code,
             detail=self.detail,
         )
+
+
+class NotFound(ErrorResponseException):
+    """
+    リソースが見つからない場合のエラー
+
+    Attributes:
+      response_status (int): HTTP ステータスコード
+    """
+
+    response_status = status.HTTP_404_NOT_FOUND
+
+    def __init__(
+        self,
+        message: str,
+        code: str = "not_found",
+        detail: dict[str, Any] | None = None,
+        description: str = "",
+    ):
+        self.message = message
+        self.code = code
+        self.detail = detail
+        self.description = description
 
 
 class InvalidParam(ErrorResponseException):

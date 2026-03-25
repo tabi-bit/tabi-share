@@ -45,10 +45,14 @@ Thumbs.db
 dist/
 build/
 *.tsbuildinfo
+dev-dist/
 
 # Logs
 logs/
 *.log
+
+# Local SSL certificates
+*.pem
 
 # firebase
 .firebase

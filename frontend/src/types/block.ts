@@ -2,6 +2,8 @@ import { z } from 'zod';
 
 // --- 共通の型定義 ---
 
+export const BLOCK_TITLE_MAX_LENGTH = 32;
+
 /**
  * 交通手段の列挙型スキーマ
  */
@@ -32,7 +34,10 @@ export const TRANSPORTATION_OPTIONS = [
  */
 const AppBaseBlockSchema = z.object({
   id: z.number(),
-  title: z.string(),
+  title: z
+    .string()
+    .min(1)
+    .max(BLOCK_TITLE_MAX_LENGTH, { message: `ブロックタイトルは最大${BLOCK_TITLE_MAX_LENGTH}文字です` }),
   startTime: z.date(),
   endTime: z.date().nullable(),
   detail: z.string().nullish(),
@@ -105,7 +110,7 @@ const parseUtcDate = (dateStr: string): Date => {
   return new Date(`${dateStr}Z`);
 };
 
-export const AppResponseBlockSchema = ApiBlockSchema.transform(apiData => {
+export const blockFromApi = ApiBlockSchema.transform(apiData => {
   const { start_time, end_time, page_id, block_type, ...rest } = apiData;
   const common = {
     ...rest,
@@ -130,7 +135,7 @@ export const AppResponseBlockSchema = ApiBlockSchema.transform(apiData => {
 
 // --- 変換スキーマ (アプリケーション -> API) ---
 // BlockSchemaをApiBlockSchemaの形に変換するロジック
-export const AppRequestBlockSchema = BlockSchema.transform((appData): ApiBlock => {
+export const blockToApi = BlockSchema.transform((appData): ApiBlock => {
   const { startTime, endTime, pageId, type, ...rest } = appData;
 
   const common = {
@@ -138,6 +143,7 @@ export const AppRequestBlockSchema = BlockSchema.transform((appData): ApiBlock =
     start_time: startTime.toISOString(),
     end_time: endTime?.toISOString() ?? null,
     page_id: pageId,
+    detail: appData.detail ?? '',
   };
 
   if (type === 'transportation') {

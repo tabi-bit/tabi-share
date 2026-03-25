@@ -11,11 +11,14 @@ jobs:
   build_and_preview:
     if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
+    env:
+      DOTENV_PRIVATE_KEY_STG: ${{ secrets.DOTENV_PRIVATE_KEY_STG }}
     steps:
       - uses: actions/checkout@v4
-      - run: npm run install:all && npm run build
+      - run: npm run install:all && npm run build:stg
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TABI_SHARE_8EF6B }}
           projectId: tabi-share-8ef6b
+          target: preview

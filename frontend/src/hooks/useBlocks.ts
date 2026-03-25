@@ -1,10 +1,11 @@
-import type { AxiosError } from 'axios';
 import { useCallback } from 'react';
-import useSWR, { useSWRConfig } from 'swr';
+import { toast } from 'sonner';
+import useSWR, { type SWRConfiguration, useSWRConfig } from 'swr';
 import useSWRMutation from 'swr/mutation';
 import { z } from 'zod';
 import { apiClient, fetcher } from '@/lib/apiClient';
-import { AppRequestBlockSchema, AppResponseBlockSchema, type Block, BlockSchema } from '@/types/block';
+import { getErrorMessage } from '@/lib/errors';
+import { type Block, BlockSchema, blockFromApi, blockToApi } from '@/types/block';
 
 const PAGES_BASE_PATH = '/pages';
 const BLOCKS_BASE_PATH = '/blocks';
@@ -12,13 +13,14 @@ const BLOCKS_BASE_PATH = '/blocks';
 /**
  * pageId に紐づく Block をすべて取得するフック
  */
-export const useBlocks = (pageId: number | null) => {
+export const useBlocks = (pageId: number | null, options?: Pick<SWRConfiguration, 'refreshInterval'>) => {
   const { data, error, isLoading } = useSWR<Block[]>(
     pageId ? `${PAGES_BASE_PATH}/${pageId}/blocks` : null,
     async (url: string) => {
       const res = await fetcher(url);
-      return z.array(AppResponseBlockSchema).parse(res);
-    }
+      return z.array(blockFromApi).parse(res);
+    },
+    options
   );
 
   return {
@@ -34,7 +36,7 @@ export const useBlocks = (pageId: number | null) => {
 export const useBlock = (id: number | null) => {
   const { data, error, isLoading } = useSWR<Block>(id ? `${BLOCKS_BASE_PATH}/${id}` : null, async (url: string) => {
     const res = await fetcher(url);
-    return AppResponseBlockSchema.parse(res);
+    return blockFromApi.parse(res);
   });
 
   return {
@@ -56,18 +58,19 @@ export const useCreateBlock = (pageId: number | null) => {
   const createBlockFetcher = useCallback(
     async (_key: string | null, { arg: blockData }: { arg: CreateBlockArg }) => {
       // アプリ層→API層に変換してからバリデーション・送信
-      const apiData = AppRequestBlockSchema.parse({ ...blockData, id: 0 }); // idは仮値
+      const apiData = blockToApi.parse({ ...blockData, id: 0 }); // idは仮値
       const { id: _, ...payload } = apiData; // idを除外
       const response = await apiClient.post<Block>(`${PAGES_BASE_PATH}/${pageId}/blocks`, payload);
-      return AppResponseBlockSchema.parse(response.data);
+      return blockFromApi.parse(response.data);
     },
     [pageId]
   );
 
-  const { trigger, isMutating, error, data } = useSWRMutation<Block, AxiosError, string | null, CreateBlockArg>(
+  const { trigger, isMutating, error, data } = useSWRMutation<Block, Error, string | null, CreateBlockArg>(
     listKey, // リストの更新
     createBlockFetcher,
     {
+      onError: err => toast.error(getErrorMessage(err)),
       onSuccess: (newBlock: Block) =>
         mutate(
           listKey,
@@ -100,10 +103,10 @@ export const useUpdateBlock = (pageId: number | null) => {
   const updateBlockFetcher = useCallback(async (_key: string | null, { arg }: { arg: UpdateBlockArg }) => {
     const { id, data } = arg;
     // アプリ層→API層に変換してからバリデーション・送信
-    const apiData = AppRequestBlockSchema.parse({ ...data, id });
+    const apiData = blockToApi.parse({ ...data, id });
     const { id: _, ...payload } = apiData; // idを除外（URLパスで指定）
     const response = await apiClient.put<Block>(`${BLOCKS_BASE_PATH}/${id}`, payload);
-    return AppResponseBlockSchema.parse(response.data);
+    return blockFromApi.parse(response.data);
   }, []);
 
   const { trigger, isMutating, error, data } = useSWRMutation(listKey, updateBlockFetcher, {
@@ -130,7 +133,10 @@ export const useUpdateBlock = (pageId: number | null) => {
         },
         revalidate: false,
         rollbackOnError: true,
-        onError: () => mutate(`${BLOCKS_BASE_PATH}/${arg.id}`), // 個別データのロールバック
+        onError: (err: unknown) => {
+          toast.error(getErrorMessage(err));
+          mutate(`${BLOCKS_BASE_PATH}/${arg.id}`); // 個別データのロールバック
+        },
       });
     },
     [trigger, mutate]
@@ -182,7 +188,10 @@ export const useDeleteBlock = (pageId: number | null) => {
         },
         revalidate: false,
         rollbackOnError: true,
-        onError: () => mutate(individualKey), // エラー時に個別データを再検証して戻す
+        onError: (err: unknown) => {
+          toast.error(getErrorMessage(err));
+          mutate(individualKey); // エラー時に個別データを再検証して戻す
+        },
       });
     },
     [trigger, mutate]

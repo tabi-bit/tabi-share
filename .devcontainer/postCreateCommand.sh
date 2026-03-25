@@ -52,5 +52,12 @@ npm install -g firebase-tools
 
 # AI検索用にripgrepをインストール
 sudo apt-get update
-sudo apt-get install -y ripgrep
+sudo apt-get install -y ripgrep libnss3-tools
 echo "🔍 ripgrep installed for AI search functionality."
+
+# PWA開発用のmkcertをインストール
+curl -JLO "https://dl.filippo.io/mkcert/latest?for=linux/amd64"
+chmod +x mkcert-v*-linux-amd64
+sudo cp mkcert-v*-linux-amd64 /usr/local/bin/mkcert
+mkcert -install
+echo "🔒 mkcert installed for local HTTPS development."

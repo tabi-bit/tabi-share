@@ -1,6 +1,6 @@
 import pytest
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.cruds import pages as pages_cruds
 from app.schemas.page import PageCreate, PageUpdate
@@ -8,7 +8,7 @@ from app.schemas.trip import Trip
 
 
 @pytest.mark.asyncio
-async def test_create_page(db_session: Session, test_create_trip: Trip):
+async def test_create_page(db_session: AsyncSession, test_create_trip: Trip):
     """
     create_page()/正常系
     """
@@ -27,7 +27,7 @@ async def test_create_page(db_session: Session, test_create_trip: Trip):
 
 
 @pytest.mark.asyncio
-async def test_create_page_non_existent_trip_id(db_session: Session):
+async def test_create_page_non_existent_trip_id(db_session: AsyncSession):
     """
     create_page()/異常系/trip_idが存在しない場合
     """
@@ -43,7 +43,7 @@ async def test_create_page_non_existent_trip_id(db_session: Session):
 
 
 @pytest.mark.asyncio
-async def test_get_page(db_session: Session, test_create_trip: Trip):
+async def test_get_page(db_session: AsyncSession, test_create_trip: Trip):
     """
     get_page()/正常系
     """
@@ -72,9 +72,9 @@ async def test_get_page(db_session: Session, test_create_trip: Trip):
 
 
 @pytest.mark.asyncio
-async def test_get_pages(db_session: Session, test_create_trip: Trip):
+async def test_find_pages(db_session: AsyncSession, test_create_trip: Trip):
     """
-    get_pages()/正常系
+    find_pages()/正常系
     """
     # arrange
     await pages_cruds.create_page(
@@ -85,7 +85,7 @@ async def test_get_pages(db_session: Session, test_create_trip: Trip):
     )
 
     # act
-    pages = await pages_cruds.get_pages(db=db_session, trip_id=test_create_trip.id)
+    pages = await pages_cruds.find_pages(db=db_session, trip_id=test_create_trip.id)
 
     # assert
     assert len(pages) == 2
@@ -94,7 +94,7 @@ async def test_get_pages(db_session: Session, test_create_trip: Trip):
 
 
 @pytest.mark.asyncio
-async def test_update_page(db_session: Session, test_create_trip: Trip):
+async def test_update_page(db_session: AsyncSession, test_create_trip: Trip):
     """
     update_page()/正常系
     """
@@ -125,7 +125,7 @@ async def test_update_page(db_session: Session, test_create_trip: Trip):
 
 
 @pytest.mark.asyncio
-async def test_delete_page(db_session: Session, test_create_trip: Trip):
+async def test_delete_page(db_session: AsyncSession, test_create_trip: Trip):
     """
     delete_page()/正常系
     """

@@ -81,15 +81,15 @@ describe('Button', () => {
     it.each([
       {
         size: 'default',
-        expectedClasses: ['h-9', 'px-4', 'py-2'],
+        expectedClasses: ['h-7', 'px-2', 'py-2', 'sm:h-9', 'sm:px-4'],
       },
       {
         size: 'sm',
-        expectedClasses: ['h-8', 'px-3'],
+        expectedClasses: ['h-6', 'px-2', 'sm:h-8', 'sm:px-3'],
       },
       {
         size: 'lg',
-        expectedClasses: ['h-10', 'px-6'],
+        expectedClasses: ['h-8', 'px-4', 'sm:h-10', 'sm:px-6'],
       },
       {
         size: 'icon',

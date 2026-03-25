@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from nanoid import generate
-from sqlalchemy.orm.session import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.cruds import trips as trips_cruds
 from app.db_connection import get_db_session
+from app.errors import NotFound
 from app.schemas.trip import Trip, TripCreateIn, TripCreateOut, TripUpdate
 
 router = APIRouter(tags=["Trips"], prefix="/trips")
@@ -12,13 +13,13 @@ URL_ID_SIZE = 16
 
 
 @router.post(
-    "/",
+    "",
     summary="旅行作成",
     operation_id="trips-create",
     response_model=TripCreateOut,
 )
 async def create_trip(
-    trip_in: TripCreateIn, db: Session = Depends(get_db_session)
+    trip_in: TripCreateIn, db: AsyncSession = Depends(get_db_session)
 ) -> TripCreateOut:
     """
     説明:
@@ -33,18 +34,18 @@ async def create_trip(
 
 
 @router.get(
-    "/",
+    "",
     summary="旅行一覧取得",
     operation_id="trips-list",
     response_model=list[Trip],
 )
-async def list_trips(db: Session = Depends(get_db_session)) -> list[Trip]:
+async def list_trips(db: AsyncSession = Depends(get_db_session)) -> list[Trip]:
     """
     説明:
 
     - すべての旅行プランを取得する
     """
-    return await trips_cruds.list_trips(db=db)
+    return await trips_cruds.find_trips(db=db)
 
 
 @router.get(
@@ -53,7 +54,7 @@ async def list_trips(db: Session = Depends(get_db_session)) -> list[Trip]:
     operation_id="trips-get",
     response_model=Trip,
 )
-async def get_trip(trip_id: int, db: Session = Depends(get_db_session)) -> Trip:
+async def get_trip(trip_id: int, db: AsyncSession = Depends(get_db_session)) -> Trip:
     """
     説明:
 
@@ -61,7 +62,7 @@ async def get_trip(trip_id: int, db: Session = Depends(get_db_session)) -> Trip:
     """
     db_trip = await trips_cruds.get_trip(db, trip_id=trip_id)
     if db_trip is None:
-        raise HTTPException(status_code=404, detail="Trip not found")
+        raise NotFound(message="Trip not found")
 
     return db_trip
 
@@ -73,7 +74,7 @@ async def get_trip(trip_id: int, db: Session = Depends(get_db_session)) -> Trip:
     response_model=Trip,
 )
 async def get_trip_by_url_id(
-    url_id: str, db: Session = Depends(get_db_session)
+    url_id: str, db: AsyncSession = Depends(get_db_session)
 ) -> Trip:
     """
     説明:
@@ -82,7 +83,7 @@ async def get_trip_by_url_id(
     """
     db_trip = await trips_cruds.get_trip_by_url_id(db, url_id=url_id)
     if db_trip is None:
-        raise HTTPException(status_code=404, detail="Trip not found")
+        raise NotFound(message="Trip not found")
 
     return db_trip
 
@@ -94,7 +95,7 @@ async def get_trip_by_url_id(
     response_model=Trip,
 )
 async def update_trip(
-    trip_id: int, trip_in: TripUpdate, db: Session = Depends(get_db_session)
+    trip_id: int, trip_in: TripUpdate, db: AsyncSession = Depends(get_db_session)
 ) -> Trip:
     """
     説明:
@@ -103,7 +104,7 @@ async def update_trip(
     """
     db_trip = await trips_cruds.update_trip(db, trip_id=trip_id, trip=trip_in)
     if db_trip is None:
-        raise HTTPException(status_code=404, detail="Trip not found")
+        raise NotFound(message="Trip not found")
 
     return db_trip
 
@@ -114,13 +115,13 @@ async def update_trip(
     operation_id="trips-delete",
     status_code=204,
 )
-async def delete_trip(trip_id: int, db: Session = Depends(get_db_session)) -> None:
+async def delete_trip(trip_id: int, db: AsyncSession = Depends(get_db_session)) -> None:
     """
     説明:
 
     - IDで指定された単一の旅行プランを削除する
     """
     if not await trips_cruds.delete_trip(db, trip_id=trip_id):
-        raise HTTPException(status_code=404, detail="Trip not found")
+        raise NotFound(message="Trip not found")
 
     return

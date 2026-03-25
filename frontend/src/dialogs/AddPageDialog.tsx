@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useCreatePage } from '@/hooks/usePages';
-import type { Page } from '@/types';
+import { PAGE_TITLE_MAX_LENGTH, type Page } from '@/types';
 
 interface AddPageDialogProps {
   open: boolean;
@@ -15,7 +15,7 @@ interface AddPageDialogProps {
 
 export const AddPageDialog = ({ open, onOpenChange, tripId, onCreated }: AddPageDialogProps) => {
   const [title, setTitle] = useState('');
-  const { createPage } = useCreatePage(tripId);
+  const { createPage, isCreating } = useCreatePage(tripId);
 
   const handleSubmit = async () => {
     if (!title.trim()) {
@@ -39,28 +39,32 @@ export const AddPageDialog = ({ open, onOpenChange, tripId, onCreated }: AddPage
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className='max-w-md'>
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>ページを追加</DialogTitle>
         </DialogHeader>
 
-        <div className='space-y-4'>
-          <div className='space-y-2'>
-            <Label htmlFor='add-page-title'>タイトル</Label>
-            <Input
-              id='add-page-title'
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              placeholder='ページのタイトル'
-            />
+        <DialogBody>
+          <div className='space-y-4'>
+            <div className='space-y-2'>
+              <Label htmlFor='add-page-title'>タイトル</Label>
+              <Input
+                id='add-page-title'
+                value={title}
+                onChange={e => setTitle(e.target.value)}
+                placeholder='ページのタイトル'
+                required
+                maxLength={PAGE_TITLE_MAX_LENGTH}
+              />
+            </div>
           </div>
-        </div>
+        </DialogBody>
 
         <DialogFooter>
           <Button variant='outline' onClick={() => handleOpenChange(false)}>
             キャンセル
           </Button>
-          <Button onClick={handleSubmit} disabled={!title.trim()}>
+          <Button onClick={handleSubmit} disabled={!title.trim()} loading={isCreating}>
             追加
           </Button>
         </DialogFooter>

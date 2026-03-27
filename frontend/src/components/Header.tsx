@@ -1,17 +1,18 @@
-import { useAtomValue } from 'jotai';
-import { Pencil } from 'lucide-react';
-import React, { type Dispatch, type SetStateAction, useCallback, useEffect, useRef, useState } from 'react';
+import { useAtom, useAtomValue } from 'jotai';
+import { Pencil, Share2 } from 'lucide-react';
+import type React from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import editScheduleIcon from '@/assets/icons/edit-schedule-white.svg';
 import eyeSolidIcon from '@/assets/icons/eye-solid-white.svg';
 import penToSquareSolidIcon from '@/assets/icons/pen-to-square-solid-white.svg';
 import { isOfflineReadAtom } from '@/atoms/network';
+import { selectedPageAtom, selectedPageIdAtom, tripAtom, tripModeAtom, tripPagesAtom } from '@/atoms/tripPage';
 import { AddPageDialog } from '@/dialogs/AddPageDialog';
 import { EditPageDialog } from '@/dialogs/EditPageDialog';
 import { EditTripDialog } from '@/dialogs/EditTripDialog';
 import { cn } from '@/lib/utils';
-import type { Page } from '@/types';
-import type { Trip } from '@/types/trip';
 import { Logo } from './Logo';
 import { NetworkStatusButton } from './NetworkStatusButton';
 import { Badge } from './ui/badge';
@@ -26,13 +27,7 @@ type HeaderLogoOnlyProps = HeaderBaseProps & {
 
 type HeaderFullProps = HeaderBaseProps & {
   variant: 'full';
-  trip: Trip;
-  pages: Page[];
-  mode?: 'view' | 'edit';
-  selectedPageId?: Page['id'];
-  onSelectPage: (pageId: Page['id']) => void;
   scrollContainerRef: React.RefObject<HTMLDivElement | null>;
-  setMode: Dispatch<SetStateAction<'view' | 'edit'>>;
   isDraggingRef: React.RefObject<boolean>;
 };
 
@@ -45,7 +40,7 @@ function HeaderLogoOnly({ className, ...props }: HeaderLogoOnlyProps) {
     <div
       data-component='header'
       className={cn(
-        'sticky top-0 right-0 left-0 z-10 flex w-full items-center justify-center bg-teal-50/80 px-6 py-3 backdrop-blur-sm',
+        'relative z-10 flex w-full items-center justify-center bg-teal-50/80 px-6 py-3 backdrop-blur-sm',
         className
       )}
       {...props}
@@ -56,19 +51,14 @@ function HeaderLogoOnly({ className, ...props }: HeaderLogoOnlyProps) {
   );
 }
 
-function HeaderFull({
-  pages,
-  trip,
-  mode = 'view',
-  selectedPageId,
-  onSelectPage,
-  setMode,
-  className,
-  scrollContainerRef,
-  isDraggingRef,
-  ...props
-}: Omit<HeaderFullProps, 'variant'>) {
+function HeaderFull({ className, scrollContainerRef, isDraggingRef, ...props }: Omit<HeaderFullProps, 'variant'>) {
   const isOffline = useAtomValue(isOfflineReadAtom);
+  const trip = useAtomValue(tripAtom);
+  const pages = useAtomValue(tripPagesAtom);
+  const [selectedPageId, setSelectedPageId] = useAtom(selectedPageIdAtom);
+  const mode = useAtomValue(tripModeAtom);
+  const selectedPage = useAtomValue(selectedPageAtom);
+
   const [isScrolled, setIsScrolled] = useState(false);
   const [editPageDialogOpen, setEditPageDialogOpen] = useState(false);
   const [editTripDialogOpen, setEditTripDialogOpen] = useState(false);
@@ -102,7 +92,18 @@ function HeaderFull({
     if (scrollTop < 50) {
       // ページ最上部では常に表示
       nextIsScrolled = false;
-    } else if (Math.abs(deltaY) > 10) {
+    }
+
+    // スクロール末端のバウンスを無視
+    const maxScroll = container.scrollHeight - container.clientHeight;
+    const isNearBottom = maxScroll - scrollTop < 50;
+
+    if (isNearBottom && isScrolled && deltaY < 0) {
+      // 最下部バウンスではヘッダー展開しない（ベースラインも更新しない）
+      return;
+    }
+
+    if (scrollTop >= 50 && Math.abs(deltaY) > 10) {
       if (deltaY < 0 && isScrolled) {
         // 上スクロール and ヘッダーが非表示中 -> 表示させる
         nextIsScrolled = false;
@@ -129,14 +130,14 @@ function HeaderFull({
     return () => container.removeEventListener('scroll', handleScroll);
   }, [handleScroll, scrollContainerRef]);
 
-  const selectedPage = selectedPageId ? pages.find(page => page.id === selectedPageId) : (pages[0] ?? null);
+  if (!trip) return null;
 
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: ヘッダー領域クリックでスクロール縮小状態を解除するためのイベント委譲
     <header
       data-component='header'
       className={cn(
-        'sticky top-0 right-0 left-0 z-10 flex w-full flex-col justify-center gap-1 bg-teal-50/80 px-2 py-2 backdrop-blur-sm',
+        'z-10 flex w-full flex-col justify-center gap-1 bg-teal-50/80 px-2 py-2 backdrop-blur-sm',
         className
       )}
       onClick={handleHeaderClick}
@@ -161,75 +162,72 @@ function HeaderFull({
               className='inline-flex cursor-pointer items-center gap-1 underline decoration-dotted underline-offset-4 hover:decoration-solid'
               onClick={() => setEditTripDialogOpen(true)}
             >
-              {trip.title}
-              <Pencil className='size-3 opacity-60' />
+              <div className='text-left'>{trip.title}</div>
+              <Pencil className='size-3 shrink-0 opacity-60' />
             </button>
           ) : (
             trip.title
           )}
         </div>
 
-        <div className='flex flex-row items-center justify-start gap-x-2 sm:contents'>
-          {/* 中央カラム */}
-          {isScrolled ? (
-            selectedPage && (
-              <Badge variant='outline' className='bg-white'>
-                {selectedPage.title}
-              </Badge>
-            )
+        {/* 中央カラム */}
+        {isScrolled ? (
+          selectedPage && (
+            <Badge variant='outline' className='max-w-[90vw] justify-start bg-white sm:max-w-[30vw]'>
+              {selectedPage.title}
+            </Badge>
+          )
+        ) : (
+          <Select
+            value={selectedPageId != null ? String(selectedPageId) : undefined}
+            onValueChange={v => {
+              if (v === 'add-new') {
+                setAddPageDialogOpen(true);
+              } else {
+                setSelectedPageId(Number(v));
+              }
+            }}
+          >
+            <SelectTrigger className='max-w-[90vw] bg-white sm:max-w-[30vw]'>
+              <SelectValue placeholder='ページ選択' />
+            </SelectTrigger>
+            <SelectContent className='max-w-[90vw]'>
+              {pages.map(page => (
+                <SelectItem key={page.id} value={String(page.id)}>
+                  {page.title}
+                </SelectItem>
+              ))}
+              {mode === 'edit' && (
+                <SelectItem value='add-new' className='text-nowrap text-primary'>
+                  + ページを追加
+                </SelectItem>
+              )}
+            </SelectContent>
+          </Select>
+        )}
+        {/* 右カラム */}
+        <div className={cn('flex flex-row justify-start', isScrolled ? 'gap-x-2' : 'gap-x-2 sm:gap-x-4')}>
+          {mode === 'edit' ? (
+            <>
+              <ViewModeButton isScrolled={isScrolled} />
+              <PageInfoEditButton isScrolled={isScrolled} onClick={() => setEditPageDialogOpen(true)} />
+            </>
           ) : (
-            <Select
-              value={selectedPageId != null ? String(selectedPageId) : undefined}
-              onValueChange={v => {
-                if (v === 'add-new') {
-                  setAddPageDialogOpen(true);
-                } else {
-                  onSelectPage(Number(v));
-                }
-              }}
-            >
-              <SelectTrigger className='bg-white'>
-                <SelectValue placeholder='ページ選択' />
-              </SelectTrigger>
-              <SelectContent>
-                {pages.map(page => (
-                  <SelectItem key={page.id} value={String(page.id)}>
-                    {page.title}
-                  </SelectItem>
-                ))}
-                {mode === 'edit' && (
-                  <SelectItem value='add-new' className='text-nowrap text-primary'>
-                    + ページを追加
-                  </SelectItem>
-                )}
-              </SelectContent>
-            </Select>
+            <EditModeButton isScrolled={isScrolled} disabled={isOffline} />
           )}
-          {/* 右カラム */}
-          <div className={cn('flex flex-row justify-start', isScrolled ? 'gap-x-2' : 'gap-x-2 sm:gap-x-4')}>
-            {mode === 'edit' ? (
-              <>
-                <ViewModeButton isScrolled={isScrolled} setMode={setMode} />
-                <PageInfoEditButton isScrolled={isScrolled} onClick={() => setEditPageDialogOpen(true)} />
-              </>
-            ) : (
-              <EditModeButton isScrolled={isScrolled} setMode={setMode} disabled={isOffline} />
-            )}
-          </div>
+          <ShareButton />
         </div>
       </div>
 
       {/* ページ追加ダイアログ */}
-      {trip && (
-        <AddPageDialog
-          open={addPageDialogOpen}
-          onOpenChange={setAddPageDialogOpen}
-          tripId={trip.id}
-          onCreated={page => {
-            onSelectPage(page.id);
-          }}
-        />
-      )}
+      <AddPageDialog
+        open={addPageDialogOpen}
+        onOpenChange={setAddPageDialogOpen}
+        tripId={trip.id}
+        onCreated={page => {
+          setSelectedPageId(page.id);
+        }}
+      />
 
       {/* ページ編集ダイアログ */}
       {selectedPage && (
@@ -240,21 +238,19 @@ function HeaderFull({
           onDeleted={pageId => {
             const remainingPages = pages.filter(p => p.id !== pageId);
             if (remainingPages.length > 0) {
-              onSelectPage(remainingPages[0].id);
+              setSelectedPageId(remainingPages[0].id);
             }
           }}
         />
       )}
 
       {/* 旅程情報編集ダイアログ */}
-      {trip && (
-        <EditTripDialog
-          open={editTripDialogOpen}
-          onOpenChange={setEditTripDialogOpen}
-          trip={trip}
-          onDeleted={() => navigate('/')}
-        />
-      )}
+      <EditTripDialog
+        open={editTripDialogOpen}
+        onOpenChange={setEditTripDialogOpen}
+        trip={trip}
+        onDeleted={() => navigate('/')}
+      />
     </header>
   );
 }
@@ -299,44 +295,54 @@ const HeaderButtonBase = ({
   );
 };
 
-const EditModeButton = ({
-  isScrolled,
-  setMode,
-  disabled,
-}: {
-  isScrolled: boolean;
-  setMode: Dispatch<SetStateAction<'view' | 'edit'>>;
-  disabled?: boolean;
-}) => (
-  <HeaderButtonBase
-    variant='default'
-    isScrolled={isScrolled}
-    iconSrc={editScheduleIcon}
-    iconAlt='編集モード'
-    onClick={() => setMode('edit')}
-    disabled={disabled}
-  >
-    編集モード
-  </HeaderButtonBase>
-);
+const EditModeButton = ({ isScrolled, disabled }: { isScrolled: boolean; disabled?: boolean }) => {
+  const [, setMode] = useAtom(tripModeAtom);
+  return (
+    <HeaderButtonBase
+      variant='default'
+      isScrolled={isScrolled}
+      iconSrc={editScheduleIcon}
+      iconAlt='編集モード'
+      onClick={() => setMode('edit')}
+      disabled={disabled}
+    >
+      編集モード
+    </HeaderButtonBase>
+  );
+};
 
-const ViewModeButton = ({
-  isScrolled,
-  setMode,
-}: {
-  isScrolled: boolean;
-  setMode: Dispatch<SetStateAction<'view' | 'edit'>>;
-}) => (
-  <HeaderButtonBase
-    variant='default'
-    isScrolled={isScrolled}
-    iconSrc={eyeSolidIcon}
-    iconAlt='閲覧モード'
-    onClick={() => setMode('view')}
-  >
-    閲覧モード
-  </HeaderButtonBase>
-);
+const ViewModeButton = ({ isScrolled }: { isScrolled: boolean }) => {
+  const [, setMode] = useAtom(tripModeAtom);
+  return (
+    <HeaderButtonBase
+      variant='default'
+      isScrolled={isScrolled}
+      iconSrc={eyeSolidIcon}
+      iconAlt='閲覧モード'
+      onClick={() => setMode('view')}
+    >
+      閲覧モード
+    </HeaderButtonBase>
+  );
+};
+
+const ShareButton = () => {
+  const handleShare = useCallback(async () => {
+    const url = window.location.href;
+    if (navigator.canShare?.({ url })) {
+      await navigator.share({ url });
+    } else {
+      await navigator.clipboard.writeText(url);
+      toast.success('URLをコピーしました');
+    }
+  }, []);
+
+  return (
+    <Button variant='default' size='icon' className='size-7 sm:size-9' onClick={handleShare}>
+      <Share2 className='size-4 sm:size-5' />
+    </Button>
+  );
+};
 
 const PageInfoEditButton = ({ isScrolled, onClick }: { isScrolled: boolean; onClick?: () => void }) => (
   <HeaderButtonBase

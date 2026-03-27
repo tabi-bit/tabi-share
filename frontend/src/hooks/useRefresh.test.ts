@@ -9,6 +9,7 @@ const mockToast = {
 const mockMutate = vi.fn();
 const mockEvaluateNetwork = vi.fn();
 const mockAppStoreGet = vi.fn();
+const mockAppStoreSet = vi.fn();
 
 vi.mock('sonner', () => ({
   toast: {
@@ -28,11 +29,22 @@ vi.mock('@/lib/networkDetection', () => ({
 vi.mock('@/lib/store', () => ({
   appStore: {
     get: (...args: unknown[]) => mockAppStoreGet(...args),
+    set: (...args: unknown[]) => mockAppStoreSet(...args),
+  },
+}));
+
+vi.mock('@/lib/db', () => ({
+  db: {
+    userSettings: {
+      put: vi.fn(),
+      get: vi.fn(),
+    },
   },
 }));
 
 vi.mock('@/atoms/network', () => ({
   isOfflineAtom: Symbol('isOfflineAtom'),
+  isForcedOfflineAtom: Symbol('isForcedOfflineAtom'),
 }));
 
 import { useRefresh } from '@/hooks/useRefresh';
@@ -74,6 +86,14 @@ describe('useRefresh', () => {
   it('refresh中にisRefreshingがtrue→falseに遷移', async () => {
     mockAppStoreGet.mockReturnValue(false);
 
+    let resolveMutate: () => void;
+    mockMutate.mockImplementation(
+      () =>
+        new Promise<void>(resolve => {
+          resolveMutate = resolve;
+        })
+    );
+
     const { result } = renderHook(() => useRefresh());
 
     expect(result.current.isRefreshing).toBe(false);
@@ -89,6 +109,7 @@ describe('useRefresh', () => {
     });
 
     await act(async () => {
+      resolveMutate();
       await refreshPromise;
     });
 

@@ -3,6 +3,7 @@ import busIcon from '@/assets/icons/bus.svg';
 import carIcon from '@/assets/icons/car.svg';
 import personWalkingIcon from '@/assets/icons/person-walking.svg';
 import planeIcon from '@/assets/icons/plane.svg';
+import shinkansenIcon from '@/assets/icons/shinkansen.svg';
 import shipIcon from '@/assets/icons/ship.svg';
 import trainIcon from '@/assets/icons/train.svg';
 import { cn } from '@/lib/utils';
@@ -17,6 +18,7 @@ const iconMap: Record<TransportationType, string> = {
   car: carIcon,
   bus: busIcon,
   train: trainIcon,
+  shinkansen: shinkansenIcon,
   flight: planeIcon,
   ship: shipIcon,
   bicycle: bicycleIcon,

@@ -1,4 +1,3 @@
-import dayjs from 'dayjs';
 import { useEffect, useState } from 'react';
 import {
   AlertDialog,
@@ -18,6 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { LazyMarkdownEditor } from '@/components/ui/markdown';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { calculateEndTimeStr } from '@/lib/utils';
 import type { Block, TransportationBlock, TransportationType } from '@/types/block';
 import { BLOCK_TITLE_MAX_LENGTH, TRANSPORTATION_OPTIONS } from '@/types/block';
 
@@ -48,19 +48,8 @@ const minutesToHoursAndMinutes = (totalMinutes: number): { hours: number; minute
   return { hours, minutes };
 };
 
-// ユーティリティ関数: 開始時間と所要時間から終了時間文字列を算出
-const calculateEndTimeStr = (startTimeStr: string, durationH: string, durationM: string): string | null => {
-  const h = Number.parseInt(durationH) || 0;
-  const m = Number.parseInt(durationM) || 0;
-  if (h === 0 && m === 0) return null;
-  const start = dayjs(`2000-01-01 ${startTimeStr}`);
-  if (!start.isValid()) return null;
-  return start.add(h, 'hour').add(m, 'minute').format('HH:mm');
-};
-
 export const EditBlockDialog = ({ open, onOpenChange, block, onSubmit, onDelete }: EditBlockDialogProps) => {
   const isSchedule = block.type === 'schedule';
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // 共通のstate
   const [title, setTitle] = useState(block.title);
@@ -109,14 +98,14 @@ export const EditBlockDialog = ({ open, onOpenChange, block, onSubmit, onDelete 
     }
   }, [open, block]);
 
-  // 削除処理
-  const handleDelete = async () => {
-    await onDelete(block.id);
+  // 削除処理（楽観更新のためfire-and-forget）
+  const handleDelete = () => {
+    onDelete(block.id);
     onOpenChange(false);
   };
 
-  // サブミット処理
-  const handleSubmit = async () => {
+  // サブミット処理（楽観更新のためfire-and-forget）
+  const handleSubmit = () => {
     if (!title.trim()) {
       return;
     }
@@ -133,34 +122,29 @@ export const EditBlockDialog = ({ open, onOpenChange, block, onSubmit, onDelete 
       newEndTime = new Date(newStartTime.getTime() + totalMinutes * 60 * 1000);
     }
 
-    setIsSubmitting(true);
-    try {
-      if (isSchedule) {
-        const updatedBlock: Block = {
-          ...block,
-          title: title.trim(),
-          startTime: newStartTime,
-          endTime: newEndTime,
-          detail: detail.trim() || null,
-        };
-        await onSubmit(updatedBlock);
-      } else {
-        const updatedBlock: Block = {
-          ...block,
-          type: 'transportation',
-          title: title.trim(),
-          startTime: newStartTime,
-          endTime: newEndTime,
-          detail: detail.trim() || null,
-          transportationType,
-        } as TransportationBlock;
-        await onSubmit(updatedBlock);
-      }
-
-      onOpenChange(false);
-    } finally {
-      setIsSubmitting(false);
+    if (isSchedule) {
+      const updatedBlock: Block = {
+        ...block,
+        title: title.trim(),
+        startTime: newStartTime,
+        endTime: newEndTime,
+        detail: detail.trim() || null,
+      };
+      onSubmit(updatedBlock);
+    } else {
+      const updatedBlock: Block = {
+        ...block,
+        type: 'transportation',
+        title: title.trim(),
+        startTime: newStartTime,
+        endTime: newEndTime,
+        detail: detail.trim() || null,
+        transportationType,
+      } as TransportationBlock;
+      onSubmit(updatedBlock);
     }
+
+    onOpenChange(false);
   };
 
   return (
@@ -175,7 +159,9 @@ export const EditBlockDialog = ({ open, onOpenChange, block, onSubmit, onDelete 
         <DialogBody>
           <div className='space-y-4'>
             <div className='space-y-2'>
-              <Label htmlFor='edit-title'>タイトル</Label>
+              <Label htmlFor='edit-title'>
+                タイトル<span className='text-red-500'>*</span>
+              </Label>
               <Input
                 id='edit-title'
                 value={title}
@@ -285,9 +271,7 @@ export const EditBlockDialog = ({ open, onOpenChange, block, onSubmit, onDelete 
           <Button variant='outline' onClick={() => onOpenChange(false)}>
             キャンセル
           </Button>
-          <Button onClick={handleSubmit} loading={isSubmitting}>
-            更新
-          </Button>
+          <Button onClick={handleSubmit}>更新</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

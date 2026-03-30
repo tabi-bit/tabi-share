@@ -10,44 +10,90 @@ const CLOCK_SIZE = 200;
 const CLOCK_CENTER = CLOCK_SIZE / 2;
 const NUMBER_RADIUS = CLOCK_SIZE / 2 - 20;
 
-function ClockTimePicker() {
-  const [date, setDate] = React.useState(new Date());
+type ClockTimePickerProps = Omit<React.ComponentProps<'input'>, 'type' | 'value' | 'onChange'> & {
+  value?: string;
+  onChange?: (event: React.ChangeEvent<HTMLInputElement>) => void;
+};
+
+function ClockTimePicker({ value, onChange, className, ...props }: ClockTimePickerProps) {
+  const parseValue = (val: string | undefined): Date => {
+    const d = new Date();
+    if (val && /^([01]\d|2[0-3]):([0-5]\d)$/.test(val)) {
+      const [hours, minutes] = val.split(':').map(Number);
+      d.setHours(hours, minutes, 0, 0);
+    }
+    return d;
+  };
+
+  const [date, setDate] = React.useState<Date>(() => parseValue(value));
   const [isOpen, setIsOpen] = React.useState(false);
   const [mode, setMode] = React.useState<'hour' | 'minute'>('hour');
   const clockRef = React.useRef<HTMLDivElement>(null);
+  const inputRef = React.useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = React.useState(false);
   const hasHourShiftedRef = React.useRef(false);
 
+  // valueプロップスが変更された場合に内部状態を同期
+  React.useEffect(() => {
+    if (value !== undefined) {
+      setDate(parseValue(value));
+    }
+  }, [value]);
+
+  const formatTime = (d: Date): string => {
+    const hours = d.getHours().toString().padStart(2, '0');
+    const minutes = d.getMinutes().toString().padStart(2, '0');
+    return `${hours}:${minutes}`;
+  };
+
   const handleTimeUpdate = (newTime: { hour?: number; minute?: number }) => {
-    setDate(prevDate => {
-      const newDate = new Date(prevDate);
-      const currentHours = newDate.getHours();
-      let hourWasActuallyChanged = false;
+    const newDate = new Date(date);
+    const currentHours = newDate.getHours();
+    let hourWasActuallyChanged = false;
 
-      if (newTime.hour !== undefined) {
-        let targetHour = newTime.hour;
-        // 12時間制の値を24時間制に変換
-        if (targetHour === 12) {
-          targetHour = currentHours >= 12 ? 12 : 0; // 現在がPMなら12時PM、AMなら12時AM(0時)
-        } else {
-          // 1-11時の場合、現在のAM/PMを維持
-          targetHour = currentHours >= 12 ? targetHour + 12 : targetHour;
-        }
-
-        if (currentHours !== targetHour) {
-          hourWasActuallyChanged = true;
-        }
-        newDate.setHours(targetHour);
-      }
-      if (newTime.minute !== undefined) {
-        newDate.setMinutes(newTime.minute);
+    if (newTime.hour !== undefined) {
+      let targetHour = newTime.hour;
+      // 12時間制の値を24時間制に変換
+      if (targetHour === 12) {
+        targetHour = currentHours >= 12 ? 12 : 0; // 現在がPMなら12時PM、AMなら12時AM(0時)
+      } else {
+        // 1-11時の場合、現在のAM/PMを維持
+        targetHour = currentHours >= 12 ? targetHour + 12 : targetHour;
       }
 
-      if (hourWasActuallyChanged) {
-        hasHourShiftedRef.current = true;
+      if (currentHours !== targetHour) {
+        hourWasActuallyChanged = true;
       }
-      return newDate;
-    });
+      newDate.setHours(targetHour);
+    }
+    if (newTime.minute !== undefined) {
+      newDate.setMinutes(newTime.minute);
+    }
+
+    if (hourWasActuallyChanged) {
+      hasHourShiftedRef.current = true;
+    }
+
+    // 内部状態を更新
+    setDate(newDate);
+
+    // onChangeイベントを発火
+    if (onChange && inputRef.current) {
+      const formatted = formatTime(newDate);
+      const event = {
+        target: {
+          ...inputRef.current,
+          value: formatted,
+          name: props.name,
+        },
+        currentTarget: {
+          ...inputRef.current,
+          value: formatted,
+          name: props.name,
+        },
+      } as React.ChangeEvent<HTMLInputElement>;
+      onChange(event);
+    }
   };
 
   const handleInteraction = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -91,16 +137,32 @@ function ClockTimePicker() {
   };
 
   const handleChangeAMPM = (v: string) => {
-    setDate(prevDate => {
-      const newDate = new Date(prevDate);
-      const currentHours = newDate.getHours();
-      if (v === 'PM' && currentHours < 12) {
-        newDate.setHours(currentHours + 12);
-      } else if (v === 'AM' && currentHours >= 12) {
-        newDate.setHours(currentHours - 12);
-      }
-      return newDate;
-    });
+    const newDate = new Date(date);
+    const currentHours = newDate.getHours();
+    if (v === 'PM' && currentHours < 12) {
+      newDate.setHours(currentHours + 12);
+    } else if (v === 'AM' && currentHours >= 12) {
+      newDate.setHours(currentHours - 12);
+    }
+
+    setDate(newDate);
+
+    if (onChange && inputRef.current) {
+      const formatted = formatTime(newDate);
+      const event = {
+        target: {
+          ...inputRef.current,
+          value: formatted,
+          name: props.name,
+        },
+        currentTarget: {
+          ...inputRef.current,
+          value: formatted,
+          name: props.name,
+        },
+      } as React.ChangeEvent<HTMLInputElement>;
+      onChange(event);
+    }
   };
 
   const hours = Array.from({ length: 12 }, (_, i) => i + 1);
@@ -109,17 +171,28 @@ function ClockTimePicker() {
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
-        <Button
-          variant='outline'
-          className={cn('w-full justify-start text-left font-normal', !date && 'text-muted-foreground')}
-        >
-          <ClockIcon className='mr-2 h-4 w-4' />
-          {date ? (
-            date.toLocaleTimeString(navigator.language, { hour: '2-digit', minute: '2-digit', hour12: true })
-          ) : (
-            <span>hh:mm aa</span>
-          )}
-        </Button>
+        <div className={cn('relative w-full', className)}>
+          <input
+            ref={inputRef}
+            type='time'
+            className='sr-only'
+            value={value ?? formatTime(date)}
+            readOnly
+            {...props}
+          />
+          <Button
+            variant='outline'
+            className={cn('w-full justify-start text-left font-normal', !date && 'text-muted-foreground')}
+            onClick={() => setIsOpen(true)}
+          >
+            <ClockIcon className='mr-2 h-4 w-4' />
+            {date ? (
+              date.toLocaleTimeString(navigator.language, { hour: '2-digit', minute: '2-digit', hour12: true })
+            ) : (
+              <span>hh:mm aa</span>
+            )}
+          </Button>
+        </div>
       </PopoverTrigger>
       <PopoverContent className='-translate-x-1/2 -translate-y-1/2 fixed top-1/2 left-1/2 w-auto p-0'>
         <div className='p-4'>
@@ -134,7 +207,7 @@ function ClockTimePicker() {
             </Button>
             {/* AM/PM toggle */}
             <div className='ml-4 flex flex-col'>
-              <Button variant='ghost' onClick={() => handleChangeAMPM(date.getHours() > 12 ? 'AM' : 'PM')}>
+              <Button variant='ghost' onClick={() => handleChangeAMPM(date.getHours() >= 12 ? 'AM' : 'PM')}>
                 {date.getHours() >= 12 ? '午後' : '午前'}
               </Button>
             </div>

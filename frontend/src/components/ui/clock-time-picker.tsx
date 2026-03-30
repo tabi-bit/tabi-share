@@ -172,14 +172,7 @@ function ClockTimePicker({ value, onChange, className, ...props }: ClockTimePick
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         <div className={cn('relative w-full', className)}>
-          <input
-            ref={inputRef}
-            type='time'
-            className='sr-only'
-            value={value ?? formatTime(date)}
-            readOnly
-            {...props}
-          />
+          <input ref={inputRef} type='time' className='sr-only' value={value ?? formatTime(date)} readOnly {...props} />
           <Button
             variant='outline'
             className={cn('w-full justify-start text-left font-normal', !date && 'text-muted-foreground')}

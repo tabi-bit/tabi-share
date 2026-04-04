@@ -34,6 +34,11 @@ class Settings(BaseSettings):
     api_docs_username: str = "admin"
     api_docs_password: str = "admin"
 
+    # Cookie署名用シークレットキー（本番では環境変数 COOKIE_SECRET_KEY で設定）
+    cookie_secret_key: str = "change-me-in-production"
+    # Cookie有効期限（秒）デフォルト30日
+    cookie_max_age: int = 60 * 60 * 24 * 30
+
     # アプリケーション設定
     environment: str = "development"
     cors_origins: list[str] = [

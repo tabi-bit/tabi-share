@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth import require_trip_access, require_page_access
 from app.cruds import pages as pages_cruds
 from app.cruds import trips as trips_cruds
 from app.db_connection import get_db_session
@@ -19,7 +20,10 @@ router = APIRouter(tags=["Pages"])
     response_model=Page,
 )
 async def create_page(
-    trip_id: int, page: PageCreate, db: AsyncSession = Depends(get_db_session)
+    trip_id: int,
+    page: PageCreate,
+    _: int = Depends(require_trip_access),
+    db: AsyncSession = Depends(get_db_session),
 ) -> Page:
     """
     説明:
@@ -40,7 +44,9 @@ async def create_page(
     response_model=list[Page],
 )
 async def get_pages(
-    trip_id: int, db: AsyncSession = Depends(get_db_session)
+    trip_id: int,
+    _: int = Depends(require_trip_access),
+    db: AsyncSession = Depends(get_db_session),
 ) -> list[Page]:
     """
     説明:
@@ -56,7 +62,11 @@ async def get_pages(
     operation_id="pages-get",
     response_model=Page,
 )
-async def get_page(page_id: int, db: AsyncSession = Depends(get_db_session)) -> Page:
+async def get_page(
+    page_id: int,
+    _: int = Depends(require_page_access),
+    db: AsyncSession = Depends(get_db_session),
+) -> Page:
     """
     説明:
 
@@ -76,7 +86,10 @@ async def get_page(page_id: int, db: AsyncSession = Depends(get_db_session)) -> 
     response_model=Page,
 )
 async def update_page(
-    page_id: int, page: PageUpdate, db: AsyncSession = Depends(get_db_session)
+    page_id: int,
+    page: PageUpdate,
+    _: int = Depends(require_page_access),
+    db: AsyncSession = Depends(get_db_session),
 ) -> Page:
     """
     説明:
@@ -96,7 +109,11 @@ async def update_page(
     operation_id="pages-delete",
     status_code=204,
 )
-async def delete_page(page_id: int, db: AsyncSession = Depends(get_db_session)):
+async def delete_page(
+    page_id: int,
+    _: int = Depends(require_page_access),
+    db: AsyncSession = Depends(get_db_session),
+):
     """
     説明:
 

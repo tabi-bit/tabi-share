@@ -98,6 +98,29 @@ class NotFound(ErrorResponseException):
         self.description = description
 
 
+class Forbidden(ErrorResponseException):
+    """
+    認可失敗時のエラー
+
+    Attributes:
+      response_status (int): HTTP ステータスコード
+    """
+
+    response_status = status.HTTP_403_FORBIDDEN
+
+    def __init__(
+        self,
+        message: str = "このリソースへのアクセス権がありません",
+        code: str = "forbidden",
+        detail: dict[str, Any] | None = None,
+        description: str = "",
+    ):
+        self.message = message
+        self.code = code
+        self.detail = detail
+        self.description = description
+
+
 class InvalidParam(ErrorResponseException):
     """
     無効なパラメータに対するエラー

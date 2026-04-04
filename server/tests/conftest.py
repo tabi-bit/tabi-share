@@ -1,5 +1,7 @@
 import logging
+from datetime import UTC, datetime, timedelta
 
+import jwt as pyjwt
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
@@ -11,6 +13,7 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.pool import NullPool
 
+from app.auth import COOKIE_NAME
 from app.config import get_settings
 from app.cruds import pages as pages_cruds
 from app.cruds import trips as trips_cruds
@@ -80,6 +83,15 @@ async def client():
         yield c
 
 
+def make_access_cookie_value(trip_ids: list[int]) -> str:
+    """テスト用: 署名付き Cookie (JWT) の値を生成する"""
+    payload = {
+        "trip_ids": trip_ids,
+        "exp": datetime.now(UTC) + timedelta(seconds=settings.cookie_max_age),
+    }
+    return pyjwt.encode(payload, settings.cookie_secret_key, algorithm="HS256")
+
+
 @pytest_asyncio.fixture
 async def test_create_trip(db_session: AsyncSession) -> Trip:
     """テスト用のTripを作成して、Tripを返すフィクスチャ"""
@@ -100,3 +112,10 @@ async def test_create_page(db_session: AsyncSession, test_create_trip: Trip) -> 
         db=db_session, page=page_in, trip_id=test_create_trip.id
     )
     return await pages_cruds.get_page(db=db_session, page_id=db_page.id)
+
+
+@pytest_asyncio.fixture
+async def authed_client(client: AsyncClient, test_create_trip: Trip) -> AsyncClient:
+    """test_create_trip で作成された Trip へのアクセス権 Cookie を持つクライアント"""
+    client.cookies.set(COOKIE_NAME, make_access_cookie_value([test_create_trip.id]))
+    return client

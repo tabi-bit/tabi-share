@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth import require_block_access, require_page_access
 from app.cruds import blocks as blocks_cruds
 from app.cruds import pages as pages_cruds
 from app.db_connection import get_db_session
@@ -17,7 +18,10 @@ router = APIRouter(tags=["Blocks"])
     response_model=Block,
 )
 async def create_block(
-    page_id: int, block: BlockCreate, db: AsyncSession = Depends(get_db_session)
+    page_id: int,
+    block: BlockCreate,
+    _: int = Depends(require_page_access),
+    db: AsyncSession = Depends(get_db_session),
 ) -> Block:
     """
     説明:
@@ -38,7 +42,9 @@ async def create_block(
     response_model=list[Block],
 )
 async def get_blocks(
-    page_id: int, db: AsyncSession = Depends(get_db_session)
+    page_id: int,
+    _: int = Depends(require_page_access),
+    db: AsyncSession = Depends(get_db_session),
 ) -> list[Block]:
     """
     説明:
@@ -54,7 +60,11 @@ async def get_blocks(
     operation_id="blocks-get",
     response_model=Block,
 )
-async def get_block(block_id: int, db: AsyncSession = Depends(get_db_session)) -> Block:
+async def get_block(
+    block_id: int,
+    _: int = Depends(require_block_access),
+    db: AsyncSession = Depends(get_db_session),
+) -> Block:
     """
     説明:
 
@@ -74,7 +84,10 @@ async def get_block(block_id: int, db: AsyncSession = Depends(get_db_session)) -
     response_model=Block,
 )
 async def update_block(
-    block_id: int, block: BlockUpdate, db: AsyncSession = Depends(get_db_session)
+    block_id: int,
+    block: BlockUpdate,
+    _: int = Depends(require_block_access),
+    db: AsyncSession = Depends(get_db_session),
 ) -> Block:
     """
     説明:
@@ -95,7 +108,9 @@ async def update_block(
     status_code=204,
 )
 async def delete_block(
-    block_id: int, db: AsyncSession = Depends(get_db_session)
+    block_id: int,
+    _: int = Depends(require_block_access),
+    db: AsyncSession = Depends(get_db_session),
 ) -> None:
     """
     説明:

@@ -80,11 +80,11 @@ async def test_read_trips(client: AsyncClient, db_session: AsyncSession):
 
 async def test_get_trip_non_existent_id(client: AsyncClient, db_session: AsyncSession):
     """
-    GET /trips/{trip_id} で存在しないIDが与えられた場合に 404 が返ることを検証
+    GET /trips/{trip_id} で存在しないIDが与えられた場合に
+    Cookie に含まれていないため 403 が返ることを検証
     """
     response = await client.get("/trips/999")
-    assert response.status_code == 404
-    assert response.json()["message"] == "Trip not found"
+    assert response.status_code == 403
 
 
 async def test_get_trip_by_url_id_non_existent(
@@ -121,12 +121,12 @@ async def test_update_trip_non_existent_id(
     client: AsyncClient, db_session: AsyncSession
 ):
     """
-    PUT /trips/{trip_id} で存在しないIDが与えられた場合に 404 が返ることを検証
+    PUT /trips/{trip_id} で存在しないIDが与えられた場合に
+    Cookie に含まれていないため 403 が返ることを検証
     """
     update_data = {"title": "non existent", "detail": "update"}
     response = await client.put("/trips/999", json=update_data)
-    assert response.status_code == 404
-    assert response.json()["message"] == "Trip not found"
+    assert response.status_code == 403
 
 
 async def test_update_trip_invalid_input(client: AsyncClient, db_session: AsyncSession):

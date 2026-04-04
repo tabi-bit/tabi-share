@@ -38,14 +38,14 @@
 
 ```bash
 # 型チェック
-npm run type-check
+pnpm run type-check
 
 # リンターエラーの自動修正&チェック(タスク完了後に実行)
-npm run lint:fix
+pnpm run lint:fix
 
 # フォーマットチェック
-npm run format:check
+pnpm run format:check
 
 # フォーマットの自動修正&チェック(タスク完了後に実行)
-npm run format:fix
+pnpm run format:fix
 ```

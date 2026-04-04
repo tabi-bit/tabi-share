@@ -10,7 +10,7 @@
       "run_shell_command(grep)",
       "run_shell_command(find)",
       "run_shell_command(cat)",
-      "run_shell_command(npm run)",
+      "run_shell_command(pnpm)",
       "run_shell_command(git log)"
     ]
   }

@@ -21,9 +21,9 @@ shadcn/uiコンポーネント「$ARGUMENTS」を追加し、包括的なStorybo
    - AllVariantsストーリーで全パターンを一覧表示する形式で作成
 
 3. **コード品質の確保**:
-   - `npm run type-check` を実行して型エラーがないか確認
-   - `npm run format:fix` を実行してフォーマットを修正
-   - `npm run lint:fix` を実行してリンターエラーを修正
+   - `pnpm type-check` を実行して型エラーがないか確認
+   - `pnpm format:fix` を実行してフォーマットを修正
+   - `pnpm lint:fix` を実行してリンターエラーを修正
    - コマンドはプロジェクトルートディレクトリから実行する
 
 ## 既存のStorybookパターンの踏襲

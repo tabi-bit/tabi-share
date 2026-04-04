@@ -22,12 +22,12 @@ FastAPI + PostgreSQL + Alembicを使用したバックエンドAPI
     cd server
 
     # 最新のマイグレーションを適用
-    npx dotenvx run --env-file ../.env -- alembic -n devdb upgrade head
+    pnpm dotenvx run --env-file ../.env -- alembic -n devdb upgrade head
     ```
 
 3. **開発サーバー起動**
     ```bash
-    npm run dev
+    pnpm run dev
     ```
 
 
@@ -49,7 +49,7 @@ FastAPI + PostgreSQL + Alembicを使用したバックエンドAPI
     ```bash
     cd tabi-share
 
-    npx dotenvx decrypt
+    pnpm dotenvx decrypt
     ```
 
 2. **.envファイルをIDEで編集する**
@@ -77,28 +77,28 @@ uv add --dev pytest
 2. **マイグレーションファイルを生成する**
     ```bash
     cd server
-    npx dotenvx run --env-file ../.env -- alembic -n devdb revision --autogenerate -m "file_name"
+    pnpm dotenvx run --env-file ../.env -- alembic -n devdb revision --autogenerate -m "file_name"
     ```
 
 3. **マイグレーションファイルをDBに適用する**
     ```bash
     # 現在のバージョンを確認する
-    npx dotenvx run --env-file ../.env -- alembic -n devdb current
+    pnpm dotenvx run --env-file ../.env -- alembic -n devdb current
 
     # 最新版を適用する場合
-    npx dotenvx run --env-file ../.env -- alembic -n devdb upgrade head
+    pnpm dotenvx run --env-file ../.env -- alembic -n devdb upgrade head
 
     # バージョンを1つだけ上げる場合
-    npx dotenvx run --env-file ../.env -- alembic -n devdb upgrade +1
+    pnpm dotenvx run --env-file ../.env -- alembic -n devdb upgrade +1
 
     # 最古版を適用する場合
-    npx dotenvx run --env-file ../.env -- alembic -n devdb downgrade base
+    pnpm dotenvx run --env-file ../.env -- alembic -n devdb downgrade base
 
     # バージョンを1つだけ下げる場合
-    npx dotenvx run --env-file ../.env -- alembic -n devdb downgrade -1
+    pnpm dotenvx run --env-file ../.env -- alembic -n devdb downgrade -1
 
     # 更新後のバージョンを確認する
-    npx dotenvx run --env-file ../.env -- alembic -n devdb current
+    pnpm dotenvx run --env-file ../.env -- alembic -n devdb current
     ```
 
 ### DBに直接アクセスする方法
@@ -106,7 +106,7 @@ uv add --dev pytest
   ```bash
   cd tabi-share
 
-  npx dotenvx run -- sh -c 'psql -U $POSTGRES_USER -h $POSTGRES_HOST -d $POSTGRES_DB'
+  pnpm dotenvx run -- sh -c 'psql -U $POSTGRES_USER -h $POSTGRES_HOST -d $POSTGRES_DB'
   ```
 - よく使用するコマンド
   ```bash
@@ -134,8 +134,8 @@ uv add --dev pytest
 3. **マイグレーション生成・適用**
     ```bash
     cd server
-    npx dotenvx run --env-file ../.env -- alembic -n devdb revision --autogenerate -m "file_name"
-    npx dotenvx run --env-file ../.env -- alembic upgrade head
+    pnpm dotenvx run --env-file ../.env -- alembic -n devdb revision --autogenerate -m "file_name"
+    pnpm dotenvx run --env-file ../.env -- alembic upgrade head
     ```
 
 4. **スキーマ定義** (`app/schemas.py`)
@@ -172,26 +172,26 @@ uv add --dev pytest
     ```bash
     cd server
     # 全テスト実行
-    npx dotenvx run --env-file ../.env -- uv run pytest
+    pnpm dotenvx run --env-file ../.env -- uv run pytest
 
     # 特定のテストファイル
-    npx dotenvx run --env-file ../.env -- uv run pytest tests/test_your_model.py
+    pnpm dotenvx run --env-file ../.env -- uv run pytest tests/test_your_model.py
 
     # 特定のテストクラス・メソッド
-    npx dotenvx run --env-file ../.env -- uv run pytest tests/test_your_model.pypytest tests/test_your_model.py::TestYourModel::test_create
+    pnpm dotenvx run --env-file ../.env -- uv run pytest tests/test_your_model.pypytest tests/test_your_model.py::TestYourModel::test_create
 
     # 詳細出力
-    npx dotenvx run --env-file ../.env -- uv run pytest -v
+    pnpm dotenvx run --env-file ../.env -- uv run pytest -v
 
     # 失敗時即座に停止
-    npx dotenvx run --env-file ../.env -- uv run pytest -x
+    pnpm dotenvx run --env-file ../.env -- uv run pytest -x
 
     # print文を出力
-    npx dotenvx run --env-file ../.env -- uv run pytest -s
+    pnpm dotenvx run --env-file ../.env -- uv run pytest -s
 
     # 特定のマークのテストのみ実行
-    npx dotenvx run --env-file ../.env -- uv run pytest -m "unit"
-    npx dotenvx run --env-file ../.env -- uv run pytest -m "integration"
+    pnpm dotenvx run --env-file ../.env -- uv run pytest -m "unit"
+    pnpm dotenvx run --env-file ../.env -- uv run pytest -m "integration"
     ```
 
 ## よく使用するコマンド（devcontainer環境）
@@ -291,7 +291,7 @@ cd server
 mypy .
 
 # テスト実行
-npx dotenvx run --env-file ../.env -- uv run pytest
+pnpm dotenvx run --env-file ../.env -- uv run pytest
 
 # マイグレーション確認
 alembic check

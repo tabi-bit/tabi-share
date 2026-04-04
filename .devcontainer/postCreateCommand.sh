@@ -12,6 +12,11 @@ echo "🔧 Configuring sudo access for vscode user..."
 echo "vscode ALL=(ALL) NOPASSWD: ALL" | sudo tee /etc/sudoers.d/vscode > /dev/null
 
 
+# --- pnpm セットアップ ---
+echo "📦 Enabling pnpm via corepack..."
+corepack enable
+pnpm config set --global minReleaseAge 7d
+
 # --- 環境変数の読み込み ---
 ENV_FILE=".env"
 echo "🔍 Checking for .env file..."
@@ -19,7 +24,7 @@ echo "🔍 Checking for .env file..."
 if [ -f "$ENV_FILE" ]; then
   # `dotenvx` を使い、.envファイルの情報を環境変数として読み込む
   echo "✅ Found .env file. Loading environment variables..."
-  export $(npx dotenvx get --format=shell)
+  export $(pnpm dotenvx get --format=shell)
 else
   # .envファイルが見つからない場合は、処理を中断する
   echo "❌ Error: .env file not found at project root!"
@@ -40,15 +45,15 @@ echo "🚀 Starting database setup..."
 sh ./scripts/setup_database.sh
 
 # Claude Code
-npm install -g @anthropic-ai/claude-code
+pnpm add -g @anthropic-ai/claude-code
 uv tool install claude-monitor
 
 # Gemini CLI
-npm install -g @google/gemini-cli
+pnpm add -g @google/gemini-cli
 echo "🎉 All setup steps completed successfully!"
 
 # Firebase CLI Tools
-npm install -g firebase-tools
+pnpm add -g firebase-tools
 
 # AI検索用にripgrepをインストール
 sudo apt-get update

@@ -70,8 +70,8 @@ async def test_read_trips(client: AsyncClient, db_session: AsyncSession):
     await client.post("/trips", json={"title": "trip 1", "detail": "d1"})
     await client.post("/trips", json={"title": "trip 2", "detail": "d2"})
 
-    # --- Read (Multiple) ---
-    response = await client.get("/trips")
+    # --- Read (Multiple) --- Basic認証が必要
+    response = await client.get("/trips", auth=("admin", "admin"))
     assert response.status_code == 200
     data = response.json()
     # 既存のテストで作成されたデータも含まれる可能性があるため、2以上であることだけをチェック

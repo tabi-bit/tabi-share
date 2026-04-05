@@ -1,14 +1,17 @@
 """
-Cookie ベースの認可モジュール
+認証・認可モジュール
 
-urlId 付き Trip ページへのアクセスを起点として署名付き Cookie (JWT) を発行し、
-以降のリクエストで Cookie 内の許可済み trip_id リストを検証して認可を行う。
+- Basic 認証: APIドキュメントや管理系エンドポイントの保護
+- Cookie 認可: urlId 付き Trip ページへのアクセスを起点として署名付き Cookie (JWT) を発行し、
+  以降のリクエストで Cookie 内の許可済み trip_id リストを検証して認可を行う。
 """
 
+import secrets
 from datetime import UTC, datetime, timedelta
 
 import jwt
-from fastapi import Depends, Request, Response
+from fastapi import Depends, HTTPException, Request, Response, status
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,37 +20,61 @@ from app.db_connection import get_db_session
 from app.errors import Forbidden, NotFound
 from app.models import Block, Page
 
-COOKIE_NAME = "tabishare_access"
+# ---- Basic 認証 ----
+
+def require_basic_auth(
+    credentials: HTTPBasicCredentials = Depends(HTTPBasic()),
+) -> None:
+    """Basic 認証で保護する。APIドキュメントや管理系エンドポイントで使用。"""
+    settings = get_settings()
+    valid_username = secrets.compare_digest(
+        credentials.username.encode(), settings.api_docs_username.encode()
+    )
+    valid_password = secrets.compare_digest(
+        credentials.password.encode(), settings.api_docs_password.encode()
+    )
+    if not (valid_username and valid_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="認証に失敗しました",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+
+COOKIE_PREFIX = "tabishare_trip_"
 
 
 def get_allowed_trip_ids(request: Request) -> set[int]:
     """Cookie から許可済み trip_id のセットを取得する。
 
-    Cookie がない、署名が無効、有効期限切れの場合は空セットを返す。
+    tabishare_trip_{id} 形式の各Cookieを検証し、有効なtrip_idを収集する。
     """
-    raw = request.cookies.get(COOKIE_NAME)
-    if not raw:
-        return set()
-    try:
-        settings = get_settings()
-        payload = jwt.decode(raw, settings.cookie_secret_key, algorithms=["HS256"])
-        return set(payload.get("trip_ids", []))
-    except (jwt.InvalidTokenError, jwt.ExpiredSignatureError):
-        return set()
+    trip_ids: set[int] = set()
+    settings = get_settings()
+    for name, raw in request.cookies.items():
+        if not name.startswith(COOKIE_PREFIX):
+            continue
+        try:
+            payload = jwt.decode(raw, settings.cookie_secret_key, algorithms=["HS256"])
+            tid = payload.get("trip_id")
+            if isinstance(tid, int):
+                trip_ids.add(tid)
+        except (jwt.InvalidTokenError, jwt.ExpiredSignatureError):
+            continue
+    return trip_ids
 
 
-def set_access_cookie(response: Response, trip_ids: set[int]) -> None:
-    """JWT を生成してレスポンスに署名付き Cookie をセットする。"""
+def _set_trip_cookie(response: Response, trip_id: int) -> None:
+    """単一のtrip_id用の署名付きCookieを発行する。"""
     settings = get_settings()
     payload = {
-        "trip_ids": sorted(trip_ids),
+        "trip_id": trip_id,
         "exp": datetime.now(UTC) + timedelta(seconds=settings.cookie_max_age),
     }
     token = jwt.encode(payload, settings.cookie_secret_key, algorithm="HS256")
 
     is_production = settings.environment != "development"
     response.set_cookie(
-        key=COOKIE_NAME,
+        key=f"{COOKIE_PREFIX}{trip_id}",
         value=token,
         max_age=settings.cookie_max_age,
         httponly=True,
@@ -57,13 +84,9 @@ def set_access_cookie(response: Response, trip_ids: set[int]) -> None:
     )
 
 
-def add_trip_to_access_cookie(
-    request: Request, response: Response, trip_id: int
-) -> None:
-    """既存 Cookie の trip_ids に新しい trip_id を追加して再発行する。"""
-    existing = get_allowed_trip_ids(request)
-    existing.add(trip_id)
-    set_access_cookie(response, existing)
+def grant_trip_access(response: Response, trip_id: int) -> None:
+    """指定したtrip_idへのアクセス権をCookieで付与する。"""
+    _set_trip_cookie(response, trip_id)
 
 
 # ---- FastAPI Depends 用の認可関数 ----

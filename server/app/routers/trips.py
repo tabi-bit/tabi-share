@@ -1,8 +1,8 @@
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, Depends, Response
 from nanoid import generate
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import add_trip_to_access_cookie, require_trip_access
+from app.auth import grant_trip_access, require_basic_auth, require_trip_access
 from app.cruds import trips as trips_cruds
 from app.db_connection import get_db_session
 from app.errors import NotFound
@@ -21,7 +21,6 @@ URL_ID_SIZE = 16
 )
 async def create_trip(
     trip_in: TripCreateIn,
-    request: Request,
     response: Response,
     db: AsyncSession = Depends(get_db_session),
 ) -> TripCreateOut:
@@ -34,7 +33,7 @@ async def create_trip(
     """
     url_id: str = generate(size=URL_ID_SIZE)
     trip_id: int = await trips_cruds.create_trip(db=db, trip=trip_in, url_id=url_id)
-    add_trip_to_access_cookie(request, response, trip_id)
+    grant_trip_access(response, trip_id)
 
     return TripCreateOut(id=trip_id, url_id=url_id)
 
@@ -45,7 +44,10 @@ async def create_trip(
     operation_id="trips-list",
     response_model=list[Trip],
 )
-async def list_trips(db: AsyncSession = Depends(get_db_session)) -> list[Trip]:
+async def list_trips(
+    _: None = Depends(require_basic_auth),
+    db: AsyncSession = Depends(get_db_session),
+) -> list[Trip]:
     """
     説明:
 
@@ -85,7 +87,6 @@ async def get_trip(
 )
 async def get_trip_by_url_id(
     url_id: str,
-    request: Request,
     response: Response,
     db: AsyncSession = Depends(get_db_session),
 ) -> Trip:
@@ -98,7 +99,7 @@ async def get_trip_by_url_id(
     db_trip = await trips_cruds.get_trip_by_url_id(db, url_id=url_id)
     if db_trip is None:
         raise NotFound(message="Trip not found")
-    add_trip_to_access_cookie(request, response, db_trip.id)
+    grant_trip_access(response, db_trip.id)
 
     return db_trip
 

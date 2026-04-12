@@ -2,6 +2,7 @@ import pytest_asyncio
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.schemas.block import Block as BlockSchema
 from app.schemas.page import Page
 from app.schemas.trip import Trip
 
@@ -140,3 +141,50 @@ async def test_delete_page(
     # --- 削除されたことを確認 ---
     response = await authed_client.get(f"/pages/{test_create_page.id}")
     assert response.status_code == 404
+
+
+# ---- 未認可アクセス 403 テスト ----
+
+
+async def test_create_page_without_cookie_returns_403(
+    client: AsyncClient, db_session: AsyncSession, test_create_trip: Trip
+):
+    """実在するtrip配下にCookieなしでページ作成 → 403"""
+    response = await client.post(
+        f"/trips/{test_create_trip.id}/pages", json={"title": "unauthorized"}
+    )
+    assert response.status_code == 403
+
+
+async def test_get_page_without_cookie_returns_403(
+    client: AsyncClient, db_session: AsyncSession, test_create_page: Page
+):
+    """実在するページにCookieなしでアクセス → 403"""
+    response = await client.get(f"/pages/{test_create_page.id}")
+    assert response.status_code == 403
+
+
+async def test_get_pages_without_cookie_returns_403(
+    client: AsyncClient, db_session: AsyncSession, test_create_trip: Trip
+):
+    """実在するtrip配下のページ一覧をCookieなしで取得 → 403"""
+    response = await client.get(f"/trips/{test_create_trip.id}/pages")
+    assert response.status_code == 403
+
+
+async def test_update_page_without_cookie_returns_403(
+    client: AsyncClient, db_session: AsyncSession, test_create_page: Page
+):
+    """実在するページをCookieなしで更新 → 403"""
+    response = await client.put(
+        f"/pages/{test_create_page.id}", json={"title": "hacked"}
+    )
+    assert response.status_code == 403
+
+
+async def test_delete_page_without_cookie_returns_403(
+    client: AsyncClient, db_session: AsyncSession, test_create_page: Page
+):
+    """実在するページをCookieなしで削除 → 403"""
+    response = await client.delete(f"/pages/{test_create_page.id}")
+    assert response.status_code == 403

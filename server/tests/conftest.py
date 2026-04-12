@@ -116,6 +116,27 @@ async def test_create_page(db_session: AsyncSession, test_create_trip: Trip) -> 
 
 
 @pytest_asyncio.fixture
+async def test_create_block(
+    db_session: AsyncSession, test_create_page: Page
+) -> "BlockSchema":
+    """テスト用のBlockを作成して返すフィクスチャ"""
+    from app.cruds import blocks as blocks_cruds
+    from app.schemas.block import Block as BlockSchema
+    from app.schemas.block import BlockCreate
+
+    block_in = BlockCreate(
+        title="test block",
+        start_time=datetime(2023, 1, 1, 10, 0, 0, tzinfo=UTC),
+        detail="test detail",
+        block_type="event",
+    )
+    db_block = await blocks_cruds.create_block(
+        db=db_session, block=block_in, page_id=test_create_page.id
+    )
+    return await blocks_cruds.get_block(db=db_session, block_id=db_block.id)
+
+
+@pytest_asyncio.fixture
 async def authed_client(client: AsyncClient, test_create_trip: Trip) -> AsyncClient:
     """test_create_trip で作成された Trip へのアクセス権 Cookie を持つクライアント"""
     client.cookies.set(

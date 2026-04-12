@@ -1,6 +1,7 @@
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.schemas.block import Block as BlockSchema
 from app.schemas.page import Page
 
 
@@ -273,3 +274,60 @@ async def test_delete_block(
     # --- 削除されたことを確認 ---
     response = await authed_client.get(f"/blocks/{block_id}")
     assert response.status_code == 404
+
+
+# ---- 未認可アクセス 403 テスト ----
+
+
+async def test_create_block_without_cookie_returns_403(
+    client: AsyncClient, db_session: AsyncSession, test_create_page: Page
+):
+    """実在するページ配下にCookieなしでブロック作成 → 403"""
+    block_data = {
+        "title": "unauthorized",
+        "start_time": "2023-01-01T10:00:00Z",
+        "block_type": "event",
+    }
+    response = await client.post(
+        f"/pages/{test_create_page.id}/blocks", json=block_data
+    )
+    assert response.status_code == 403
+
+
+async def test_get_block_without_cookie_returns_403(
+    client: AsyncClient, db_session: AsyncSession, test_create_block: BlockSchema
+):
+    """実在するブロックにCookieなしでアクセス → 403"""
+    response = await client.get(f"/blocks/{test_create_block.id}")
+    assert response.status_code == 403
+
+
+async def test_get_blocks_without_cookie_returns_403(
+    client: AsyncClient, db_session: AsyncSession, test_create_page: Page
+):
+    """実在するページ配下のブロック一覧をCookieなしで取得 → 403"""
+    response = await client.get(f"/pages/{test_create_page.id}/blocks")
+    assert response.status_code == 403
+
+
+async def test_update_block_without_cookie_returns_403(
+    client: AsyncClient, db_session: AsyncSession, test_create_block: BlockSchema
+):
+    """実在するブロックをCookieなしで更新 → 403"""
+    update_data = {
+        "title": "hacked",
+        "start_time": "2023-01-01T10:00:00Z",
+        "block_type": "event",
+    }
+    response = await client.put(
+        f"/blocks/{test_create_block.id}", json=update_data
+    )
+    assert response.status_code == 403
+
+
+async def test_delete_block_without_cookie_returns_403(
+    client: AsyncClient, db_session: AsyncSession, test_create_block: BlockSchema
+):
+    """実在するブロックをCookieなしで削除 → 403"""
+    response = await client.delete(f"/blocks/{test_create_block.id}")
+    assert response.status_code == 403

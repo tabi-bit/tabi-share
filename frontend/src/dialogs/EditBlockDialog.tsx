@@ -18,10 +18,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { LazyMarkdownEditor } from '@/components/ui/markdown';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useRemoveBlockLocation, useSetBlockLocation } from '@/hooks/useLocations';
 import { calculateEndTimeStr } from '@/lib/utils';
 import type { Block, TransportationBlock, TransportationType } from '@/types/block';
 import { BLOCK_TITLE_MAX_LENGTH, TRANSPORTATION_OPTIONS } from '@/types/block';
+import type { LocationUpdate } from '@/types/location';
 import { PlaceSearchDialog } from './PlaceSearchDialog';
 
 interface EditBlockDialogProps {
@@ -80,9 +80,10 @@ export const EditBlockDialog = ({ open, onOpenChange, block, onSubmit, onDelete 
   );
 
   // 場所設定用のstate
+  // pendingLocation: PUT 送信までの下書き。id 付き=既存維持、id無し=新規、null=解除
+  // 毎回 block.location に埋め込んで PUT するので dirty フラグは不要。
   const [placeDialogOpen, setPlaceDialogOpen] = useState(false);
-  const { setBlockLocation } = useSetBlockLocation(block.pageId);
-  const { removeBlockLocation } = useRemoveBlockLocation(block.pageId);
+  const [pendingLocation, setPendingLocation] = useState<LocationUpdate | null>(block.location);
 
   // ダイアログが開いたときにフォームを初期化
   useEffect(() => {
@@ -103,6 +104,7 @@ export const EditBlockDialog = ({ open, onOpenChange, block, onSubmit, onDelete 
       if (block.type === 'transportation') {
         setTransportationType(block.transportationType);
       }
+      setPendingLocation(block.location);
     }
   }, [open, block]);
 
@@ -137,6 +139,7 @@ export const EditBlockDialog = ({ open, onOpenChange, block, onSubmit, onDelete 
         startTime: newStartTime,
         endTime: newEndTime,
         detail: detail.trim() || null,
+        location: pendingLocation,
       };
       onSubmit(updatedBlock);
     } else {
@@ -243,20 +246,20 @@ export const EditBlockDialog = ({ open, onOpenChange, block, onSubmit, onDelete 
               <div className='space-y-2'>
                 <div className='flex items-center justify-start gap-2'>
                   <Label>場所</Label>
-                  {!block.location && (
+                  {!pendingLocation && (
                     <Button variant='outline' size='sm' onClick={() => setPlaceDialogOpen(true)}>
                       <MapPin className='mr-1 h-4 w-4' />
                       場所を設定
                     </Button>
                   )}
                 </div>
-                {block.location && (
+                {pendingLocation && (
                   <div className='flex items-center gap-2 rounded-md border p-2'>
                     <MapPin className='h-4 w-4 shrink-0 text-muted-foreground' />
                     <div className='min-w-0 flex-1'>
-                      <div className='truncate text-sm'>{block.location.name}</div>
-                      {block.location.address && (
-                        <div className='truncate text-muted-foreground text-xs'>{block.location.address}</div>
+                      <div className='truncate text-sm'>{pendingLocation.name}</div>
+                      {pendingLocation.address && (
+                        <div className='truncate text-muted-foreground text-xs'>{pendingLocation.address}</div>
                       )}
                     </div>
                     <Button variant='ghost' size='sm' className='shrink-0' onClick={() => setPlaceDialogOpen(true)}>
@@ -266,7 +269,7 @@ export const EditBlockDialog = ({ open, onOpenChange, block, onSubmit, onDelete 
                       variant='ghost'
                       size='icon'
                       className='h-6 w-6 shrink-0'
-                      onClick={() => removeBlockLocation(block.id, block)}
+                      onClick={() => setPendingLocation(null)}
                     >
                       <X className='h-3 w-3' />
                     </Button>
@@ -325,10 +328,8 @@ export const EditBlockDialog = ({ open, onOpenChange, block, onSubmit, onDelete 
         <PlaceSearchDialog
           open={placeDialogOpen}
           onOpenChange={setPlaceDialogOpen}
-          onConfirm={locationData => {
-            setBlockLocation(block.id, locationData);
-          }}
-          initialLocation={block.location}
+          onConfirm={locationData => setPendingLocation(locationData)}
+          initialLocation={pendingLocation}
         />
       )}
     </Dialog>

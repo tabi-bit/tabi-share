@@ -19,13 +19,13 @@ import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTi
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
-import type { Location, LocationCreate } from '@/types/location';
+import type { LocationUpdate } from '@/types/location';
 
 interface PlaceSearchDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onConfirm: (location: LocationCreate) => void;
-  initialLocation?: Location | null;
+  onConfirm: (location: LocationUpdate) => void;
+  initialLocation?: LocationUpdate | null;
 }
 
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
@@ -44,18 +44,21 @@ const PlaceSearchContent = ({
   onCancel,
   initialLocation,
 }: {
-  onConfirm: (location: LocationCreate) => void;
+  onConfirm: (location: LocationUpdate) => void;
   onCancel: () => void;
-  initialLocation?: Location | null;
+  initialLocation?: LocationUpdate | null;
 }) => {
   const map = useMap();
   const placesLib = useMapsLibrary('places');
 
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState<google.maps.places.AutocompleteSuggestion[]>([]);
-  const [selectedPlace, setSelectedPlace] = useState<LocationCreate | null>(
+  // 内部状態。id を維持することで「未編集で 決定」を押した際に既存行がそのまま紐づけ続けられる。
+  // 新規選択（POI/サジェスト/空地）時は id を undefined に戻して新規作成扱いにする。
+  const [selectedPlace, setSelectedPlace] = useState<LocationUpdate | null>(
     initialLocation
       ? {
+          id: initialLocation.id,
           googlePlaceId: initialLocation.googlePlaceId,
           name: initialLocation.name,
           address: initialLocation.address,
@@ -169,6 +172,7 @@ const PlaceSearchContent = ({
       const pos = { lat: latLng.lat, lng: latLng.lng };
       setMarkerPosition(pos);
       setSelectedPlace({
+        // id を外して新規作成扱い（内容変更とみなす）
         googlePlaceId: null,
         name: '',
         address: null,
@@ -191,7 +195,8 @@ const PlaceSearchContent = ({
   const handleSelectPendingPoi = useCallback(() => {
     if (!pendingPoi) return;
 
-    const location: LocationCreate = {
+    // 新規選択なので id は付けない（= 新規 location 作成）
+    const location: LocationUpdate = {
       googlePlaceId: poiPlace?.id ?? pendingPoi.placeId,
       name: poiPlace?.displayName ?? '',
       address: poiPlace?.formattedAddress ?? null,
@@ -229,7 +234,8 @@ const PlaceSearchContent = ({
           fields: ['displayName', 'formattedAddress', 'location', 'id'],
         });
 
-        const location: LocationCreate = {
+        // 新規選択なので id は付けない
+        const location: LocationUpdate = {
           googlePlaceId: place.id ?? null,
           name: place.displayName ?? '',
           address: place.formattedAddress ?? null,
@@ -402,7 +408,7 @@ const PlaceSearchContent = ({
  * 選択した場所の情報を返すダイアログ。
  */
 export const PlaceSearchDialog = ({ open, onOpenChange, onConfirm, initialLocation }: PlaceSearchDialogProps) => {
-  const handleConfirm = (location: LocationCreate) => {
+  const handleConfirm = (location: LocationUpdate) => {
     onConfirm(location);
     onOpenChange(false);
   };

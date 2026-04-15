@@ -10,7 +10,7 @@ import { BlockTransportationEdit } from '@/components/blocks/edit/BlockTransport
 import { AddBlockDialog, EditBlockDialog } from '@/dialogs';
 import { useBlocks, useCreateBlock, useDeleteBlock, useUpdateBlock } from '@/hooks/useBlocks';
 import { useCalendarDragDetection } from '@/hooks/useCalendarDragDetection';
-import type { Block, LocationCreate, Page } from '@/types';
+import type { Block, Page } from '@/types';
 
 interface EditTripLayoutProps {
   selectedPageId: Page['id'];
@@ -114,8 +114,8 @@ export const EditTripLayout = ({ selectedPageId, onDragStart, onDragEnd, refresh
     }
   };
 
-  const handleDialogSubmit = async (block: Omit<Block, 'id'>, location?: LocationCreate | null) => {
-    await createBlock({ block, location });
+  const handleDialogSubmit = async (block: Omit<Block, 'id'>) => {
+    await createBlock({ block });
   };
 
   // --- ブロック編集ダイアログ ---

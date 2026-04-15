@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { calculateEndTimeStr } from '@/lib/utils';
 import type { Block, ScheduleBlock, TransportationBlock, TransportationType } from '@/types/block';
 import { BLOCK_TITLE_MAX_LENGTH, TRANSPORTATION_OPTIONS } from '@/types/block';
-import type { LocationCreate } from '@/types/location';
+import type { LocationUpdate } from '@/types/location';
 import { PlaceSearchDialog } from './PlaceSearchDialog';
 
 interface AddBlockDialogProps {
@@ -20,7 +20,7 @@ interface AddBlockDialogProps {
   initialStartTime: Date;
   initialEndTime: Date;
   pageId: number;
-  onSubmit: (block: Omit<Block, 'id'>, location?: LocationCreate | null) => Promise<void>;
+  onSubmit: (block: Omit<Block, 'id'>) => Promise<void>;
 }
 
 // ユーティリティ関数: DateをHH:MM形式に変換
@@ -75,7 +75,7 @@ export const AddBlockDialog = ({
 
   // 場所設定用のstate
   const [placeDialogOpen, setPlaceDialogOpen] = useState(false);
-  const [pendingLocation, setPendingLocation] = useState<LocationCreate | null>(null);
+  const [pendingLocation, setPendingLocation] = useState<LocationUpdate | null>(null);
 
   // フォームをリセットする関数
   const resetForm = useCallback(() => {
@@ -138,7 +138,7 @@ export const AddBlockDialog = ({
             endTime,
             detail: detail.trim() || null,
             pageId,
-            location: null,
+            location: pendingLocation,
           } as Omit<ScheduleBlock, 'id'>)
         : ({
             type: blockType,
@@ -154,7 +154,7 @@ export const AddBlockDialog = ({
 
     setIsSubmitting(true);
     try {
-      await onSubmit(block, blockType === 'schedule' ? pendingLocation : null);
+      await onSubmit(block);
       onOpenChange(false);
     } finally {
       setIsSubmitting(false);

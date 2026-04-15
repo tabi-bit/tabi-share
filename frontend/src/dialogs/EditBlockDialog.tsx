@@ -1,3 +1,4 @@
+import { MapPin, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import {
   AlertDialog,
@@ -17,9 +18,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { LazyMarkdownEditor } from '@/components/ui/markdown';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useRemoveBlockLocation, useSetBlockLocation } from '@/hooks/useLocations';
 import { calculateEndTimeStr } from '@/lib/utils';
 import type { Block, TransportationBlock, TransportationType } from '@/types/block';
 import { BLOCK_TITLE_MAX_LENGTH, TRANSPORTATION_OPTIONS } from '@/types/block';
+import { PlaceSearchDialog } from './PlaceSearchDialog';
 
 interface EditBlockDialogProps {
   open: boolean;
@@ -75,6 +78,11 @@ export const EditBlockDialog = ({ open, onOpenChange, block, onSubmit, onDelete 
   const [transportationType, setTransportationType] = useState<TransportationType>(
     block.type === 'transportation' ? block.transportationType : 'car'
   );
+
+  // 場所設定用のstate
+  const [placeDialogOpen, setPlaceDialogOpen] = useState(false);
+  const { setBlockLocation } = useSetBlockLocation(block.pageId);
+  const { removeBlockLocation } = useRemoveBlockLocation(block.pageId);
 
   // ダイアログが開いたときにフォームを初期化
   useEffect(() => {
@@ -230,6 +238,43 @@ export const EditBlockDialog = ({ open, onOpenChange, block, onSubmit, onDelete 
                 </Label>
               </div>
             </div>
+            {/* 場所設定（予定ブロックのみ） */}
+            {isSchedule && (
+              <div className='space-y-2'>
+                <div className='flex items-center justify-start gap-2'>
+                  <Label>場所</Label>
+                  {!block.location && (
+                    <Button variant='outline' size='sm' onClick={() => setPlaceDialogOpen(true)}>
+                      <MapPin className='mr-1 h-4 w-4' />
+                      場所を設定
+                    </Button>
+                  )}
+                </div>
+                {block.location && (
+                  <div className='flex items-center gap-2 rounded-md border p-2'>
+                    <MapPin className='h-4 w-4 shrink-0 text-muted-foreground' />
+                    <div className='min-w-0 flex-1'>
+                      <div className='truncate text-sm'>{block.location.name}</div>
+                      {block.location.address && (
+                        <div className='truncate text-muted-foreground text-xs'>{block.location.address}</div>
+                      )}
+                    </div>
+                    <Button variant='ghost' size='sm' className='shrink-0' onClick={() => setPlaceDialogOpen(true)}>
+                      変更
+                    </Button>
+                    <Button
+                      variant='ghost'
+                      size='icon'
+                      className='h-6 w-6 shrink-0'
+                      onClick={() => removeBlockLocation(block.id, block)}
+                    >
+                      <X className='h-3 w-3' />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className='space-y-2'>
               <Label htmlFor='edit-detail'>詳細</Label>
               <LazyMarkdownEditor
@@ -274,6 +319,18 @@ export const EditBlockDialog = ({ open, onOpenChange, block, onSubmit, onDelete 
           <Button onClick={handleSubmit}>更新</Button>
         </DialogFooter>
       </DialogContent>
+
+      {/* 場所検索ダイアログ */}
+      {isSchedule && (
+        <PlaceSearchDialog
+          open={placeDialogOpen}
+          onOpenChange={setPlaceDialogOpen}
+          onConfirm={locationData => {
+            setBlockLocation(block.id, locationData);
+          }}
+          initialLocation={block.location}
+        />
+      )}
     </Dialog>
   );
 };

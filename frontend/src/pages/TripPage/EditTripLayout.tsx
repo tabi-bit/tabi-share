@@ -10,7 +10,7 @@ import { BlockTransportationEdit } from '@/components/blocks/edit/BlockTransport
 import { AddBlockDialog, EditBlockDialog } from '@/dialogs';
 import { useBlocks, useCreateBlock, useDeleteBlock, useUpdateBlock } from '@/hooks/useBlocks';
 import { useCalendarDragDetection } from '@/hooks/useCalendarDragDetection';
-import type { Block, Page } from '@/types';
+import type { Block, LocationCreate, Page } from '@/types';
 
 interface EditTripLayoutProps {
   selectedPageId: Page['id'];
@@ -33,8 +33,11 @@ export const EditTripLayout = ({ selectedPageId, onDragStart, onDragEnd, refresh
   const [addDialogSelectInfo, setAddDialogSelectInfo] = useState<DateSelectArg | null>(null);
 
   // EditBlockDialog用のstate
+  // editingBlockIdだけ保持し、blockデータはblocks（SWRキャッシュ）から毎回引き直す。
+  // 場所設定などでキャッシュが更新された際にダイアログへ即座に反映させるため。
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [editingBlock, setEditingBlock] = useState<Block | null>(null);
+  const [editingBlockId, setEditingBlockId] = useState<Block['id'] | null>(null);
+  const editingBlock = editingBlockId != null ? (blocks?.find(b => b.id === editingBlockId) ?? null) : null;
 
   // ドラッグ操作検出（マウスpointer + MutationObserver + FCコールバック）
   const { handleEventDragStart, handleEventDragStop, onBeforeSelect } = useCalendarDragDetection(
@@ -111,8 +114,8 @@ export const EditTripLayout = ({ selectedPageId, onDragStart, onDragEnd, refresh
     }
   };
 
-  const handleDialogSubmit = async (block: Omit<Block, 'id'>) => {
-    await createBlock(block);
+  const handleDialogSubmit = async (block: Omit<Block, 'id'>, location?: LocationCreate | null) => {
+    await createBlock({ block, location });
   };
 
   // --- ブロック編集ダイアログ ---
@@ -132,14 +135,14 @@ export const EditTripLayout = ({ selectedPageId, onDragStart, onDragEnd, refresh
   const handleEventClick = (clickInfo: EventClickArg) => {
     if (unselectEvent()) return;
     const blockData = clickInfo.event.extendedProps.blockData as Block;
-    setEditingBlock(blockData);
+    setEditingBlockId(blockData.id);
     setEditDialogOpen(true);
   };
 
   const handleEditDialogOpenChange = (open: boolean) => {
     setEditDialogOpen(open);
     if (!open) {
-      setEditingBlock(null);
+      setEditingBlockId(null);
     }
   };
 

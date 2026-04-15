@@ -27,6 +27,7 @@ async def create_block(
     説明:
 
     - 新しいブロックを作成する
+    - `location` / `destination_location` を含める場合は同一トランザクションで作成する
     """
     db_page = await pages_cruds.get_page(db, page_id=page_id)
     if db_page is None:
@@ -92,7 +93,9 @@ async def update_block(
     """
     説明:
 
-    - IDで指定された単一のブロックを更新する
+    - IDで指定された単一のブロックを後勝ちで置換する（PUT セマンティクス）
+    - `location` / `destination_location` は id 一致で既存行維持、それ以外は
+      旧行削除 + 新規作成
     """
     db_block = await blocks_cruds.update_block(db, block_id=block_id, block=block)
     if db_block is None:
@@ -116,6 +119,7 @@ async def delete_block(
     説明:
 
     - IDで指定された単一のブロックを削除する
+    - 所有する location / destination_location の行も同時に削除する
     """
     if not await blocks_cruds.delete_block(db, block_id=block_id):
         raise NotFound(message="Block not found")

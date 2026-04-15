@@ -114,6 +114,36 @@ async def test_create_block_invalid_input(
     assert any("block_type" in err["loc"] for err in response.json()["detail"])
 
 
+async def test_create_block_with_location(
+    authed_client: AsyncClient, db_session: AsyncSession, test_create_page: Page
+):
+    """
+    POST /pages/{page_id}/blocks で location を埋め込んで作成
+    """
+    block_data = {
+        "title": "with location",
+        "start_time": "2023-01-01T10:00:00Z",
+        "block_type": "event",
+        "location": {
+            "name": "草津温泉",
+            "google_place_id": None,
+            "address": None,
+            "latitude": None,
+            "longitude": None,
+        },
+    }
+    response = await authed_client.post(
+        f"/pages/{test_create_page.id}/blocks", json=block_data
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["location"] is not None
+    assert data["location"]["name"] == "草津温泉"
+    assert data["location_id"] == data["location"]["id"]
+
+
+
+
 async def test_create_block_non_existent_page(
     client: AsyncClient, db_session: AsyncSession
 ):
@@ -331,3 +361,145 @@ async def test_delete_block_without_cookie_returns_403(
     """実在するブロックをCookieなしで削除 → 403"""
     response = await client.delete(f"/blocks/{test_create_block.id}")
     assert response.status_code == 403
+
+
+# ---- Location 連携テスト ----
+
+
+async def test_update_block_with_new_location(
+    authed_client: AsyncClient, db_session: AsyncSession, test_create_page: Page
+):
+    """
+    PUT /blocks/{id} で新しい location を埋め込んで更新
+    """
+    create_res = await authed_client.post(
+        f"/pages/{test_create_page.id}/blocks",
+        json={
+            "title": "t",
+            "start_time": "2023-01-01T10:00:00Z",
+            "block_type": "event",
+        },
+    )
+    block_id = create_res.json()["id"]
+
+    update = {
+        "title": "t",
+        "start_time": "2023-01-01T10:00:00Z",
+        "block_type": "event",
+        "location": {
+            "name": "新規",
+            "google_place_id": None,
+            "address": None,
+            "latitude": None,
+            "longitude": None,
+        },
+    }
+    response = await authed_client.put(f"/blocks/{block_id}", json=update)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["location"] is not None
+    assert data["location"]["name"] == "新規"
+
+
+async def test_update_block_preserves_location_by_id(
+    authed_client: AsyncClient, db_session: AsyncSession, test_create_page: Page
+):
+    """
+    PUT /blocks/{id} で現在の location.id を渡すと行が維持される
+    """
+    create_res = await authed_client.post(
+        f"/pages/{test_create_page.id}/blocks",
+        json={
+            "title": "t",
+            "start_time": "2023-01-01T10:00:00Z",
+            "block_type": "event",
+            "location": {"name": "維持対象"},
+        },
+    )
+    block_id = create_res.json()["id"]
+    location_id = create_res.json()["location"]["id"]
+
+    update = {
+        "title": "t changed",
+        "start_time": "2023-01-01T10:00:00Z",
+        "block_type": "event",
+        "location": {"id": location_id, "name": "維持対象"},
+    }
+    response = await authed_client.put(f"/blocks/{block_id}", json=update)
+    assert response.status_code == 200
+    assert response.json()["location"]["id"] == location_id
+
+
+async def test_update_block_remove_location(
+    authed_client: AsyncClient, db_session: AsyncSession, test_create_page: Page
+):
+    """
+    PUT /blocks/{id} で location: null を指定すると解除される
+    """
+    create_res = await authed_client.post(
+        f"/pages/{test_create_page.id}/blocks",
+        json={
+            "title": "t",
+            "start_time": "2023-01-01T10:00:00Z",
+            "block_type": "event",
+            "location": {"name": "解除対象"},
+        },
+    )
+    block_id = create_res.json()["id"]
+
+    update = {
+        "title": "t",
+        "start_time": "2023-01-01T10:00:00Z",
+        "block_type": "event",
+        "location": None,
+    }
+    response = await authed_client.put(f"/blocks/{block_id}", json=update)
+    assert response.status_code == 200
+    assert response.json()["location"] is None
+    assert response.json()["location_id"] is None
+
+
+async def test_delete_block_removes_locations(
+    authed_client: AsyncClient, db_session: AsyncSession, test_create_page: Page
+):
+    """
+    DELETE /blocks/{id} で所有する location 行も削除される
+    """
+    from sqlalchemy import select
+
+    from app.models import Location
+
+    create_res = await authed_client.post(
+        f"/pages/{test_create_page.id}/blocks",
+        json={
+            "title": "drive",
+            "start_time": "2023-01-01T10:00:00Z",
+            "block_type": "move",
+            "transportation_type": "car",
+            "location": {"name": "出発"},
+            "destination_location": {"name": "到着"},
+        },
+    )
+    block_id = create_res.json()["id"]
+
+    del_res = await authed_client.delete(f"/blocks/{block_id}")
+    assert del_res.status_code == 204
+
+    # locations テーブルに 1 行も残っていない
+    rows = (await db_session.execute(select(Location))).scalars().all()
+    assert rows == []
+
+
+async def test_locations_endpoint_removed(
+    client: AsyncClient, db_session: AsyncSession
+):
+    """
+    /locations エンドポイントは廃止されているので 404 を返す
+    """
+    response = await client.post(
+        "/locations", json={"name": "x"}
+    )
+    assert response.status_code == 404
+
+    response = await client.get("/locations/1")
+    assert response.status_code == 404

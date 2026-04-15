@@ -1,13 +1,42 @@
 """
-Add Trip, Page, and Block models with relationships.
+Add Trip, Page, Block, and Location models with relationships.
 """
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, Text
+from sqlalchemy import CheckConstraint, DateTime, Float, ForeignKey, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .db_connection import Base
+
+
+class Location(Base):
+    __tablename__ = "locations"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    google_place_id: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+        index=True,
+        comment="Google Places API の place_id",
+    )
+    name: Mapped[str] = mapped_column(String(200), nullable=False, comment="場所名")
+    address: Mapped[str | None] = mapped_column(Text, nullable=True, comment="住所")
+    latitude: Mapped[float | None] = mapped_column(Float, nullable=True, comment="緯度")
+    longitude: Mapped[float | None] = mapped_column(
+        Float, nullable=True, comment="経度"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        comment="作成日時",
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        comment="更新日時",
+    )
 
 
 class Trip(Base):
@@ -64,6 +93,16 @@ class Page(Base):
 
 class Block(Base):
     __tablename__ = "blocks"
+    __table_args__ = (
+        CheckConstraint(
+            "block_type = 'move' OR destination_location_id IS NULL",
+            name="ck_blocks_destination_only_for_move",
+        ),
+        CheckConstraint(
+            "transportation_type IS NULL OR block_type = 'move'",
+            name="ck_blocks_transportation_type_only_for_move",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     title: Mapped[str] = mapped_column(
@@ -90,8 +129,30 @@ class Block(Base):
     transportation_type: Mapped[str | None] = mapped_column(
         String(100), nullable=True, comment="Type of transportation"
     )
+    location_id: Mapped[int | None] = mapped_column(
+        ForeignKey("locations.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+        comment="場所（Schedule: この場所, Transportation: 出発地）",
+    )
+    destination_location_id: Mapped[int | None] = mapped_column(
+        ForeignKey("locations.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+        comment="目的地（Transportationのみ使用）",
+    )
     # Relationships
     page: Mapped["Page"] = relationship(
         "Page",
         back_populates="blocks",
+    )
+    location: Mapped["Location | None"] = relationship(
+        "Location",
+        foreign_keys=[location_id],
+        lazy="selectin",
+    )
+    destination_location: Mapped["Location | None"] = relationship(
+        "Location",
+        foreign_keys=[destination_location_id],
+        lazy="selectin",
     )

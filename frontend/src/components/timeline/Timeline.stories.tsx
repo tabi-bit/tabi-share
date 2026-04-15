@@ -32,6 +32,7 @@ const sampleBlocks: Block[] = [
 • detail detail
 リンク`.repeat(20),
     pageId: 1,
+    location: null,
   },
   {
     id: 2,
@@ -41,6 +42,8 @@ const sampleBlocks: Block[] = [
     startTime: new Date(2024, 0, 1, 15, 0),
     endTime: new Date(2024, 0, 1, 16, 0),
     pageId: 1,
+    location: null,
+    destinationLocation: null,
   },
   {
     id: 3,
@@ -49,6 +52,7 @@ const sampleBlocks: Block[] = [
     startTime: new Date(2024, 0, 1, 17, 0),
     endTime: new Date(2024, 0, 1, 19, 0),
     pageId: 1,
+    location: null,
   },
   {
     id: 4,
@@ -61,6 +65,8 @@ const sampleBlocks: Block[] = [
     • detail detail
     リンク`.repeat(20),
     pageId: 1,
+    location: null,
+    destinationLocation: null,
   },
   {
     id: 5,
@@ -69,6 +75,7 @@ const sampleBlocks: Block[] = [
     startTime: new Date(2024, 0, 1, 22, 0),
     endTime: null,
     pageId: 1,
+    location: null,
   },
 ];
 

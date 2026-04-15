@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
+import type { Location } from '@/types/location';
 import { BlockScheduleView } from './BlockScheduleView';
 
 const meta: Meta<typeof BlockScheduleView> = {
@@ -11,12 +12,22 @@ const meta: Meta<typeof BlockScheduleView> = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+const sampleLocation: Location = {
+  id: 1,
+  googlePlaceId: 'ChIJ31zemfCMGGARRFKma_dGBRM',
+  name: '草津温泉 湯畑',
+  address: '〒377-1711 群馬県吾妻郡草津町草津',
+  latitude: 36.6218,
+  longitude: 138.5963,
+};
+
 const baseScheduleBlock = {
   id: 1,
   type: 'schedule' as const,
   startTime: new Date(2024, 0, 1, 9, 0),
   endTime: new Date(2024, 0, 1, 11, 30),
   pageId: 1,
+  location: null,
 };
 
 export const Default: Story = {
@@ -44,6 +55,17 @@ export const LongTitleAndDetail: Story = {
       ...baseScheduleBlock,
       title: '草津温泉街散策と湯畑見学、お土産購入とカフェタイム',
       detail: '温泉街をゆっくり散策しながら、湯畑の見学と地元の名産品を購入。最後にカフェでひと休み。'.repeat(5),
+    },
+  },
+};
+
+export const WithLocation: Story = {
+  args: {
+    block: {
+      ...baseScheduleBlock,
+      title: '草津温泉入浴',
+      detail: '湯畑周辺の温泉施設を巡る。',
+      location: sampleLocation,
     },
   },
 };

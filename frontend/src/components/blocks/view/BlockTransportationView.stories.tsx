@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import type { TransportationBlock } from '@/types/block';
+import type { Location } from '@/types/location';
 import { BlockTransportationView } from './BlockTransportationView';
 
 const meta: Meta<typeof BlockTransportationView> = {
@@ -24,6 +25,15 @@ const meta: Meta<typeof BlockTransportationView> = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+const sampleLocation: Location = {
+  id: 1,
+  googlePlaceId: 'ChIJ31zemfCMGGARRFKma_dGBRM',
+  name: '草津温泉 湯畑',
+  address: '〒377-1711 群馬県吾妻郡草津町草津',
+  latitude: 36.6218,
+  longitude: 138.5963,
+};
+
 const baseBlock: TransportationBlock = {
   id: 1,
   type: 'transportation',
@@ -32,6 +42,8 @@ const baseBlock: TransportationBlock = {
   startTime: new Date('2024-01-01T09:00:00'),
   endTime: new Date('2024-01-01T10:30:00'),
   pageId: 1,
+  location: null,
+  destinationLocation: null,
 };
 
 export const Default: Story = {
@@ -59,6 +71,27 @@ export const WithLongDetail: Story = {
 リンク
 詳細詳細
 詳細詳細詳細詳細詳細詳細詳細詳細詳細詳細詳細詳細詳細詳細詳細詳細詳細詳細詳細詳細詳細詳細詳細詳細詳細詳細詳細詳細詳細詳細詳細詳細詳細詳細詳細詳細詳細詳細詳細詳細詳細詳細詳細詳細詳細詳細詳細詳細詳細詳細詳細詳細詳細詳細詳細詳細詳細詳細詳細詳細`,
+    },
+  },
+};
+
+export const WithLocation: Story = {
+  args: {
+    block: {
+      ...baseBlock,
+      title: '新宿駅 → 草津温泉',
+      location: sampleLocation,
+    },
+  },
+};
+
+export const WithOriginAndDestination: Story = {
+  args: {
+    block: {
+      ...baseBlock,
+      title: '新宿駅 → 草津温泉',
+      location: { ...sampleLocation, id: 2, name: '新宿駅', address: '〒160-0022 東京都新宿区新宿三丁目' },
+      destinationLocation: sampleLocation,
     },
   },
 };

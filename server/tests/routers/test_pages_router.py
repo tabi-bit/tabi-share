@@ -53,7 +53,7 @@ async def test_create_page_non_existent_trip(
     page_data = {"title": "test page"}
     response = await client.post("/trips/999/pages", json=page_data)
     assert response.status_code == 404
-    assert response.json()["detail"] == "Trip not found"
+    assert response.json()["message"] == "Trip not found"
 
 
 async def test_read_pages(
@@ -78,7 +78,7 @@ async def test_get_page_non_existent_id(client: AsyncClient, db_session: AsyncSe
     """
     response = await client.get("/pages/999")
     assert response.status_code == 404
-    assert response.json()["detail"] == "Page not found"
+    assert response.json()["message"] == "Page not found"
 
 
 async def test_update_page(
@@ -105,7 +105,7 @@ async def test_update_page_non_existent_id(
     update_data = {"title": "non existent"}
     response = await client.put("/pages/999", json=update_data)
     assert response.status_code == 404
-    assert response.json()["detail"] == "Page not found"
+    assert response.json()["message"] == "Page not found"
 
 
 async def test_update_page_invalid_input(

@@ -26,8 +26,8 @@ interface EditPageDialogProps {
 
 export const EditPageDialog = ({ open, onOpenChange, page, onDeleted }: EditPageDialogProps) => {
   const [title, setTitle] = useState(page.title);
-  const { updatePage, isUpdating } = useUpdatePage(page.tripId);
-  const { deletePage, isDeleting } = useDeletePage(page.tripId);
+  const { updatePage } = useUpdatePage(page.tripId);
+  const { deletePage } = useDeletePage(page.tripId);
 
   // ダイアログが開いたときにフォームを初期化
   useEffect(() => {
@@ -36,21 +36,21 @@ export const EditPageDialog = ({ open, onOpenChange, page, onDeleted }: EditPage
     }
   }, [open, page]);
 
-  // 削除処理
-  const handleDelete = async () => {
-    await deletePage(page.id);
+  // 削除処理（楽観更新のためfire-and-forget）
+  const handleDelete = () => {
+    deletePage(page.id);
     onDeleted?.(page.id);
     onOpenChange(false);
   };
 
-  // サブミット処理
-  const handleSubmit = async () => {
+  // サブミット処理（楽観更新のためfire-and-forget）
+  const handleSubmit = () => {
     if (!title.trim()) {
       return;
     }
 
     if (title.trim() !== page.title) {
-      await updatePage({ id: page.id, data: { title: title.trim(), detail: page.detail, tripId: page.tripId } });
+      updatePage({ id: page.id, data: { title: title.trim(), detail: page.detail, tripId: page.tripId } });
     }
 
     onOpenChange(false);
@@ -65,7 +65,9 @@ export const EditPageDialog = ({ open, onOpenChange, page, onDeleted }: EditPage
 
         <DialogBody>
           <div className='space-y-2'>
-            <Label htmlFor='edit-page-title'>タイトル</Label>
+            <Label htmlFor='edit-page-title'>
+              タイトル<span className='text-red-500'>*</span>
+            </Label>
             <Input
               id='edit-page-title'
               value={title}
@@ -94,7 +96,7 @@ export const EditPageDialog = ({ open, onOpenChange, page, onDeleted }: EditPage
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>キャンセル</AlertDialogCancel>
-                <AlertDialogAction variant='destructive' onClick={handleDelete} disabled={isDeleting}>
+                <AlertDialogAction variant='destructive' onClick={handleDelete}>
                   削除
                 </AlertDialogAction>
               </AlertDialogFooter>
@@ -104,9 +106,7 @@ export const EditPageDialog = ({ open, onOpenChange, page, onDeleted }: EditPage
           <Button variant='outline' onClick={() => onOpenChange(false)}>
             キャンセル
           </Button>
-          <Button onClick={handleSubmit} loading={isUpdating}>
-            更新
-          </Button>
+          <Button onClick={handleSubmit}>更新</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

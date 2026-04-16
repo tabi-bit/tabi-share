@@ -17,7 +17,7 @@ export type Trip = z.infer<typeof TripSchema>;
 
 // --- API層のスキーマ ---
 
-export const TRIP_TITLE_MAX_LENGTH = 16;
+export const TRIP_TITLE_MAX_LENGTH = 32;
 
 /**
  * APIから返ってくる生のデータ形式を表すスキーマ

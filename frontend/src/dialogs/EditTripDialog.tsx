@@ -30,8 +30,8 @@ interface EditTripDialogProps {
 export const EditTripDialog = ({ open, onOpenChange, trip, onDeleted }: EditTripDialogProps) => {
   const [tripTitle, setTripTitle] = useState(trip.title);
   const [tripDetail, setTripDetail] = useState(trip.detail ?? '');
-  const { updateTrip, isUpdating } = useUpdateTrip();
-  const { deleteTrip, isDeleting } = useDeleteTrip();
+  const { updateTrip } = useUpdateTrip();
+  const { deleteTrip } = useDeleteTrip();
   const { removeVisitedTrip } = useVisitedTrips();
 
   // ダイアログが開いたときにフォームを初期化
@@ -42,16 +42,16 @@ export const EditTripDialog = ({ open, onOpenChange, trip, onDeleted }: EditTrip
     }
   }, [open, trip]);
 
-  // 削除処理
-  const handleDelete = async () => {
-    await deleteTrip(trip.id);
+  // 削除処理（楽観更新のためfire-and-forget）
+  const handleDelete = () => {
+    deleteTrip(trip.id);
     removeVisitedTrip(trip.urlId);
     onDeleted?.();
     onOpenChange(false);
   };
 
-  // サブミット処理
-  const handleSubmit = async () => {
+  // サブミット処理（楽観更新のためfire-and-forget）
+  const handleSubmit = () => {
     const trimmedTitle = tripTitle.trim();
     const trimmedDetail = tripDetail.trim();
 
@@ -60,7 +60,7 @@ export const EditTripDialog = ({ open, onOpenChange, trip, onDeleted }: EditTrip
     }
 
     if (trimmedTitle !== trip.title || trimmedDetail !== (trip.detail ?? '')) {
-      await updateTrip({
+      updateTrip({
         id: trip.id,
         data: { title: trimmedTitle, detail: trimmedDetail || undefined, peopleNum: trip.peopleNum },
       });
@@ -79,7 +79,9 @@ export const EditTripDialog = ({ open, onOpenChange, trip, onDeleted }: EditTrip
         <DialogBody>
           <div className='space-y-4'>
             <div className='space-y-2'>
-              <Label htmlFor='edit-trip-title'>旅程タイトル</Label>
+              <Label htmlFor='edit-trip-title'>
+                旅程タイトル<span className='text-red-500'>*</span>
+              </Label>
               <Input
                 id='edit-trip-title'
                 value={tripTitle}
@@ -96,7 +98,7 @@ export const EditTripDialog = ({ open, onOpenChange, trip, onDeleted }: EditTrip
                 id='edit-trip-detail'
                 value={tripDetail}
                 onChange={setTripDetail}
-                placeholder='旅程の詳細や目的など'
+                placeholder='旅程の詳細や目的など（任意）'
               />
             </div>
           </div>
@@ -121,7 +123,7 @@ export const EditTripDialog = ({ open, onOpenChange, trip, onDeleted }: EditTrip
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>キャンセル</AlertDialogCancel>
-                <AlertDialogAction variant='destructive' onClick={handleDelete} disabled={isDeleting}>
+                <AlertDialogAction variant='destructive' onClick={handleDelete}>
                   削除
                 </AlertDialogAction>
               </AlertDialogFooter>
@@ -131,9 +133,7 @@ export const EditTripDialog = ({ open, onOpenChange, trip, onDeleted }: EditTrip
           <Button variant='outline' onClick={() => onOpenChange(false)}>
             キャンセル
           </Button>
-          <Button onClick={handleSubmit} loading={isUpdating}>
-            更新
-          </Button>
+          <Button onClick={handleSubmit}>更新</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

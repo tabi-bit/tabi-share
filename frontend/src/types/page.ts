@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 // --- アプリケーション層のスキーマ ---
 
-export const PAGE_TITLE_MAX_LENGTH = 8;
+export const PAGE_TITLE_MAX_LENGTH = 32;
 
 /**
  * アプリケーション内で利用するPageのスキーマ

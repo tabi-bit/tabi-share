@@ -1,13 +1,13 @@
 import type { Meta, StoryObj } from '@storybook/react';
+import { createStore, Provider } from 'jotai';
+import { useHydrateAtoms } from 'jotai/utils';
+import type { ReactNode } from 'react';
 import { useRef } from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { selectedPageIdAtom, tripAtom, tripModeAtom, tripPagesAtom } from '@/atoms/tripPage';
 import type { Page } from '@/types';
 import type { Trip } from '@/types/trip';
 import { Header } from './Header';
-
-const onSelectPage = (pageId: Page['id']) => {
-  console.log('Selected page ID:', pageId);
-};
 
 const demoTrip: Trip = {
   id: 1,
@@ -16,30 +16,35 @@ const demoTrip: Trip = {
 };
 
 const demoPages: Page[] = [
-  {
-    id: 1,
-    title: '1日目',
-    tripId: 1,
-  },
-  {
-    id: 2,
-    title: '2日目',
-    tripId: 1,
-  },
-  {
-    id: 3,
-    title: '3日目',
-    tripId: 1,
-  },
+  { id: 1, title: '1日目', tripId: 1 },
+  { id: 2, title: '2日目', tripId: 1 },
+  { id: 3, title: '3日目', tripId: 1 },
 ];
 
-const singlePage: Page[] = [
-  {
-    id: 1,
-    title: '日帰り旅行',
-    tripId: 1,
-  },
-];
+const singlePage: Page[] = [{ id: 1, title: '日帰り旅行', tripId: 1 }];
+
+/** Storybook 用に atom を初期化するラッパー */
+const AtomHydrator = ({
+  trip,
+  pages,
+  selectedPageId,
+  mode,
+  children,
+}: {
+  trip: Trip;
+  pages: Page[];
+  selectedPageId?: Page['id'];
+  mode?: 'view' | 'edit';
+  children: ReactNode;
+}) => {
+  useHydrateAtoms([
+    [tripAtom, trip],
+    [tripPagesAtom, pages],
+    [selectedPageIdAtom, selectedPageId],
+    [tripModeAtom, mode ?? 'view'],
+  ]);
+  return <>{children}</>;
+};
 
 const meta = {
   title: 'Components/Header',
@@ -65,21 +70,6 @@ const meta = {
       control: { type: 'radio' },
       options: ['full', 'logoOnly'],
       description: '表示バリアント（full: 全機能表示 / logoOnly: ロゴのみ）',
-    },
-    mode: {
-      control: { type: 'radio' },
-      options: ['view', 'edit'],
-      description: '表示モード（閲覧モード / 編集モード）',
-    },
-    trip: {
-      description: '旅行情報オブジェクト',
-    },
-    pages: {
-      description: 'ページ一覧配列',
-    },
-    selectedPageId: {
-      control: { type: 'text' },
-      description: '選択中ページID（スクロール時のBadge表示用）',
     },
     className: {
       control: { type: 'text' },
@@ -108,16 +98,21 @@ export const LogoOnly: Story = {
 export const Default: Story = {
   args: {
     variant: 'full',
-    trip: demoTrip,
-    pages: demoPages,
-    mode: 'view',
-    selectedPageId: 1,
-    onSelectPage,
     scrollContainerRef: { current: null },
-    setMode: () => {
-      /* noop */
-    },
+    isDraggingRef: { current: false },
   },
+  decorators: [
+    Story => {
+      const store = createStore();
+      return (
+        <Provider store={store}>
+          <AtomHydrator trip={demoTrip} pages={demoPages} selectedPageId={1} mode='view'>
+            <Story />
+          </AtomHydrator>
+        </Provider>
+      );
+    },
+  ],
   parameters: {
     docs: {
       description: {
@@ -130,16 +125,21 @@ export const Default: Story = {
 export const EditMode: Story = {
   args: {
     variant: 'full',
-    trip: demoTrip,
-    pages: demoPages,
-    mode: 'edit',
-    selectedPageId: 2,
-    onSelectPage,
     scrollContainerRef: { current: null },
-    setMode: () => {
-      /* noop */
-    },
+    isDraggingRef: { current: false },
   },
+  decorators: [
+    Story => {
+      const store = createStore();
+      return (
+        <Provider store={store}>
+          <AtomHydrator trip={demoTrip} pages={demoPages} selectedPageId={2} mode='edit'>
+            <Story />
+          </AtomHydrator>
+        </Provider>
+      );
+    },
+  ],
   parameters: {
     docs: {
       description: {
@@ -152,19 +152,21 @@ export const EditMode: Story = {
 export const SinglePage: Story = {
   args: {
     variant: 'full',
-    trip: {
-      id: 1,
-      title: '日帰り温泉ツアー',
-      urlId: 'trip1',
-    },
-    pages: singlePage,
-    mode: 'view',
-    onSelectPage,
     scrollContainerRef: { current: null },
-    setMode: () => {
-      /* noop */
-    },
+    isDraggingRef: { current: false },
   },
+  decorators: [
+    Story => {
+      const store = createStore();
+      return (
+        <Provider store={store}>
+          <AtomHydrator trip={{ id: 1, title: '日帰り温泉ツアー', urlId: 'trip1' }} pages={singlePage} mode='view'>
+            <Story />
+          </AtomHydrator>
+        </Provider>
+      );
+    },
+  ],
   parameters: {
     docs: {
       description: {
@@ -177,19 +179,21 @@ export const SinglePage: Story = {
 export const EmptyPages: Story = {
   args: {
     variant: 'full',
-    trip: {
-      id: 1,
-      title: '新しい旅行計画',
-      urlId: 'trip1',
-    },
-    pages: [],
-    mode: 'edit',
-    onSelectPage,
     scrollContainerRef: { current: null },
-    setMode: () => {
-      /* noop */
-    },
+    isDraggingRef: { current: false },
   },
+  decorators: [
+    Story => {
+      const store = createStore();
+      return (
+        <Provider store={store}>
+          <AtomHydrator trip={{ id: 1, title: '新しい旅行計画', urlId: 'trip1' }} pages={[]} mode='edit'>
+            <Story />
+          </AtomHydrator>
+        </Provider>
+      );
+    },
+  ],
   parameters: {
     docs: {
       description: {
@@ -202,17 +206,22 @@ export const EmptyPages: Story = {
 export const WithCustomClass: Story = {
   args: {
     variant: 'full',
-    trip: demoTrip,
-    pages: demoPages,
-    mode: 'view',
-    selectedPageId: 2,
-    className: 'border-b-2 border-blue-500',
-    onSelectPage,
     scrollContainerRef: { current: null },
-    setMode: () => {
-      /* noop */
-    },
+    isDraggingRef: { current: false },
+    className: 'border-b-2 border-blue-500',
   },
+  decorators: [
+    Story => {
+      const store = createStore();
+      return (
+        <Provider store={store}>
+          <AtomHydrator trip={demoTrip} pages={demoPages} selectedPageId={2} mode='view'>
+            <Story />
+          </AtomHydrator>
+        </Provider>
+      );
+    },
+  ],
   parameters: {
     docs: {
       description: {
@@ -225,16 +234,42 @@ export const WithCustomClass: Story = {
 export const ScrolledState: Story = {
   args: {
     variant: 'full',
-    trip: demoTrip,
-    pages: demoPages,
-    mode: 'view',
-    selectedPageId: 1,
-    onSelectPage,
     scrollContainerRef: { current: null },
-    setMode: () => {
-      /* noop */
-    },
+    isDraggingRef: { current: false },
   },
+  decorators: [
+    (Story, context) => {
+      const scrollContainerRef = useRef<HTMLDivElement>(null);
+      const store = createStore();
+      return (
+        <Provider store={store}>
+          <AtomHydrator trip={demoTrip} pages={demoPages} selectedPageId={1} mode='view'>
+            <div ref={scrollContainerRef} style={{ height: '200vh', overflow: 'auto' }}>
+              <Story args={{ ...context.args, variant: 'full', scrollContainerRef }} />
+              <div style={{ padding: '2rem', marginTop: '2rem' }}>
+                <h2>スクロールしてヘッダーの変化を確認</h2>
+                <p>
+                  このページを下にスクロールすると、ヘッダーの文字サイズが小さくなり、SelectがBadgeに変わり、ボタンが非表示になります。
+                </p>
+                <div
+                  style={{
+                    height: '1000px',
+                    background: 'linear-gradient(to bottom, #f0f9ff, #e0f2fe)',
+                    padding: '2rem',
+                    borderRadius: '8px',
+                    marginTop: '1rem',
+                  }}
+                >
+                  <h3>コンテンツエリア</h3>
+                  <p>ここはメインコンテンツです。スクロールしてヘッダーの動作を確認してください。</p>
+                </div>
+              </div>
+            </div>
+          </AtomHydrator>
+        </Provider>
+      );
+    },
+  ],
   parameters: {
     layout: 'fullscreen',
     docs: {
@@ -244,32 +279,4 @@ export const ScrolledState: Story = {
       },
     },
   },
-  decorators: [
-    (Story, context) => {
-      const scrollContainerRef = useRef<HTMLDivElement>(null);
-      return (
-        <div ref={scrollContainerRef} style={{ height: '200vh', overflow: 'auto' }}>
-          <Story args={{ ...context.args, variant: 'full', scrollContainerRef }} />
-          <div style={{ padding: '2rem', marginTop: '2rem' }}>
-            <h2>スクロールしてヘッダーの変化を確認</h2>
-            <p>
-              このページを下にスクロールすると、ヘッダーの文字サイズが小さくなり、SelectがBadgeに変わり、ボタンが非表示になります。
-            </p>
-            <div
-              style={{
-                height: '1000px',
-                background: 'linear-gradient(to bottom, #f0f9ff, #e0f2fe)',
-                padding: '2rem',
-                borderRadius: '8px',
-                marginTop: '1rem',
-              }}
-            >
-              <h3>コンテンツエリア</h3>
-              <p>ここはメインコンテンツです。スクロールしてヘッダーの動作を確認してください。</p>
-            </div>
-          </div>
-        </div>
-      );
-    },
-  ],
 };

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -19,6 +19,15 @@ export const AddTripDialog = ({ open, onOpenChange, onCreated }: AddTripDialogPr
   const [peopleNum, setPeopleNum] = useState<number | undefined>(undefined);
   const { createTrip, isCreating } = useCreateTrip();
 
+  // ダイアログが開いたときにフォームを初期化
+  useEffect(() => {
+    if (open && !isCreating) {
+      setTitle('');
+      setDetail('');
+      setPeopleNum(undefined);
+    }
+  }, [open, isCreating]);
+
   const handleSubmit = async () => {
     if (!title.trim()) {
       return;
@@ -36,18 +45,22 @@ export const AddTripDialog = ({ open, onOpenChange, onCreated }: AddTripDialogPr
     }
   };
 
+  // 作成中はダイアログを閉じない
   const handleOpenChange = (open: boolean) => {
-    if (!open) {
-      setTitle('');
-      setDetail('');
-      setPeopleNum(undefined);
-    }
+    if (!open && isCreating) return;
     onOpenChange(open);
   };
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent>
+      <DialogContent
+        onInteractOutside={e => {
+          if (isCreating) e.preventDefault();
+        }}
+        onEscapeKeyDown={e => {
+          if (isCreating) e.preventDefault();
+        }}
+      >
         <DialogHeader>
           <DialogTitle>旅程を追加</DialogTitle>
         </DialogHeader>
@@ -74,9 +87,10 @@ export const AddTripDialog = ({ open, onOpenChange, onCreated }: AddTripDialogPr
                 id='add-trip-detail'
                 value={detail}
                 onChange={setDetail}
-                placeholder='旅程の詳細や目的など'
+                placeholder='旅程の詳細や目的など（省略可）'
               />
             </div>
+            {/* 人数フィールドは一旦非表示
             <div className='space-y-2'>
               <Label htmlFor='add-trip-people-num'>人数</Label>
               <Input
@@ -88,9 +102,10 @@ export const AddTripDialog = ({ open, onOpenChange, onCreated }: AddTripDialogPr
                   const parsed = parseInt(e.target.value, 10);
                   setPeopleNum(!Number.isNaN(parsed) && parsed >= 1 ? parsed : undefined);
                 }}
-                placeholder='例: 4'
+                placeholder='例: 4（省略可）'
               />
             </div>
+            */}
           </div>
         </DialogBody>
 

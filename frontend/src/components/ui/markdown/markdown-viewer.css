@@ -15,7 +15,7 @@
   }
 
   & a {
-    @apply text-sky-500;
+    @apply text-sky-600;
 
     &:visited {
       @apply text-purple-500;

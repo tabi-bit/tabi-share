@@ -72,9 +72,9 @@ async def test_get_page(db_session: AsyncSession, test_create_trip: Trip):
 
 
 @pytest.mark.asyncio
-async def test_get_pages(db_session: AsyncSession, test_create_trip: Trip):
+async def test_find_pages(db_session: AsyncSession, test_create_trip: Trip):
     """
-    get_pages()/正常系
+    find_pages()/正常系
     """
     # arrange
     await pages_cruds.create_page(
@@ -85,7 +85,7 @@ async def test_get_pages(db_session: AsyncSession, test_create_trip: Trip):
     )
 
     # act
-    pages = await pages_cruds.get_pages(db=db_session, trip_id=test_create_trip.id)
+    pages = await pages_cruds.find_pages(db=db_session, trip_id=test_create_trip.id)
 
     # assert
     assert len(pages) == 2

@@ -32,7 +32,9 @@ app = FastAPI(
 _http_basic = HTTPBasic()
 
 
-def _verify_api_docs_auth(credentials: HTTPBasicCredentials = Depends(_http_basic)) -> None:
+def _verify_api_docs_auth(
+    credentials: HTTPBasicCredentials = Depends(_http_basic),
+) -> None:
     """
     説明:
 
@@ -91,6 +93,7 @@ async def openapi_schema(
         get_openapi(title=app.title, version=app.version, routes=app.routes)
     )
 
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
@@ -110,7 +113,9 @@ app.add_exception_handler(RequestValidationError, validation_exception_handler)
 
 
 @app.get("/health", tags=["Health"])
-async def health_check(delay: float = Query(0, ge=0, le=30, description="デバッグ用: レスポンス遅延(秒)")):
+async def health_check(
+    delay: float = Query(0, ge=0, le=30, description="デバッグ用: レスポンス遅延(秒)"),
+):
     """Renderのヘルスチェック用エンドポイント"""
     if delay > 0:
         await asyncio.sleep(delay)

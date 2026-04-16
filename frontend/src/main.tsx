@@ -8,9 +8,10 @@ import { App } from './App.tsx';
 import { SWRProvider } from './components/SWRProvider.tsx';
 import 'dayjs/locale/ja';
 import dayjs from 'dayjs';
-import { isOfflineAtom } from './atoms/network';
+import { isForcedOfflineAtom, isOfflineAtom } from './atoms/network';
 import { pwaPromptEventAtom } from './atoms/pwa';
 import { initEnvBranding } from './lib/envBranding.ts';
+import { loadForcedOffline } from './lib/forcedOffline';
 import { evaluateNetwork } from './lib/networkDetection';
 import type { BeforeInstallPromptEvent } from './lib/pwa';
 import { appStore } from './lib/store';
@@ -37,17 +38,23 @@ window.addEventListener('offline', () => {
 });
 
 window.addEventListener('online', () => {
+  if (jotaiStore.get(isForcedOfflineAtom)) return;
   evaluateNetwork(jotaiStore);
 });
 
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') {
+    if (jotaiStore.get(isForcedOfflineAtom)) return;
     evaluateNetwork(jotaiStore);
   }
 });
 
-// 起動時のネットワーク状態判定（非同期、Reactマウントをブロックしない）
-evaluateNetwork(jotaiStore);
+// 起動時: IndexedDBから強制オフライン状態を復元し、必要ならネットワーク判定
+loadForcedOffline(jotaiStore).then(() => {
+  if (!jotaiStore.get(isForcedOfflineAtom)) {
+    evaluateNetwork(jotaiStore);
+  }
+});
 
 const rootElement = document.getElementById('root');
 if (rootElement) {

@@ -24,7 +24,7 @@ async def create_trip(db: AsyncSession, trip: TripCreateIn, url_id: str) -> int:
     return db_trip.id
 
 
-async def list_trips(db: AsyncSession) -> list[Trip]:
+async def find_trips(db: AsyncSession) -> list[Trip]:
     """
     すべての旅行プランを取得する関数
 

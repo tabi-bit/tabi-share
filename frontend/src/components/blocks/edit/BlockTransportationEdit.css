@@ -1,0 +1,34 @@
+/* frontend/src/components/blocks/edit/BlockTransportationEdit.css */
+.BlockTransportationEdit .transport-time-wrapper {
+  /* デフォルトは縦並び */
+  flex-direction: column;
+
+  .vertical-divider {
+    display: none;
+  }
+
+  .horizontal-divider {
+    display: block;
+  }
+}
+
+@container (height < 4rem) {
+  .BlockTransportationEdit .transport-time-wrapper {
+    /* 横並びに変更 */
+    flex-direction: row;
+
+    .vertical-divider {
+      display: block;
+    }
+
+    .horizontal-divider {
+      display: none;
+    }
+  }
+}
+
+@container (height < 2rem) {
+  .BlockTransportationEdit .transport-time-wrapper {
+    font-size: 10px !important;
+  }
+}

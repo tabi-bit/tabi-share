@@ -110,9 +110,9 @@ async def test_get_trip_by_url_id(db_session: AsyncSession):
 
 
 @pytest.mark.asyncio
-async def test_list_trips(db_session: AsyncSession):
+async def test_find_trips(db_session: AsyncSession):
     """
-    list_trips()/正常系
+    find_trips()/正常系
     """
     # arrange
     await trips_cruds.create_trip(
@@ -123,7 +123,7 @@ async def test_list_trips(db_session: AsyncSession):
     )
 
     # act
-    trips = await trips_cruds.list_trips(db=db_session)
+    trips = await trips_cruds.find_trips(db=db_session)
 
     # assert
     assert len(trips) == 2

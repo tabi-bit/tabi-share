@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.cruds import blocks as blocks_cruds
 from app.cruds import pages as pages_cruds
 from app.db_connection import get_db_session
+from app.errors import NotFound
 from app.schemas.block import Block, BlockCreate, BlockUpdate
 
 router = APIRouter(tags=["Blocks"])
@@ -16,7 +17,7 @@ router = APIRouter(tags=["Blocks"])
     response_model=Block,
 )
 async def create_block(
-    page_id: int, block: BlockCreate, db: Session = Depends(get_db_session)
+    page_id: int, block: BlockCreate, db: AsyncSession = Depends(get_db_session)
 ) -> Block:
     """
     説明:
@@ -25,7 +26,7 @@ async def create_block(
     """
     db_page = await pages_cruds.get_page(db, page_id=page_id)
     if db_page is None:
-        raise HTTPException(status_code=404, detail="Page not found")
+        raise NotFound(message="Page not found")
 
     return await blocks_cruds.create_block(db=db, block=block, page_id=page_id)
 
@@ -37,7 +38,7 @@ async def create_block(
     response_model=list[Block],
 )
 async def get_blocks(
-    page_id: int, db: Session = Depends(get_db_session)
+    page_id: int, db: AsyncSession = Depends(get_db_session)
 ) -> list[Block]:
     """
     説明:
@@ -53,7 +54,7 @@ async def get_blocks(
     operation_id="blocks-get",
     response_model=Block,
 )
-async def get_block(block_id: int, db: Session = Depends(get_db_session)) -> Block:
+async def get_block(block_id: int, db: AsyncSession = Depends(get_db_session)) -> Block:
     """
     説明:
 
@@ -61,7 +62,7 @@ async def get_block(block_id: int, db: Session = Depends(get_db_session)) -> Blo
     """
     db_block = await blocks_cruds.get_block(db, block_id=block_id)
     if db_block is None:
-        raise HTTPException(status_code=404, detail="Block not found")
+        raise NotFound(message="Block not found")
 
     return db_block
 
@@ -73,7 +74,7 @@ async def get_block(block_id: int, db: Session = Depends(get_db_session)) -> Blo
     response_model=Block,
 )
 async def update_block(
-    block_id: int, block: BlockUpdate, db: Session = Depends(get_db_session)
+    block_id: int, block: BlockUpdate, db: AsyncSession = Depends(get_db_session)
 ) -> Block:
     """
     説明:
@@ -82,7 +83,7 @@ async def update_block(
     """
     db_block = await blocks_cruds.update_block(db, block_id=block_id, block=block)
     if db_block is None:
-        raise HTTPException(status_code=404, detail="Block not found")
+        raise NotFound(message="Block not found")
 
     return db_block
 
@@ -93,13 +94,15 @@ async def update_block(
     operation_id="blocks-delete",
     status_code=204,
 )
-async def delete_block(block_id: int, db: Session = Depends(get_db_session)) -> None:
+async def delete_block(
+    block_id: int, db: AsyncSession = Depends(get_db_session)
+) -> None:
     """
     説明:
 
     - IDで指定された単一のブロックを削除する
     """
     if not await blocks_cruds.delete_block(db, block_id=block_id):
-        raise HTTPException(status_code=404, detail="Block not found")
+        raise NotFound(message="Block not found")
 
     return

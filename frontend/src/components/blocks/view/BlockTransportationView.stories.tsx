@@ -32,6 +32,7 @@ const sampleLocation: Location = {
   address: '〒377-1711 群馬県吾妻郡草津町草津',
   latitude: 36.6218,
   longitude: 138.5963,
+  websiteUri: 'https://www.kusatsu-onsen.ne.jp/yubatake/',
 };
 
 const baseBlock: TransportationBlock = {

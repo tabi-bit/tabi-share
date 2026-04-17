@@ -26,6 +26,9 @@ class Location(Base):
     longitude: Mapped[float | None] = mapped_column(
         Float, nullable=True, comment="経度"
     )
+    website_uri: Mapped[str | None] = mapped_column(
+        String(2048), nullable=True, comment="公式サイトURL"
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

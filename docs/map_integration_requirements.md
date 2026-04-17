@@ -90,10 +90,11 @@ Blockテーブルとは別テーブルに分離し、FK参照で紐づける。
 | address | Text / nullable | 住所 |
 | latitude | Float / nullable | 緯度（地図タップ or 検索から取得） |
 | longitude | Float / nullable | 経度（地図タップ or 検索から取得） |
+| website_uri | String(2048) / nullable | 公式サイトURL（Places Details から取得、地図タップ作成時はnull） |
 | created_at | DateTime | 作成日時 |
 | updated_at | DateTime | 更新日時 |
 
-**補足**: google_place_idと緯度経度は独立してnullable。Places検索からの選択なら両方あり、地図タップなら緯度経度のみ、のケースがある。
+**補足**: google_place_idと緯度経度は独立してnullable。Places検索からの選択なら両方あり、地図タップなら緯度経度のみ、のケースがある。website_uriはGoogle Places Detailsから取得するため、POI選択/Autocomplete選択時のみ値が入る（地図タップの空地クリックでは常にnull）。
 
 ### routesテーブル（新規）
 
@@ -218,6 +219,7 @@ Place Details APIの結果をキャッシュする。Autocomplete結果はクエ
 - 場所名タップでGoogleマップアプリ/ブラウザで開く
   - URL形式: `https://www.google.com/maps/search/?api=1&query=<lat>,<lng>&query_place_id=<place_id>`
   - place_idがない場合: `https://www.google.com/maps/search/?api=1&query=<lat>,<lng>`
+- `website_uri` がある場合は公式サイトへのリンクも併せて表示（Globeアイコン + ドメイン名）
 - 地図APIは使用しない（コスト$0）
 
 ### Phase B: 移動ブロック - ルート検索・所要時間取得
@@ -330,7 +332,8 @@ Place Details APIの結果をキャッシュする。Autocomplete結果はクエ
     "name": "草津温泉",
     "address": "群馬県吾妻郡草津町...",
     "latitude": 36.6213,
-    "longitude": 138.5960
+    "longitude": 138.5960,
+    "website_uri": "https://www.kusatsu-onsen.ne.jp/"
   },
   ...
 }
@@ -368,6 +371,7 @@ type Location = {
   address: string | null;
   latitude: number | null;
   longitude: number | null;
+  websiteUri: string | null;
 };
 
 // Route型（新規）

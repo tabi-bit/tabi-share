@@ -12,6 +12,7 @@ export const LocationSchema = z.object({
   address: z.string().nullable(),
   latitude: z.number().nullable(),
   longitude: z.number().nullable(),
+  websiteUri: z.string().nullable(),
 });
 
 export type Location = z.infer<typeof LocationSchema>;
@@ -28,6 +29,7 @@ export const ApiLocationSchema = z.object({
   address: z.string().nullable(),
   latitude: z.number().nullable(),
   longitude: z.number().nullable(),
+  website_uri: z.string().nullable(),
 });
 
 export type ApiLocation = z.infer<typeof ApiLocationSchema>;
@@ -45,6 +47,7 @@ export const locationFromApi = ApiLocationSchema.transform(
     address: apiData.address,
     latitude: apiData.latitude,
     longitude: apiData.longitude,
+    websiteUri: apiData.website_uri,
   })
 );
 
@@ -67,6 +70,7 @@ export const locationCreateToApi = LocationCreateSchema.transform(
     address: appData.address,
     latitude: appData.latitude,
     longitude: appData.longitude,
+    website_uri: appData.websiteUri,
   })
 );
 
@@ -96,5 +100,6 @@ export const locationUpdateToApi = LocationUpdateSchema.transform(
     address: appData.address,
     latitude: appData.latitude,
     longitude: appData.longitude,
+    website_uri: appData.websiteUri,
   })
 );

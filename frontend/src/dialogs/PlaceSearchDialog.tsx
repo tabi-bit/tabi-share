@@ -10,7 +10,7 @@ import {
   useMapsLibrary,
 } from '@vis.gl/react-google-maps';
 import { debounce } from 'lodash-es';
-import { MapPin, Search } from 'lucide-react';
+import { Globe, MapPin, Search } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { PlaceDetailsCompact, type PlaceDetailsCompactElement } from '@/components/google-maps/PlaceDetailsCompact';
@@ -19,6 +19,7 @@ import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTi
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { getDomain } from '@/lib/utils';
 import type { LocationUpdate } from '@/types/location';
 
 interface PlaceSearchDialogProps {
@@ -164,6 +165,7 @@ const PlaceSearchContent = ({
         address: null,
         latitude: latLng.lat,
         longitude: latLng.lng,
+        websiteUri: null,
       });
       setShowSuggestions(false);
       sessionTokenRef.current = null;
@@ -186,7 +188,7 @@ const PlaceSearchContent = ({
     try {
       const place = poiPlace ?? new placesLib.Place({ id: pendingPoi.placeId });
       await place.fetchFields({
-        fields: ['displayName', 'formattedAddress', 'location', 'id'],
+        fields: ['displayName', 'formattedAddress', 'location', 'id', 'websiteURI'],
       });
 
       // 新規選択なので id は付けない（= 新規 location 作成）
@@ -196,6 +198,7 @@ const PlaceSearchContent = ({
         address: place.formattedAddress ?? null,
         latitude: place.location?.lat() ?? pendingPoi.lat,
         longitude: place.location?.lng() ?? pendingPoi.lng,
+        websiteUri: place.websiteURI ?? null,
       };
 
       setSelectedPlace(location);
@@ -224,7 +227,7 @@ const PlaceSearchContent = ({
       try {
         const place = suggestion.placePrediction.toPlace();
         await place.fetchFields({
-          fields: ['displayName', 'formattedAddress', 'location', 'id'],
+          fields: ['displayName', 'formattedAddress', 'location', 'id', 'websiteURI'],
         });
 
         // 新規選択なので id は付けない
@@ -234,6 +237,7 @@ const PlaceSearchContent = ({
           address: place.formattedAddress ?? null,
           latitude: place.location?.lat() ?? null,
           longitude: place.location?.lng() ?? null,
+          websiteUri: place.websiteURI ?? null,
         };
 
         setSelectedPlace(location);
@@ -376,6 +380,17 @@ const PlaceSearchContent = ({
               />
             </div>
             {selectedPlace.address && <div className='text-muted-foreground text-xs'>{selectedPlace.address}</div>}
+            {selectedPlace.websiteUri && (
+              <a
+                href={selectedPlace.websiteUri}
+                target='_blank'
+                rel='noopener noreferrer'
+                className='flex items-center gap-1 text-primary text-xs hover:underline'
+              >
+                <Globe className='h-3 w-3 shrink-0' />
+                <span className='truncate'>{getDomain(selectedPlace.websiteUri)}</span>
+              </a>
+            )}
           </div>
         )}
       </DialogBody>

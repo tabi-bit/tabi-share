@@ -19,6 +19,17 @@ const sampleLocation: Location = {
   address: '〒377-1711 群馬県吾妻郡草津町草津',
   latitude: 36.6218,
   longitude: 138.5963,
+  websiteUri: 'https://www.kusatsu-onsen.ne.jp/yubatake/',
+};
+
+const sampleLocationWithoutWebsite: Location = {
+  id: 2,
+  googlePlaceId: 'ChIJsample',
+  name: '西の河原公園',
+  address: '〒377-1711 群馬県吾妻郡草津町草津521-3',
+  latitude: 36.6232,
+  longitude: 138.5922,
+  websiteUri: null,
 };
 
 const baseScheduleBlock = {
@@ -66,6 +77,17 @@ export const WithLocation: Story = {
       title: '草津温泉入浴',
       detail: '湯畑周辺の温泉施設を巡る。',
       location: sampleLocation,
+    },
+  },
+};
+
+export const WithLocationNoWebsite: Story = {
+  args: {
+    block: {
+      ...baseScheduleBlock,
+      title: '西の河原公園 散策',
+      detail: '温泉街の西にある河原公園を散策。',
+      location: sampleLocationWithoutWebsite,
     },
   },
 };

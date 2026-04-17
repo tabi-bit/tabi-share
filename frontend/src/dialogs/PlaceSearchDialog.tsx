@@ -55,23 +55,11 @@ const PlaceSearchContent = ({
   const [suggestions, setSuggestions] = useState<google.maps.places.AutocompleteSuggestion[]>([]);
   // 内部状態。id を維持することで「未編集で 決定」を押した際に既存行がそのまま紐づけ続けられる。
   // 新規選択（POI/サジェスト/空地）時は id を undefined に戻して新規作成扱いにする。
-  const [selectedPlace, setSelectedPlace] = useState<LocationUpdate | null>(
-    initialLocation
-      ? {
-          id: initialLocation.id,
-          googlePlaceId: initialLocation.googlePlaceId,
-          name: initialLocation.name,
-          address: initialLocation.address,
-          latitude: initialLocation.latitude,
-          longitude: initialLocation.longitude,
-        }
-      : null
-  );
-  const [markerPosition, setMarkerPosition] = useState<{ lat: number; lng: number } | null>(
-    initialLocation?.latitude != null && initialLocation?.longitude != null
-      ? { lat: initialLocation.latitude, lng: initialLocation.longitude }
-      : null
-  );
+  const [selectedPlace, setSelectedPlace] = useState<LocationUpdate | null>(initialLocation ?? null);
+  const markerPosition =
+    selectedPlace?.latitude != null && selectedPlace?.longitude != null
+      ? { lat: selectedPlace.latitude, lng: selectedPlace.longitude }
+      : null;
   const [showSuggestions, setShowSuggestions] = useState(false);
   // POIクリック時の確認用（Places UI Kit表示 + ユーザー確認後に選択確定）
   const [pendingPoi, setPendingPoi] = useState<{ placeId: string; lat: number; lng: number } | null>(null);
@@ -169,8 +157,6 @@ const PlaceSearchContent = ({
       // 空地クリック: 既存のpending POIをクリアしてピン配置
       setPendingPoi(null);
       setPoiPlace(null);
-      const pos = { lat: latLng.lat, lng: latLng.lng };
-      setMarkerPosition(pos);
       setSelectedPlace({
         // id を外して新規作成扱い（内容変更とみなす）
         googlePlaceId: null,
@@ -180,6 +166,7 @@ const PlaceSearchContent = ({
         longitude: latLng.lng,
       });
       setShowSuggestions(false);
+      sessionTokenRef.current = null;
     },
     [pendingPoi]
   );
@@ -191,29 +178,35 @@ const PlaceSearchContent = ({
   }, []);
 
   // POIの「この場所を選択」ボタン押下時
-  // UI Kitが内部取得したPlaceオブジェクトのフィールドを利用するため、追加API呼び出しは発生しない
-  const handleSelectPendingPoi = useCallback(() => {
-    if (!pendingPoi) return;
+  // UI Kitの Place オブジェクトは displayName / formattedAddress を expose しないため、
+  // fetchFields で追加取得する（id / location は UI Kit 内で取得済みなのでそのまま利用）
+  const handleSelectPendingPoi = useCallback(async () => {
+    if (!(pendingPoi && placesLib)) return;
 
-    // 新規選択なので id は付けない（= 新規 location 作成）
-    const location: LocationUpdate = {
-      googlePlaceId: poiPlace?.id ?? pendingPoi.placeId,
-      name: poiPlace?.displayName ?? '',
-      address: poiPlace?.formattedAddress ?? null,
-      latitude: poiPlace?.location?.lat() ?? pendingPoi.lat,
-      longitude: poiPlace?.location?.lng() ?? pendingPoi.lng,
-    };
+    try {
+      const place = poiPlace ?? new placesLib.Place({ id: pendingPoi.placeId });
+      await place.fetchFields({
+        fields: ['displayName', 'formattedAddress', 'location', 'id'],
+      });
 
-    setSelectedPlace(location);
-    setQuery(location.name);
+      // 新規選択なので id は付けない（= 新規 location 作成）
+      const location: LocationUpdate = {
+        googlePlaceId: place.id ?? pendingPoi.placeId,
+        name: place.displayName ?? '',
+        address: place.formattedAddress ?? null,
+        latitude: place.location?.lat() ?? pendingPoi.lat,
+        longitude: place.location?.lng() ?? pendingPoi.lng,
+      };
 
-    if (location.latitude != null && location.longitude != null) {
-      setMarkerPosition({ lat: location.latitude, lng: location.longitude });
+      setSelectedPlace(location);
+      setQuery(location.name);
+      setPendingPoi(null);
+      setPoiPlace(null);
+      sessionTokenRef.current = null;
+    } catch {
+      toast.error('場所情報の取得に失敗しました');
     }
-
-    setPendingPoi(null);
-    setPoiPlace(null);
-  }, [pendingPoi, poiPlace]);
+  }, [pendingPoi, poiPlace, placesLib]);
 
   // 場所名の編集
   const handleNameChange = useCallback((value: string) => {
@@ -247,9 +240,7 @@ const PlaceSearchContent = ({
         setQuery(location.name);
 
         if (location.latitude != null && location.longitude != null) {
-          const pos = { lat: location.latitude, lng: location.longitude };
-          setMarkerPosition(pos);
-          map?.panTo(pos);
+          map?.panTo({ lat: location.latitude, lng: location.longitude });
           map?.setZoom(SELECTED_ZOOM);
         }
 

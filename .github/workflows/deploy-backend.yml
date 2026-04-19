@@ -61,9 +61,9 @@ jobs:
             echo "env=staging"                               >> "$GITHUB_OUTPUT"
             echo "service=tabi-share-api-staging"            >> "$GITHUB_OUTPUT"
             echo "secret=DATABASE_URL_STAGING"               >> "$GITHUB_OUTPUT"
-            echo "api_docs_username=API_DOCS_USERNAME_STG"   >> "$GITHUB_OUTPUT"
-            echo "api_docs_password=API_DOCS_PASSWORD_STG"   >> "$GITHUB_OUTPUT"
-            echo "cookie_secret_key=COOKIE_SECRET_KEY_STG"   >> "$GITHUB_OUTPUT"
+            echo "api_docs_username=API_DOCS_USERNAME_STAGING"   >> "$GITHUB_OUTPUT"
+            echo "api_docs_password=API_DOCS_PASSWORD_STAGING"   >> "$GITHUB_OUTPUT"
+            echo "cookie_secret_key=COOKIE_SECRET_KEY_STAGING"   >> "$GITHUB_OUTPUT"
           fi
 
       # ------------------------------------------------------------------

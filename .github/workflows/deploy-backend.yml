@@ -51,13 +51,19 @@ jobs:
           fi
 
           if [ "${ENV}" = "production" ]; then
-            echo "env=production"                      >> "$GITHUB_OUTPUT"
-            echo "service=tabi-share-api-prod"         >> "$GITHUB_OUTPUT"
-            echo "secret=DATABASE_URL_PROD"            >> "$GITHUB_OUTPUT"
+            echo "env=production"                            >> "$GITHUB_OUTPUT"
+            echo "service=tabi-share-api-prod"               >> "$GITHUB_OUTPUT"
+            echo "secret=DATABASE_URL_PROD"                  >> "$GITHUB_OUTPUT"
+            echo "api_docs_username=API_DOCS_USERNAME_PROD"  >> "$GITHUB_OUTPUT"
+            echo "api_docs_password=API_DOCS_PASSWORD_PROD"  >> "$GITHUB_OUTPUT"
+            echo "cookie_secret_key=COOKIE_SECRET_KEY_PROD"  >> "$GITHUB_OUTPUT"
           else
-            echo "env=staging"                         >> "$GITHUB_OUTPUT"
-            echo "service=tabi-share-api-staging"      >> "$GITHUB_OUTPUT"
-            echo "secret=DATABASE_URL_STAGING"         >> "$GITHUB_OUTPUT"
+            echo "env=staging"                               >> "$GITHUB_OUTPUT"
+            echo "service=tabi-share-api-staging"            >> "$GITHUB_OUTPUT"
+            echo "secret=DATABASE_URL_STAGING"               >> "$GITHUB_OUTPUT"
+            echo "api_docs_username=API_DOCS_USERNAME_STG"   >> "$GITHUB_OUTPUT"
+            echo "api_docs_password=API_DOCS_PASSWORD_STG"   >> "$GITHUB_OUTPUT"
+            echo "cookie_secret_key=COOKIE_SECRET_KEY_STG"   >> "$GITHUB_OUTPUT"
           fi
 
       # ------------------------------------------------------------------
@@ -137,6 +143,10 @@ jobs:
             --allow-unauthenticated
             --port=8080
             --set-secrets=DATABASE_URL=${{ steps.target.outputs.secret }}:latest
+            --set-secrets=API_DOCS_USERNAME=${{ steps.target.outputs.api_docs_username }}:latest
+            --set-secrets=API_DOCS_PASSWORD=${{ steps.target.outputs.api_docs_password }}:latest
+            --set-secrets=COOKIE_SECRET_KEY=${{ steps.target.outputs.cookie_secret_key }}:latest
+            --set-env-vars=ENVIRONMENT=${{ steps.target.outputs.env }}
 
       # ------------------------------------------------------------------
       # 7. GitHub Release 作成 (production のみ)

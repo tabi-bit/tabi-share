@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AnyHttpUrl, BaseModel, ConfigDict, Field, field_serializer
 
 LOCATION_MAX_NAME_LENGTH = 200
 
@@ -15,7 +15,11 @@ class LocationBase(BaseModel):
     address: str | None = None
     latitude: float | None = None
     longitude: float | None = None
-    website_uri: str | None = Field(default=None, max_length=WEBSITE_URI_MAX_LENGTH)
+    website_uri: AnyHttpUrl | None = Field(default=None, max_length=WEBSITE_URI_MAX_LENGTH)
+
+    @field_serializer("website_uri")
+    def _serialize_website_uri(self, v: AnyHttpUrl | None) -> str | None:
+        return str(v) if v is not None else None
 
 
 class LocationCreate(LocationBase):

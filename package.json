@@ -23,7 +23,7 @@
     "preview": "cd frontend && pnpm run preview",
     "db:connect": "pnpm dotenvx run -- sh -c 'psql -U $POSTGRES_USER -h $POSTGRES_HOST -d $POSTGRES_DB'"
   },
-  "packageManager": "pnpm@9.15.9",
+  "packageManager": "pnpm@10.33.0",
   "devDependencies": {
     "@dotenvx/dotenvx": "^1.48.4",
     "concurrently": "^9.1.0"

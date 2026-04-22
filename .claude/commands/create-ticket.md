@@ -67,12 +67,13 @@ GitHub Issueを対話的に作成し、たびしぇあPJのプロジェクトボ
 gh issue create \
   --repo tabi-bit/tabi-share \
   --title "{タイトル}" \
-  --body "$(cat <<'EOF'
+  --label "{ラベル}" \
+  --body-file - <<'EOF'
 {テンプレートのセクションにユーザーの回答を埋め込んだ本文}
 EOF
-)" \
-  --label "{ラベル}"   # ラベルなしの場合は --label オプションを省略
 ```
+
+ラベルなしの場合は `--label` オプションを省略してください。
 
 作成後、Issue URLとIssue番号を控えてください。
 

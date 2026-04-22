@@ -1,12 +1,12 @@
 ---
-description: "GitHub Issueを作成し、たびしぇあPJプロジェクトボードに自動追加する"
+description: "GitHub Issueを作成し、たびしぇあPJプロジェクトボード（プロジェクト番号: 2）に自動追加する"
 argument-hint: "<チケットの概要> (例: フロントエンドの日付ピッカーがモバイルで崩れる)"
 allowed-tools: ["Bash", "Read", "AskUserQuestion"]
 ---
 
 # create-ticket
 
-GitHub Issueを対話的に作成し、たびしぇあPJのプロジェクトボードに自動追加します。
+GitHub Issueを対話的に作成し、たびしぇあPJのプロジェクトボード（プロジェクト番号: 2）に自動追加します。
 
 ## 実行手順
 

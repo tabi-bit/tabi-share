@@ -15,10 +15,13 @@ from sqlalchemy.pool import NullPool
 
 from app.auth import COOKIE_PREFIX
 from app.config import get_settings
+from app.cruds import blocks as blocks_cruds
 from app.cruds import pages as pages_cruds
 from app.cruds import trips as trips_cruds
 from app.db_connection import Base, get_db_session
 from app.main import app
+from app.schemas.block import Block as BlockSchema
+from app.schemas.block import BlockCreate
 from app.schemas.page import Page, PageCreate
 from app.schemas.trip import Trip, TripCreateIn
 
@@ -118,12 +121,8 @@ async def test_create_page(db_session: AsyncSession, test_create_trip: Trip) -> 
 @pytest_asyncio.fixture
 async def test_create_block(
     db_session: AsyncSession, test_create_page: Page
-) -> "BlockSchema":
+) -> BlockSchema:
     """テスト用のBlockを作成して返すフィクスチャ"""
-    from app.cruds import blocks as blocks_cruds
-    from app.schemas.block import Block as BlockSchema
-    from app.schemas.block import BlockCreate
-
     block_in = BlockCreate(
         title="test block",
         start_time=datetime(2023, 1, 1, 10, 0, 0, tzinfo=UTC),

@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response
 from nanoid import generate
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth import grant_trip_access, require_basic_auth, require_trip_access
 from app.cruds import trips as trips_cruds
 from app.db_connection import get_db_session
 from app.errors import NotFound
@@ -19,16 +20,20 @@ URL_ID_SIZE = 16
     response_model=TripCreateOut,
 )
 async def create_trip(
-    trip_in: TripCreateIn, db: AsyncSession = Depends(get_db_session)
+    trip_in: TripCreateIn,
+    response: Response,
+    db: AsyncSession = Depends(get_db_session),
 ) -> TripCreateOut:
     """
     説明:
 
     - 新しい旅行プランを作成する
     - サーバー側でユニークな共有ID(url_id)を自動生成する
+    - 作成した旅行へのアクセス権を Cookie に付与する
     """
     url_id: str = generate(size=URL_ID_SIZE)
     trip_id: int = await trips_cruds.create_trip(db=db, trip=trip_in, url_id=url_id)
+    grant_trip_access(response, trip_id)
 
     return TripCreateOut(id=trip_id, url_id=url_id)
 
@@ -39,7 +44,10 @@ async def create_trip(
     operation_id="trips-list",
     response_model=list[Trip],
 )
-async def list_trips(db: AsyncSession = Depends(get_db_session)) -> list[Trip]:
+async def list_trips(
+    _: None = Depends(require_basic_auth),
+    db: AsyncSession = Depends(get_db_session),
+) -> list[Trip]:
     """
     説明:
 
@@ -54,7 +62,11 @@ async def list_trips(db: AsyncSession = Depends(get_db_session)) -> list[Trip]:
     operation_id="trips-get",
     response_model=Trip,
 )
-async def get_trip(trip_id: int, db: AsyncSession = Depends(get_db_session)) -> Trip:
+async def get_trip(
+    trip_id: int,
+    _: int = Depends(require_trip_access),
+    db: AsyncSession = Depends(get_db_session),
+) -> Trip:
     """
     説明:
 
@@ -74,16 +86,20 @@ async def get_trip(trip_id: int, db: AsyncSession = Depends(get_db_session)) -> 
     response_model=Trip,
 )
 async def get_trip_by_url_id(
-    url_id: str, db: AsyncSession = Depends(get_db_session)
+    url_id: str,
+    response: Response,
+    db: AsyncSession = Depends(get_db_session),
 ) -> Trip:
     """
     説明:
 
     - URL IDで指定された単一の旅行プランを取得する
+    - アクセス権を Cookie に付与する（認可の起点）
     """
     db_trip = await trips_cruds.get_trip_by_url_id(db, url_id=url_id)
     if db_trip is None:
         raise NotFound(message="Trip not found")
+    grant_trip_access(response, db_trip.id)
 
     return db_trip
 
@@ -95,7 +111,10 @@ async def get_trip_by_url_id(
     response_model=Trip,
 )
 async def update_trip(
-    trip_id: int, trip_in: TripUpdate, db: AsyncSession = Depends(get_db_session)
+    trip_id: int,
+    trip_in: TripUpdate,
+    _: int = Depends(require_trip_access),
+    db: AsyncSession = Depends(get_db_session),
 ) -> Trip:
     """
     説明:
@@ -115,7 +134,11 @@ async def update_trip(
     operation_id="trips-delete",
     status_code=204,
 )
-async def delete_trip(trip_id: int, db: AsyncSession = Depends(get_db_session)) -> None:
+async def delete_trip(
+    trip_id: int,
+    _: int = Depends(require_trip_access),
+    db: AsyncSession = Depends(get_db_session),
+) -> None:
     """
     説明:
 

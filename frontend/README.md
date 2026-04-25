@@ -11,8 +11,8 @@ Currently, two official plugins are available:
 
 This project uses [Biome](https://biomejs.dev/) for linting and formatting:
 
-- `npm run type-check` - Check for type errors
-- `npm run lint:check` - Check for linting errors
-- `npm run lint:fix` - Fix linting errors automatically
-- `npm run format:check` - Check formatting
-- `npm run format:fix` - Fix formatting automatically
+- `pnpm run type-check` - Check for type errors
+- `pnpm run lint:check` - Check for linting errors
+- `pnpm run lint:fix` - Fix linting errors automatically
+- `pnpm run format:check` - Check formatting
+- `pnpm run format:fix` - Fix formatting automatically

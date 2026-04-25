@@ -61,7 +61,7 @@ run_migration() {
   local db_name=$1
   local db_type=$2
   echo "📦 Migrating ${db_type} database..."
-  if npx dotenvx run --env-file ../.env -- alembic -n "${db_name}" upgrade head; then
+  if pnpm dotenvx run --env-file ../.env -- alembic -n "${db_name}" upgrade head; then
     echo "✅ ${db_type} database migration completed successfully!"
     return 0
   else

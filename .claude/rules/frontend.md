@@ -43,6 +43,6 @@ paths:
 ## PWA
 
 - Service WorkerとPWAインストールはHTTPS（またはlocalhost）が必須
-- モバイル実機でPWA動作確認する場合は `npm run dev:https` を使用
+- モバイル実機でPWA動作確認する場合は `pnpm dev:https` を使用
 - `vite.config.ts` の HTTPS設定は `.dev-key.pem` / `.dev-cert.pem` の存在で自動切り替え（証明書がなければHTTP）
 - PWAマニフェストは `vite.config.ts` 内にインラインで定義（`vite-plugin-pwa` が管理）

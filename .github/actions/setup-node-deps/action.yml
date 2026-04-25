@@ -1,14 +1,17 @@
 name: 'Setup Node.js and Dependencies'
-description: 'Common setup for Node.js, cache, and dependency installation'
+description: 'Common setup for Node.js, pnpm, cache, and dependency installation'
 
 runs:
   using: 'composite'
   steps:
+    - name: Install pnpm
+      uses: pnpm/action-setup@v4
+
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '22'
-        cache: 'npm'
+        cache: 'pnpm'
 
     - name: Restore dependencies cache
       uses: actions/cache@v3
@@ -16,8 +19,8 @@ runs:
         path: |
           node_modules
           frontend/node_modules
-        key: ${{ runner.os }}-deps-${{ hashFiles('**/package-lock.json') }}
+        key: ${{ runner.os }}-deps-${{ hashFiles('**/pnpm-lock.yaml') }}
 
     - name: Install dependencies
-      run: npm run install:all
+      run: pnpm run install:all
       shell: bash

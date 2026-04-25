@@ -175,9 +175,7 @@ async def test_create_trip_sets_access_cookie(
     client: AsyncClient, db_session: AsyncSession
 ):
     """POST /trips のレスポンスに認可Cookieが含まれることを検証"""
-    response = await client.post(
-        "/trips", json={"title": "cookie test", "detail": "d"}
-    )
+    response = await client.post("/trips", json={"title": "cookie test", "detail": "d"})
     assert response.status_code == 200
     trip_id = response.json()["id"]
 
@@ -204,21 +202,15 @@ async def test_get_trip_by_url_id_sets_access_cookie(
     trip_id = response.json()["id"]
     url_id = response.json()["url_id"]
 
-    # 新しいクライアントでurl_idアクセス
-    from httpx import ASGITransport, AsyncClient as HttpxAsyncClient
+    # 初回POST由来のCookieをクリアして、未認可状態のクライアントとして再利用する
+    client.cookies.clear()
+    response = await client.get(f"/trips/url/{url_id}")
+    assert response.status_code == 200
 
-    from app.main import app
-
-    async with HttpxAsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as fresh_client:
-        response = await fresh_client.get(f"/trips/url/{url_id}")
-        assert response.status_code == 200
-
-        cookie_name = f"{COOKIE_PREFIX}{trip_id}"
-        set_cookie_headers = response.headers.get_list("set-cookie")
-        matching = [h for h in set_cookie_headers if cookie_name in h]
-        assert len(matching) == 1
+    cookie_name = f"{COOKIE_PREFIX}{trip_id}"
+    set_cookie_headers = response.headers.get_list("set-cookie")
+    matching = [h for h in set_cookie_headers if cookie_name in h]
+    assert len(matching) == 1
 
 
 # ---- 未認可アクセス 403 テスト ----

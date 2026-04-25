@@ -84,7 +84,7 @@ async def client():
         yield c
 
 
-def make_trip_cookie_value(trip_id: int) -> str:
+def _make_trip_cookie_value(trip_id: int) -> str:
     """テスト用: 単一trip_id用の署名付き Cookie (JWT) の値を生成する"""
     payload = {
         "trip_id": trip_id,
@@ -141,6 +141,6 @@ async def authed_client(client: AsyncClient, test_create_trip: Trip) -> AsyncCli
     """test_create_trip で作成された Trip へのアクセス権 Cookie を持つクライアント"""
     client.cookies.set(
         f"{COOKIE_PREFIX}{test_create_trip.id}",
-        make_trip_cookie_value(test_create_trip.id),
+        _make_trip_cookie_value(test_create_trip.id),
     )
     return client

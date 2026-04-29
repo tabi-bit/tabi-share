@@ -102,3 +102,19 @@ export const calculateDuration = (
   const hours = Math.floor(diffMinutes / 60);
   return { hours: hours > 0 ? hours : null, minutes: diffMinutes % 60 };
 };
+
+/**
+ * URL からホスト名を抽出する（`www.` 接頭辞は除去）。パース不可の場合は元の文字列を返す。
+ *
+ * @example
+ * ```ts
+ * getDomain('https://www.example.com/path'); // => 'example.com'
+ * ```
+ */
+export const getDomain = (url: string): string => {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return url;
+  }
+};

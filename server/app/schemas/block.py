@@ -1,7 +1,10 @@
 from datetime import datetime
 from enum import Enum
+
 from pydantic import BaseModel, ConfigDict
 from pydantic.fields import Field
+
+from app.schemas.location import Location, LocationUpdate
 
 BLOCK_MAX_TITLE_LENGTH = 200
 BLOCK_MAX_DETAIL_LENGTH = 2000
@@ -23,14 +26,28 @@ class BlockBase(BaseModel):
 
 
 class BlockCreate(BlockBase):
-    pass
+    location: LocationUpdate | None = None
+    destination_location: LocationUpdate | None = None
 
 
 class BlockUpdate(BlockBase):
-    pass
+    """
+    PUT による全体置換を前提とする。未指定フィールドは null 扱い（後勝ち）。
+
+    - location / destination_location が None: 場所解除
+    - id が現行と一致: 既存行を維持
+    - id が None / 異なる id: 旧行を削除して新規作成
+    """
+
+    location: LocationUpdate | None = None
+    destination_location: LocationUpdate | None = None
 
 
 class Block(BlockBase):
     id: int
     page_id: int
+    location_id: int | None = None
+    location: Location | None = None
+    destination_location_id: int | None = None
+    destination_location: Location | None = None
     model_config = ConfigDict(from_attributes=True)

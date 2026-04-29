@@ -46,20 +46,23 @@ export const useBlock = (id: number | null) => {
   };
 };
 
-type CreateBlockArg = Omit<Block, 'id'>;
+type CreateBlockArg = { block: Omit<Block, 'id'> };
 
 /**
  * 新しいBlockを作成する
+ *
+ * block.location / block.destinationLocation を含めるとサーバ側で同一トランザクション内で
+ * location 行も作成される。
  */
 export const useCreateBlock = (pageId: number | null) => {
   const listKey = pageId ? `${PAGES_BASE_PATH}/${pageId}/blocks` : null;
   const { mutate } = useSWRConfig();
 
   const createBlockFetcher = useCallback(
-    async (_key: string | null, { arg: blockData }: { arg: CreateBlockArg }) => {
-      // アプリ層→API層に変換してからバリデーション・送信
-      const apiData = blockToApi.parse({ ...blockData, id: 0 }); // idは仮値
-      const { id: _, ...payload } = apiData; // idを除外
+    async (_key: string | null, { arg }: { arg: CreateBlockArg }) => {
+      // アプリ層→API層に変換。id はダミー値で、送信時に除外する
+      const apiData = blockToApi.parse({ ...arg.block, id: 0 });
+      const { id: _, ...payload } = apiData;
       const response = await apiClient.post<Block>(`${PAGES_BASE_PATH}/${pageId}/blocks`, payload);
       return blockFromApi.parse(response.data);
     },
@@ -94,7 +97,10 @@ export const useCreateBlock = (pageId: number | null) => {
 type UpdateBlockArg = { id: number; data: Omit<Block, 'id'> };
 
 /**
- * Blockを更新するためのフック
+ * Blockを更新するためのフック（PUT 後勝ち）
+ *
+ * data.location / data.destinationLocation を含めて全データを送信する。サーバ側では
+ * id 一致判定により location 行の維持/新規作成が行われる。
  */
 export const useUpdateBlock = (pageId: number | null) => {
   const listKey = pageId ? `${PAGES_BASE_PATH}/${pageId}/blocks` : null;
@@ -102,9 +108,8 @@ export const useUpdateBlock = (pageId: number | null) => {
 
   const updateBlockFetcher = useCallback(async (_key: string | null, { arg }: { arg: UpdateBlockArg }) => {
     const { id, data } = arg;
-    // アプリ層→API層に変換してからバリデーション・送信
     const apiData = blockToApi.parse({ ...data, id });
-    const { id: _, ...payload } = apiData; // idを除外（URLパスで指定）
+    const { id: _, ...payload } = apiData;
     const response = await apiClient.put<Block>(`${BLOCKS_BASE_PATH}/${id}`, payload);
     return blockFromApi.parse(response.data);
   }, []);

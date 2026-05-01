@@ -1,3 +1,4 @@
+import { MapPin, X } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -10,6 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { calculateEndTimeStr } from '@/lib/utils';
 import type { Block, ScheduleBlock, TransportationBlock, TransportationType } from '@/types/block';
 import { BLOCK_TITLE_MAX_LENGTH, TRANSPORTATION_OPTIONS } from '@/types/block';
+import type { LocationUpdate } from '@/types/location';
+import { PlaceSearchDialog } from './PlaceSearchDialog';
 
 interface AddBlockDialogProps {
   open: boolean;
@@ -67,8 +70,12 @@ export const AddBlockDialog = ({
   const [noEndTime, setNoEndTime] = useState(false);
   const [detail, setDetail] = useState('');
 
-  // 移動ブロック専用Sのstate
+  // 移動ブロック専用のstate
   const [transportationType, setTransportationType] = useState<TransportationType>('car');
+
+  // 場所設定用のstate
+  const [placeDialogOpen, setPlaceDialogOpen] = useState(false);
+  const [pendingLocation, setPendingLocation] = useState<LocationUpdate | null>(null);
 
   // フォームをリセットする関数
   const resetForm = useCallback(() => {
@@ -82,6 +89,7 @@ export const AddBlockDialog = ({
     setNoEndTime(false);
     setDetail('');
     setTransportationType('car');
+    setPendingLocation(null);
   }, [initialStartTime, initialEndTime]);
 
   // ダイアログが開いたときにフォームを新しい初期値で初期化（送信中はリセットしない）
@@ -130,6 +138,7 @@ export const AddBlockDialog = ({
             endTime,
             detail: detail.trim() || null,
             pageId,
+            location: pendingLocation,
           } as Omit<ScheduleBlock, 'id'>)
         : ({
             type: blockType,
@@ -139,6 +148,8 @@ export const AddBlockDialog = ({
             endTime,
             detail: detail.trim() || null,
             pageId,
+            location: null,
+            destinationLocation: null,
           } as Omit<TransportationBlock, 'id'>);
 
     setIsSubmitting(true);
@@ -234,6 +245,41 @@ export const AddBlockDialog = ({
                     設定しない
                   </Label>
                 </div>
+              </div>
+
+              {/* 場所設定 */}
+              <div className='space-y-2'>
+                <div className='flex items-center justify-start gap-2'>
+                  <Label>場所</Label>
+                  {!pendingLocation && (
+                    <Button variant='outline' size='sm' onClick={() => setPlaceDialogOpen(true)}>
+                      <MapPin className='mr-1 h-4 w-4' />
+                      場所を設定
+                    </Button>
+                  )}
+                </div>
+                {pendingLocation && (
+                  <div className='flex items-center gap-2 rounded-md border p-2'>
+                    <MapPin className='h-4 w-4 shrink-0 text-muted-foreground' />
+                    <div className='min-w-0 flex-1'>
+                      <div className='truncate text-sm'>{pendingLocation.name}</div>
+                      {pendingLocation.address && (
+                        <div className='truncate text-muted-foreground text-xs'>{pendingLocation.address}</div>
+                      )}
+                    </div>
+                    <Button variant='ghost' size='sm' className='shrink-0' onClick={() => setPlaceDialogOpen(true)}>
+                      変更
+                    </Button>
+                    <Button
+                      variant='ghost'
+                      size='icon'
+                      className='h-6 w-6 shrink-0'
+                      onClick={() => setPendingLocation(null)}
+                    >
+                      <X className='h-3 w-3' />
+                    </Button>
+                  </div>
+                )}
               </div>
 
               <div className='space-y-2'>
@@ -353,6 +399,9 @@ export const AddBlockDialog = ({
           </DialogFooter>
         </DialogContent>
       </Tabs>
+
+      {/* 場所検索ダイアログ */}
+      <PlaceSearchDialog open={placeDialogOpen} onOpenChange={setPlaceDialogOpen} onConfirm={setPendingLocation} />
     </Dialog>
   );
 };

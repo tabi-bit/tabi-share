@@ -32,19 +32,19 @@
 
 ```bash
 # デフォルト(.env)を使用してコマンド実行
-npx dotenvx run -- <コマンド>
+pnpm dotenvx run -- <コマンド>
 
 # 特定の環境ファイルを指定して実行
-npx dotenvx run --env-file .env.stg -- <コマンド>
+pnpm dotenvx run --env-file .env.stg -- <コマンド>
 
 # 例: .env.stgを使ってフロントエンド開発サーバーを起動
-npx dotenvx run --env-file .env.stg -- sh -c 'cd frontend && npm run dev'
+pnpm dotenvx run --env-file .env.stg -- sh -c 'cd frontend && pnpm run dev'
 
 # 特定の環境ファイルに環境変数をセットする
-npx dotenvx set KEY value -f .env.stg
+pnpm dotenvx set KEY value -f .env.stg
 
 # 例: .env.stgにAPIのURLをセット
-npx dotenvx set VITE_API_BASE_URL https://api.example.com -f .env.stg
+pnpm dotenvx set VITE_API_BASE_URL https://api.example.com -f .env.stg
 ```
 
 ### PWA開発（HTTPS）
@@ -53,30 +53,30 @@ npx dotenvx set VITE_API_BASE_URL https://api.example.com -f .env.stg
 
 ```bash
 # HTTPS有効で開発サーバーを起動（初回は証明書を自動生成）
-cd frontend && npm run dev:https
+cd frontend && pnpm run dev:https
 ```
 
-- 通常の `npm run dev` はHTTPで起動（証明書ファイルがなければHTTPSは無効）
-- `npm run dev:https` は `scripts/setup-https.sh` で mkcert 証明書を生成してHTTPS起動
+- 通常の `pnpm run dev` はHTTPで起動（証明書ファイルがなければHTTPSは無効）
+- `pnpm run dev:https` は `scripts/setup-https.sh` で mkcert 証明書を生成してHTTPS起動
 - Service WorkerとPWAインストールはHTTPS（またはlocalhost）が必須
 
 ### リンター・フォーマッター・型チェック
 
 ```bash
 # 型チェック
-npm run type-check
+pnpm run type-check
 
 # リンターチェック
-npm run lint:check
+pnpm run lint:check
 
 # リンターエラーの自動修正
-npm run lint:fix
+pnpm run lint:fix
 
 # フォーマットチェック
-npm run format:check
+pnpm run format:check
 
 # フォーマットの自動修正
-npm run format:fix
+pnpm run format:fix
 ```
 
 ## Claude専用ルール

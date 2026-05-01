@@ -148,13 +148,13 @@ vi.mock('@/lib/utils', () => ({
 
 ```bash
 # テスト実行
-npm run test
+pnpm test
 
 # ウォッチモードでテスト実行
-npm run test:watch
+pnpm test:watch
 
 # UIモードでテスト実行
-npm run test:ui
+pnpm test:ui
 ```
 
 ## 注意事項

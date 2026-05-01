@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ApiLocationSchema, LocationUpdateSchema, locationFromApi, locationUpdateToApi } from './location';
 
 // --- 共通の型定義 ---
 
@@ -40,7 +41,9 @@ export const TRANSPORTATION_OPTIONS = [
 
 /**
  * アプリケーション内で利用するブロックのベーススキーマ
- * 各ブロックに共通するプロパティを定義します。
+ *
+ * location は `LocationUpdate`（id optional）を持つ。新規選択直後は id 未確定、
+ * サーバから返った後は id 付き。PUT 時はそのまま埋め込んで後勝ちで送る。
  */
 const AppBaseBlockSchema = z.object({
   id: z.number(),
@@ -52,6 +55,7 @@ const AppBaseBlockSchema = z.object({
   endTime: z.date().nullable(),
   detail: z.string().nullish(),
   pageId: z.number(),
+  location: LocationUpdateSchema.nullable().default(null),
 });
 
 export const ScheduleBlockSchema = AppBaseBlockSchema.extend({
@@ -62,6 +66,7 @@ export type ScheduleBlock = z.infer<typeof ScheduleBlockSchema>;
 export const TransportationBlockSchema = AppBaseBlockSchema.extend({
   type: z.literal('transportation'),
   transportationType: TransportationTypeEnum,
+  destinationLocation: LocationUpdateSchema.nullable().default(null),
 });
 export type TransportationBlock = z.infer<typeof TransportationBlockSchema>;
 
@@ -81,11 +86,15 @@ const ApiDefinitionSchema = z.object({
   end_time: z.string().nullable(), // nullish() -> nullable() に変更して undefined を排除し明確化
   detail: z.string().nullish(),
   title: z.string(),
+  location_id: z.number().nullable().default(null),
+  location: ApiLocationSchema.nullable().default(null),
 });
 
 const ApiMoveSchema = ApiDefinitionSchema.extend({
   block_type: z.literal('move'),
   transportation_type: TransportationTypeEnum,
+  destination_location_id: z.number().nullable().default(null),
+  destination_location: ApiLocationSchema.nullable().default(null),
 });
 
 const ApiEventSchema = ApiDefinitionSchema.extend({
@@ -121,19 +130,22 @@ const parseUtcDate = (dateStr: string): Date => {
 };
 
 export const blockFromApi = ApiBlockSchema.transform(apiData => {
-  const { start_time, end_time, page_id, block_type, ...rest } = apiData;
+  const { start_time, end_time, page_id, block_type, location_id: _location_id, location, ...rest } = apiData;
   const common = {
     ...rest,
     startTime: parseUtcDate(start_time),
     endTime: end_time != null ? parseUtcDate(end_time) : null,
     pageId: page_id,
+    location: location != null ? locationFromApi.parse(location) : null,
   };
 
   if (block_type === 'move') {
+    const { destination_location_id: _dest_id, destination_location } = apiData;
     return {
       ...common,
       type: 'transportation' as const,
       transportationType: apiData.transportation_type,
+      destinationLocation: destination_location != null ? locationFromApi.parse(destination_location) : null,
     };
   }
 
@@ -141,12 +153,14 @@ export const blockFromApi = ApiBlockSchema.transform(apiData => {
     ...common,
     type: 'schedule' as const,
   };
-}).pipe(BlockSchema);
+}) as z.ZodType<Block, unknown>;
 
-// --- 変換スキーマ (アプリケーション -> API) ---
-// BlockSchemaをApiBlockSchemaの形に変換するロジック
-export const blockToApi = BlockSchema.transform((appData): ApiBlock => {
-  const { startTime, endTime, pageId, type, ...rest } = appData;
+// --- 変換スキーマ (アプリケーション -> API / PUT・POST 共通) ---
+//
+// サーバ側は後勝ち PUT セマンティクス。location / destination_location を
+// 埋め込んだ全データを送ると、サーバ側で id 一致判定により行維持/新規作成される。
+export const blockToApi = BlockSchema.transform(appData => {
+  const { startTime, endTime, pageId, type, location, ...rest } = appData;
 
   const common = {
     ...rest,
@@ -154,34 +168,22 @@ export const blockToApi = BlockSchema.transform((appData): ApiBlock => {
     end_time: endTime?.toISOString() ?? null,
     page_id: pageId,
     detail: appData.detail ?? '',
+    location: location != null ? locationUpdateToApi.parse(location) : null,
   };
 
   if (type === 'transportation') {
     return {
       ...common,
-      block_type: 'move',
-      transportation_type: (appData as TransportationBlock).transportationType,
+      block_type: 'move' as const,
+      transportation_type: appData.transportationType,
+      destination_location:
+        appData.destinationLocation != null ? locationUpdateToApi.parse(appData.destinationLocation) : null,
     };
   }
 
   // schedule の場合は一律 event として扱う
   return {
     ...common,
-    block_type: 'event',
+    block_type: 'event' as const,
   };
 });
-
-/**
- * API送信時に一部プロパティを省略したApiBlockスキーマを生成します。
- * 主に新規作成時のペイロード生成に利用されます。
- * @template K 省略するキーの型
- * @param keys 省略するキーの配列
- * @returns プロパティが省略されたApiBlockスキーマ
- */
-export const createOmittedApiBlockSchema = <K extends keyof ScheduleBlock | keyof TransportationBlock>(keys: K[]) => {
-  const omitOptions = Object.fromEntries(keys.map(k => [k, true as true]));
-  return z.discriminatedUnion(
-    'blockType',
-    ApiBlockSchema.options.map((schema: z.ZodObject) => schema.omit(omitOptions)) as [z.ZodObject, ...z.ZodObject[]]
-  );
-};

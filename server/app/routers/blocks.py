@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth import require_block_access, require_page_access
 from app.cruds import blocks as blocks_cruds
 from app.cruds import pages as pages_cruds
 from app.db_connection import get_db_session
@@ -17,12 +18,16 @@ router = APIRouter(tags=["Blocks"])
     response_model=Block,
 )
 async def create_block(
-    page_id: int, block: BlockCreate, db: AsyncSession = Depends(get_db_session)
+    page_id: int,
+    block: BlockCreate,
+    _: int = Depends(require_page_access),
+    db: AsyncSession = Depends(get_db_session),
 ) -> Block:
     """
     説明:
 
     - 新しいブロックを作成する
+    - `location` / `destination_location` を含める場合は同一トランザクションで作成する
     """
     db_page = await pages_cruds.get_page(db, page_id=page_id)
     if db_page is None:
@@ -38,7 +43,9 @@ async def create_block(
     response_model=list[Block],
 )
 async def get_blocks(
-    page_id: int, db: AsyncSession = Depends(get_db_session)
+    page_id: int,
+    _: int = Depends(require_page_access),
+    db: AsyncSession = Depends(get_db_session),
 ) -> list[Block]:
     """
     説明:
@@ -54,7 +61,11 @@ async def get_blocks(
     operation_id="blocks-get",
     response_model=Block,
 )
-async def get_block(block_id: int, db: AsyncSession = Depends(get_db_session)) -> Block:
+async def get_block(
+    block_id: int,
+    _: int = Depends(require_block_access),
+    db: AsyncSession = Depends(get_db_session),
+) -> Block:
     """
     説明:
 
@@ -74,12 +85,17 @@ async def get_block(block_id: int, db: AsyncSession = Depends(get_db_session)) -
     response_model=Block,
 )
 async def update_block(
-    block_id: int, block: BlockUpdate, db: AsyncSession = Depends(get_db_session)
+    block_id: int,
+    block: BlockUpdate,
+    _: int = Depends(require_block_access),
+    db: AsyncSession = Depends(get_db_session),
 ) -> Block:
     """
     説明:
 
-    - IDで指定された単一のブロックを更新する
+    - IDで指定された単一のブロックを後勝ちで置換する（PUT セマンティクス）
+    - `location` / `destination_location` は id 一致で既存行維持、それ以外は
+      旧行削除 + 新規作成
     """
     db_block = await blocks_cruds.update_block(db, block_id=block_id, block=block)
     if db_block is None:
@@ -95,12 +111,15 @@ async def update_block(
     status_code=204,
 )
 async def delete_block(
-    block_id: int, db: AsyncSession = Depends(get_db_session)
+    block_id: int,
+    _: int = Depends(require_block_access),
+    db: AsyncSession = Depends(get_db_session),
 ) -> None:
     """
     説明:
 
     - IDで指定された単一のブロックを削除する
+    - 所有する location / destination_location の行も同時に削除する
     """
     if not await blocks_cruds.delete_block(db, block_id=block_id):
         raise NotFound(message="Block not found")

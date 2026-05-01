@@ -7,4 +7,4 @@ firebase CLI toolsはdevcontainerにインストール済みです。
 firebase login
 ```
 
-`npm run build`で`frontend/dist`配下にビルドファイルが展開され、`firebase deploy`で最新環境にデプロイされる。
+`pnpm run build`で`frontend/dist`配下にビルドファイルが展開され、`firebase deploy`で最新環境にデプロイされる。

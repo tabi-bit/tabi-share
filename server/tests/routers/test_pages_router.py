@@ -2,6 +2,7 @@ import pytest_asyncio
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.schemas.block import Block as BlockSchema
 from app.schemas.page import Page
 from app.schemas.trip import Trip
 
@@ -16,12 +17,12 @@ async def page_id(client: AsyncClient, db_session: AsyncSession, trip_id: int) -
 
 
 async def test_create_and_read_page(
-    client: AsyncClient, db_session: AsyncSession, test_create_page: Page
+    authed_client: AsyncClient, db_session: AsyncSession, test_create_page: Page
 ):
     # --- Create --- (page_id fixture already creates one)
 
     # --- Read (Single) ---
-    response = await client.get(f"/pages/{test_create_page.id}")
+    response = await authed_client.get(f"/pages/{test_create_page.id}")
     assert response.status_code == 200
     data = response.json()
     assert data["title"] == "test page"  # title from page_id fixture
@@ -29,14 +30,14 @@ async def test_create_and_read_page(
 
 
 async def test_create_page_invalid_input(
-    client: AsyncClient, db_session: AsyncSession, test_create_trip: Trip
+    authed_client: AsyncClient, db_session: AsyncSession, test_create_trip: Trip
 ):
     """
     POST /trips/{trip_id}/pages で不正な入力が与えられた場合に 422 が返ることを検証
     """
     # title が欠落している不正なデータ
     invalid_page_data = {}
-    response = await client.post(
+    response = await authed_client.post(
         f"/trips/{test_create_trip.id}/pages", json=invalid_page_data
     )
     assert response.status_code == 422
@@ -48,23 +49,27 @@ async def test_create_page_non_existent_trip(
     client: AsyncClient, db_session: AsyncSession
 ):
     """
-    POST /trips/{trip_id}/pages で存在しないtrip_idが与えられた場合に 404 が返ることを検証
+    POST /trips/{trip_id}/pages で存在しないtrip_idが与えられた場合に
+    Cookie に含まれていないため 403 が返ることを検証
     """
     page_data = {"title": "test page"}
     response = await client.post("/trips/999/pages", json=page_data)
-    assert response.status_code == 404
-    assert response.json()["message"] == "Trip not found"
+    assert response.status_code == 403
 
 
 async def test_read_pages(
-    client: AsyncClient, db_session: AsyncSession, test_create_trip: Trip
+    authed_client: AsyncClient, db_session: AsyncSession, test_create_trip: Trip
 ):
     # 2つのページを作成
-    await client.post(f"/trips/{test_create_trip.id}/pages", json={"title": "page 1"})
-    await client.post(f"/trips/{test_create_trip.id}/pages", json={"title": "page 2"})
+    await authed_client.post(
+        f"/trips/{test_create_trip.id}/pages", json={"title": "page 1"}
+    )
+    await authed_client.post(
+        f"/trips/{test_create_trip.id}/pages", json={"title": "page 2"}
+    )
 
     # --- Read (Multiple) ---
-    response = await client.get(f"/trips/{test_create_trip.id}/pages")
+    response = await authed_client.get(f"/trips/{test_create_trip.id}/pages")
     assert response.status_code == 200
     data = response.json()
     assert len(data) == 2
@@ -82,17 +87,19 @@ async def test_get_page_non_existent_id(client: AsyncClient, db_session: AsyncSe
 
 
 async def test_update_page(
-    client: AsyncClient, db_session: AsyncSession, test_create_page: Page
+    authed_client: AsyncClient, db_session: AsyncSession, test_create_page: Page
 ):
     # --- Update ---
     update_data = {"title": "after update"}
-    response = await client.put(f"/pages/{test_create_page.id}", json=update_data)
+    response = await authed_client.put(
+        f"/pages/{test_create_page.id}", json=update_data
+    )
     assert response.status_code == 200
     data = response.json()
     assert data["title"] == update_data["title"]
 
     # --- Read (Single) ---
-    response = await client.get(f"/pages/{test_create_page.id}")
+    response = await authed_client.get(f"/pages/{test_create_page.id}")
     assert response.json()["title"] == update_data["title"]
 
 
@@ -109,14 +116,14 @@ async def test_update_page_non_existent_id(
 
 
 async def test_update_page_invalid_input(
-    client: AsyncClient, db_session: AsyncSession, test_create_page: Page
+    authed_client: AsyncClient, db_session: AsyncSession, test_create_page: Page
 ):
     """
     PUT /pages/{page_id} で不正な入力が与えられた場合に 422 が返ることを検証
     """
     # title の型が不正なデータ
     invalid_update_data = {"title": 123}  # Pydantic will catch this
-    response = await client.put(
+    response = await authed_client.put(
         f"/pages/{test_create_page.id}", json=invalid_update_data
     )
     assert response.status_code == 422
@@ -125,12 +132,59 @@ async def test_update_page_invalid_input(
 
 
 async def test_delete_page(
-    client: AsyncClient, db_session: AsyncSession, test_create_page: Page
+    authed_client: AsyncClient, db_session: AsyncSession, test_create_page: Page
 ):
     # --- Delete ---
-    response = await client.delete(f"/pages/{test_create_page.id}")
+    response = await authed_client.delete(f"/pages/{test_create_page.id}")
     assert response.status_code == 204
 
     # --- 削除されたことを確認 ---
-    response = await client.get(f"/pages/{test_create_page.id}")
+    response = await authed_client.get(f"/pages/{test_create_page.id}")
     assert response.status_code == 404
+
+
+# ---- 未認可アクセス 403 テスト ----
+
+
+async def test_create_page_without_cookie_returns_403(
+    client: AsyncClient, db_session: AsyncSession, test_create_trip: Trip
+):
+    """実在するtrip配下にCookieなしでページ作成 → 403"""
+    response = await client.post(
+        f"/trips/{test_create_trip.id}/pages", json={"title": "unauthorized"}
+    )
+    assert response.status_code == 403
+
+
+async def test_get_page_without_cookie_returns_403(
+    client: AsyncClient, db_session: AsyncSession, test_create_page: Page
+):
+    """実在するページにCookieなしでアクセス → 403"""
+    response = await client.get(f"/pages/{test_create_page.id}")
+    assert response.status_code == 403
+
+
+async def test_get_pages_without_cookie_returns_403(
+    client: AsyncClient, db_session: AsyncSession, test_create_trip: Trip
+):
+    """実在するtrip配下のページ一覧をCookieなしで取得 → 403"""
+    response = await client.get(f"/trips/{test_create_trip.id}/pages")
+    assert response.status_code == 403
+
+
+async def test_update_page_without_cookie_returns_403(
+    client: AsyncClient, db_session: AsyncSession, test_create_page: Page
+):
+    """実在するページをCookieなしで更新 → 403"""
+    response = await client.put(
+        f"/pages/{test_create_page.id}", json={"title": "hacked"}
+    )
+    assert response.status_code == 403
+
+
+async def test_delete_page_without_cookie_returns_403(
+    client: AsyncClient, db_session: AsyncSession, test_create_page: Page
+):
+    """実在するページをCookieなしで削除 → 403"""
+    response = await client.delete(f"/pages/{test_create_page.id}")
+    assert response.status_code == 403

@@ -1,13 +1,26 @@
+import { Globe, MapPin } from 'lucide-react';
 import { useRef, useState } from 'react';
 import angleDownIcon from '@/assets/icons/angle-down-white.svg';
 import { MarkdownViewer } from '@/components/ui/markdown';
 import { useResizeObserver } from '@/hooks/useResizeObserver';
-import { cn } from '@/lib/utils';
+import { cn, getDomain } from '@/lib/utils';
 import type { ScheduleBlockComponentProps } from '../types';
 
 interface BlockScheduleViewProps extends ScheduleBlockComponentProps {}
 
 const MAX_DETAIL_HEIGHT = 72;
+
+const buildGoogleMapsUrl = (location: {
+  googlePlaceId: string | null;
+  latitude: number | null;
+  longitude: number | null;
+}): string | null => {
+  const query =
+    location.latitude != null && location.longitude != null ? `${location.latitude},${location.longitude}` : '';
+  const placeIdParam = location.googlePlaceId ? `&query_place_id=${location.googlePlaceId}` : '';
+  if (!(query || placeIdParam)) return null;
+  return `https://www.google.com/maps/search/?api=1&query=${query}${placeIdParam}`;
+};
 
 export function BlockScheduleView({ block, className }: BlockScheduleViewProps) {
   const [isHovered, setIsHovered] = useState(false);
@@ -49,6 +62,40 @@ export function BlockScheduleView({ block, className }: BlockScheduleViewProps) 
       )}
     >
       <div className='font-bold text-14px text-white sm:text-16px'>{block.title}</div>
+      {block.location && (
+        <div className='flex flex-col gap-0.5'>
+          {(() => {
+            const url = buildGoogleMapsUrl(block.location);
+            return url ? (
+              <a
+                href={url}
+                target='_blank'
+                rel='noopener noreferrer'
+                className='flex items-center gap-1 text-white/90 hover:text-white'
+              >
+                <MapPin className='h-3 w-3 shrink-0' />
+                <span className='truncate text-10px sm:text-12px'>{block.location.name}</span>
+              </a>
+            ) : (
+              <div className='flex items-center gap-1 text-white/90'>
+                <MapPin className='h-3 w-3 shrink-0' />
+                <span className='truncate text-10px sm:text-12px'>{block.location.name}</span>
+              </div>
+            );
+          })()}
+          {block.location.websiteUri && (
+            <a
+              href={block.location.websiteUri}
+              target='_blank'
+              rel='noopener noreferrer'
+              className='flex items-center gap-1 text-white/80 hover:text-white'
+            >
+              <Globe className='h-3 w-3 shrink-0' />
+              <span className='truncate text-10px sm:text-12px'>{getDomain(block.location.websiteUri)}</span>
+            </a>
+          )}
+        </div>
+      )}
       {block.detail && (
         <div
           className={cn(

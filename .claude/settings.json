@@ -5,7 +5,7 @@
       "Bash(cat:*)",
       "Bash(find:*)",
       "Bash(grep:*)",
-      "Bash(npm run:*)",
+      "Bash(pnpm run:*)",
       "Bash(git log:*)",
       "Bash(git status)",
       "Bash(git diff:*)"

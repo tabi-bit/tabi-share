@@ -16,12 +16,12 @@ ROOT_DIR=$(pwd)
 # パッケージ依存関係をインストール
 echo "📦 パッケージをインストール中..."
 cd "$ROOT_DIR"
-npm run sync
+pnpm run sync
 
 echo "✅ セットアップが完了しました！"
 echo ""
 echo "🎯 開発サーバーを起動するには:"
-echo "  npm run dev"
+echo "  pnpm run dev"
 echo ""
 echo "🌐 各サービスのURL:"
 echo "  フロントエンド: http://localhost:3000"

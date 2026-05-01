@@ -1,5 +1,10 @@
+import jwt as pyjwt
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.auth import COOKIE_PREFIX
+from app.config import get_settings
+from app.schemas.trip import Trip
 
 
 async def test_create_and_read_trip(client: AsyncClient, db_session: AsyncSession):
@@ -70,8 +75,8 @@ async def test_read_trips(client: AsyncClient, db_session: AsyncSession):
     await client.post("/trips", json={"title": "trip 1", "detail": "d1"})
     await client.post("/trips", json={"title": "trip 2", "detail": "d2"})
 
-    # --- Read (Multiple) ---
-    response = await client.get("/trips")
+    # --- Read (Multiple) --- Basic認証が必要
+    response = await client.get("/trips", auth=("admin", "admin"))
     assert response.status_code == 200
     data = response.json()
     # 既存のテストで作成されたデータも含まれる可能性があるため、2以上であることだけをチェック
@@ -80,11 +85,11 @@ async def test_read_trips(client: AsyncClient, db_session: AsyncSession):
 
 async def test_get_trip_non_existent_id(client: AsyncClient, db_session: AsyncSession):
     """
-    GET /trips/{trip_id} で存在しないIDが与えられた場合に 404 が返ることを検証
+    GET /trips/{trip_id} で存在しないIDが与えられた場合に
+    Cookie に含まれていないため 403 が返ることを検証
     """
     response = await client.get("/trips/999")
-    assert response.status_code == 404
-    assert response.json()["message"] == "Trip not found"
+    assert response.status_code == 403
 
 
 async def test_get_trip_by_url_id_non_existent(
@@ -121,12 +126,12 @@ async def test_update_trip_non_existent_id(
     client: AsyncClient, db_session: AsyncSession
 ):
     """
-    PUT /trips/{trip_id} で存在しないIDが与えられた場合に 404 が返ることを検証
+    PUT /trips/{trip_id} で存在しないIDが与えられた場合に
+    Cookie に含まれていないため 403 が返ることを検証
     """
     update_data = {"title": "non existent", "detail": "update"}
     response = await client.put("/trips/999", json=update_data)
-    assert response.status_code == 404
-    assert response.json()["message"] == "Trip not found"
+    assert response.status_code == 403
 
 
 async def test_update_trip_invalid_input(client: AsyncClient, db_session: AsyncSession):
@@ -161,3 +166,77 @@ async def test_delete_trip(client: AsyncClient, db_session: AsyncSession):
     # --- 削除されたことを確認 ---
     response = await client.get(f"/trips/{trip_id}")
     assert response.status_code == 404
+
+
+# ---- Cookie 発行テスト ----
+
+
+async def test_create_trip_sets_access_cookie(
+    client: AsyncClient, db_session: AsyncSession
+):
+    """POST /trips のレスポンスに認可Cookieが含まれることを検証"""
+    response = await client.post("/trips", json={"title": "cookie test", "detail": "d"})
+    assert response.status_code == 200
+    trip_id = response.json()["id"]
+
+    cookie_name = f"{COOKIE_PREFIX}{trip_id}"
+    set_cookie_headers = response.headers.get_list("set-cookie")
+    matching = [h for h in set_cookie_headers if cookie_name in h]
+    assert len(matching) == 1
+
+    # Cookie値がデコード可能で正しいtrip_idを含む
+    settings = get_settings()
+    token = client.cookies.get(cookie_name)
+    payload = pyjwt.decode(token, settings.cookie_secret_key, algorithms=["HS256"])
+    assert payload["trip_id"] == trip_id
+
+
+async def test_get_trip_by_url_id_sets_access_cookie(
+    client: AsyncClient, db_session: AsyncSession
+):
+    """GET /trips/url/{url_id} のレスポンスに認可Cookieが含まれることを検証"""
+    # まずtripを作成
+    response = await client.post(
+        "/trips", json={"title": "url id cookie test", "detail": "d"}
+    )
+    trip_id = response.json()["id"]
+    url_id = response.json()["url_id"]
+
+    # 初回POST由来のCookieをクリアして、未認可状態のクライアントとして再利用する
+    client.cookies.clear()
+    response = await client.get(f"/trips/url/{url_id}")
+    assert response.status_code == 200
+
+    cookie_name = f"{COOKIE_PREFIX}{trip_id}"
+    set_cookie_headers = response.headers.get_list("set-cookie")
+    matching = [h for h in set_cookie_headers if cookie_name in h]
+    assert len(matching) == 1
+
+
+# ---- 未認可アクセス 403 テスト ----
+
+
+async def test_get_trip_without_cookie_returns_403(
+    client: AsyncClient, db_session: AsyncSession, test_create_trip: Trip
+):
+    """実在するtripにCookieなしでアクセス → 403"""
+    response = await client.get(f"/trips/{test_create_trip.id}")
+    assert response.status_code == 403
+
+
+async def test_update_trip_without_cookie_returns_403(
+    client: AsyncClient, db_session: AsyncSession, test_create_trip: Trip
+):
+    """実在するtripをCookieなしで更新 → 403"""
+    response = await client.put(
+        f"/trips/{test_create_trip.id}", json={"title": "hacked"}
+    )
+    assert response.status_code == 403
+
+
+async def test_delete_trip_without_cookie_returns_403(
+    client: AsyncClient, db_session: AsyncSession, test_create_trip: Trip
+):
+    """実在するtripをCookieなしで削除 → 403"""
+    response = await client.delete(f"/trips/{test_create_trip.id}")
+    assert response.status_code == 403

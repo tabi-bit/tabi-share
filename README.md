@@ -19,7 +19,7 @@
 ### 2. 開発サーバーの起動
 
 ```bash
-npm run dev
+pnpm run dev
 ```
 
 ### 3. 各サービスのURL

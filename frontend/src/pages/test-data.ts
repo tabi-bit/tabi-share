@@ -12,6 +12,7 @@ export const demoBlocks2: Block[] = [
 • detail detail
 リンク`.repeat(20),
     pageId: 2,
+    location: null,
   },
   {
     id: 2,
@@ -21,6 +22,8 @@ export const demoBlocks2: Block[] = [
     startTime: new Date(2024, 0, 1, 15, 0),
     endTime: new Date(2024, 0, 1, 16, 0),
     pageId: 2,
+    location: null,
+    destinationLocation: null,
   },
   {
     id: 3,
@@ -29,6 +32,7 @@ export const demoBlocks2: Block[] = [
     startTime: new Date(2024, 0, 1, 17, 0),
     endTime: new Date(2024, 0, 1, 19, 0),
     pageId: 2,
+    location: null,
   },
   {
     id: 4,
@@ -41,6 +45,8 @@ export const demoBlocks2: Block[] = [
   • detail detail
   リンク`.repeat(20),
     pageId: 2,
+    location: null,
+    destinationLocation: null,
   },
 ];
 
@@ -55,6 +61,7 @@ export const demoBlocks1: Block[] = [
     • detail detail
     リンク`.repeat(20),
     pageId: 1,
+    location: null,
   },
   {
     id: 2,
@@ -64,6 +71,8 @@ export const demoBlocks1: Block[] = [
     startTime: new Date(2024, 0, 1, 15, 0),
     endTime: new Date(2024, 0, 1, 16, 0),
     pageId: 1,
+    location: null,
+    destinationLocation: null,
   },
   {
     id: 3,
@@ -72,6 +81,7 @@ export const demoBlocks1: Block[] = [
     startTime: new Date(2024, 0, 1, 17, 0),
     endTime: new Date(2024, 0, 1, 19, 0),
     pageId: 1,
+    location: null,
   },
   {
     id: 4,
@@ -84,6 +94,8 @@ export const demoBlocks1: Block[] = [
     • detail detail
     リンク`.repeat(20),
     pageId: 1,
+    location: null,
+    destinationLocation: null,
   },
   {
     id: 5,
@@ -95,6 +107,7 @@ export const demoBlocks1: Block[] = [
     • detail detail
     リンク`.repeat(20),
     pageId: 1,
+    location: null,
   },
   {
     id: 6,
@@ -104,6 +117,8 @@ export const demoBlocks1: Block[] = [
     startTime: new Date(2024, 0, 1, 22, 0),
     endTime: new Date(2024, 0, 1, 23, 0),
     pageId: 1,
+    location: null,
+    destinationLocation: null,
   },
   {
     id: 7,
@@ -112,6 +127,7 @@ export const demoBlocks1: Block[] = [
     startTime: new Date(2024, 0, 1, 23, 0),
     endTime: new Date(2024, 0, 2, 1, 0),
     pageId: 1,
+    location: null,
   },
   {
     id: 8,
@@ -124,6 +140,8 @@ export const demoBlocks1: Block[] = [
     • detail detail
     リンク`.repeat(20),
     pageId: 1,
+    location: null,
+    destinationLocation: null,
   },
 ];
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { calculateDuration, calculateEndTimeStr, cn } from './utils';
+import { calculateDuration, calculateEndTimeStr, cn, getDomain } from './utils';
 
 describe('cn', () => {
   it('クラス名を結合する', () => {
@@ -54,5 +54,23 @@ describe('calculateDuration', () => {
 
   it('不正な値の場合はnullを返す', () => {
     expect(calculateDuration('invalid', '10:00')).toBeNull();
+  });
+});
+
+describe('getDomain', () => {
+  it('httpsのURLからホスト名を返す', () => {
+    expect(getDomain('https://example.com/path')).toBe('example.com');
+  });
+
+  it('www 接頭辞を除去する', () => {
+    expect(getDomain('https://www.kusatsu-onsen.ne.jp/yubatake/')).toBe('kusatsu-onsen.ne.jp');
+  });
+
+  it('ポート付きでもホスト名のみ返す', () => {
+    expect(getDomain('http://example.com:8080/path')).toBe('example.com');
+  });
+
+  it('パース不可の場合は元文字列を返す', () => {
+    expect(getDomain('not a url')).toBe('not a url');
   });
 });

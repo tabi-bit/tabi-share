@@ -5,10 +5,12 @@
 
 # Node.js
 node_modules/
+.pnpm-store/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+pnpm-debug.log*
 
 # Python
 __pycache__/

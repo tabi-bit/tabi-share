@@ -15,6 +15,7 @@ paths:
 - **@testing-library/jest-dom**: DOM要素のマッチャー
 - **@testing-library/user-event**: ユーザーイベントシミュレーション
 - **jsdom**: ブラウザ環境のシミュレーション
+- **MSW (Mock Service Worker) v2**: HTTP モック
 
 ### 設定ファイル
 
@@ -142,6 +143,29 @@ mockFunction.mockReturnValue('戻り値');
 vi.mock('@/lib/utils', () => ({
   cn: vi.fn((...classes) => classes.join(' ')),
 }));
+```
+
+#### HTTP / API モック
+
+- **SWR (`useSWR` / `useSWRMutation`) や `apiClient` を経由するテストは、原則 MSW (`server.use(http.xxx)`) で HTTP レイヤをモックする**
+  - `frontend/tests/msw/server.ts` の `server` をインポートし、テストごとに `server.use(...)` でハンドラを登録
+  - `vi.mock('@/lib/apiClient', ...)` のような fetcher 直モックは避ける（zod パース・エラー変換などの実体ロジックが走らず、統合的な検証にならない）
+- **例外的にモジュールモックが妥当なケース**:
+  - `mutate` 呼び出しの観測のみが目的で、HTTP 経路を辿らせる必要がない
+  - `fetch` 自体の振る舞い（RTT 測定・Abort 等）を検証したい (`globalThis.fetch` を直接 spy する)
+  - Dexie / sonner / jotai など HTTP 以外の依存をスタブする場合（MSW の対象外）
+
+```typescript
+import { http, HttpResponse } from 'msw';
+import { server } from '../../tests/msw/server';
+
+beforeEach(() => {
+  server.use(
+    http.get('*/trips/url/:urlId', ({ params }) =>
+      HttpResponse.json({ id: 1, title: 'mock', url_id: String(params.urlId) })
+    )
+  );
+});
 ```
 
 ### テスト実行コマンド

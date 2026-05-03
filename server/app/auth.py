@@ -40,41 +40,41 @@ def require_basic_auth(
             headers={"WWW-Authenticate": "Basic"},
         )
 
-COOKIE_PREFIX = "tabishare_trip_"
+SESSION_COOKIE_NAME = "tabishare_session"
 
 
 def get_allowed_trip_ids(request: Request) -> set[int]:
     """Cookie から許可済み trip_id のセットを取得する。
 
-    tabishare_trip_{id} 形式の各Cookieを検証し、有効なtrip_idを収集する。
+    `tabishare_session` Cookie の JWT payload に含まれる `trip_ids` 配列をデコードして返す。
+    Cookie が無い・JWT が不正・期限切れの場合は空 set。
     """
-    trip_ids: set[int] = set()
+    raw = request.cookies.get(SESSION_COOKIE_NAME)
+    if not raw:
+        return set()
     settings = get_settings()
-    for name, raw in request.cookies.items():
-        if not name.startswith(COOKIE_PREFIX):
-            continue
-        try:
-            payload = jwt.decode(raw, settings.cookie_secret_key, algorithms=["HS256"])
-            tid = payload.get("trip_id")
-            if isinstance(tid, int):
-                trip_ids.add(tid)
-        except (jwt.InvalidTokenError, jwt.ExpiredSignatureError):
-            continue
-    return trip_ids
+    try:
+        payload = jwt.decode(raw, settings.cookie_secret_key, algorithms=["HS256"])
+    except (jwt.InvalidTokenError, jwt.ExpiredSignatureError):
+        return set()
+    ids = payload.get("trip_ids")
+    if not isinstance(ids, list):
+        return set()
+    return {tid for tid in ids if isinstance(tid, int)}
 
 
-def _set_trip_cookie(response: Response, trip_id: int) -> None:
-    """単一のtrip_id用の署名付きCookieを発行する。"""
+def _set_session_cookie(response: Response, trip_ids: set[int]) -> None:
+    """trip_ids 集合をまとめた署名付きセッション Cookie を発行する。"""
     settings = get_settings()
     payload = {
-        "trip_id": trip_id,
+        "trip_ids": sorted(trip_ids),
         "exp": datetime.now(UTC) + timedelta(seconds=settings.cookie_max_age),
     }
     token = jwt.encode(payload, settings.cookie_secret_key, algorithm="HS256")
 
     is_production = settings.environment != "development"
     response.set_cookie(
-        key=f"{COOKIE_PREFIX}{trip_id}",
+        key=SESSION_COOKIE_NAME,
         value=token,
         max_age=settings.cookie_max_age,
         httponly=True,
@@ -84,9 +84,18 @@ def _set_trip_cookie(response: Response, trip_id: int) -> None:
     )
 
 
-def grant_trip_access(response: Response, trip_id: int) -> None:
-    """指定したtrip_idへのアクセス権をCookieで付与する。"""
-    _set_trip_cookie(response, trip_id)
+def grant_trip_access(
+    request: Request, response: Response, trip_id: int
+) -> None:
+    """指定 trip_id へのアクセス権を Cookie に追記する。
+
+    既存 Cookie の trip_ids を読み、`trip_id` をマージしてから再発行する。
+    平行で複数 grant が走ると後勝ちで一部 trip_id が失われ得るが、apiClient 側の
+    403 自動 retry で次回アクセス時に再付与され、最終的に収束する。
+    """
+    allowed = get_allowed_trip_ids(request)
+    allowed.add(trip_id)
+    _set_session_cookie(response, allowed)
 
 
 # ---- FastAPI Depends 用の認可関数 ----

@@ -2,7 +2,7 @@ import jwt as pyjwt
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import COOKIE_PREFIX
+from app.auth import SESSION_COOKIE_NAME
 from app.config import get_settings
 from app.schemas.trip import Trip
 
@@ -179,16 +179,15 @@ async def test_create_trip_sets_access_cookie(
     assert response.status_code == 200
     trip_id = response.json()["id"]
 
-    cookie_name = f"{COOKIE_PREFIX}{trip_id}"
     set_cookie_headers = response.headers.get_list("set-cookie")
-    matching = [h for h in set_cookie_headers if cookie_name in h]
+    matching = [h for h in set_cookie_headers if SESSION_COOKIE_NAME in h]
     assert len(matching) == 1
 
-    # Cookie値がデコード可能で正しいtrip_idを含む
+    # Cookie値がデコード可能で trip_ids に作成した trip_id が含まれる
     settings = get_settings()
-    token = client.cookies.get(cookie_name)
+    token = client.cookies.get(SESSION_COOKIE_NAME)
     payload = pyjwt.decode(token, settings.cookie_secret_key, algorithms=["HS256"])
-    assert payload["trip_id"] == trip_id
+    assert trip_id in payload["trip_ids"]
 
 
 async def test_get_trip_by_url_id_sets_access_cookie(
@@ -207,10 +206,33 @@ async def test_get_trip_by_url_id_sets_access_cookie(
     response = await client.get(f"/trips/url/{url_id}")
     assert response.status_code == 200
 
-    cookie_name = f"{COOKIE_PREFIX}{trip_id}"
     set_cookie_headers = response.headers.get_list("set-cookie")
-    matching = [h for h in set_cookie_headers if cookie_name in h]
+    matching = [h for h in set_cookie_headers if SESSION_COOKIE_NAME in h]
     assert len(matching) == 1
+
+    # 発行された Cookie の trip_ids に当該 trip_id が含まれる
+    settings = get_settings()
+    token = client.cookies.get(SESSION_COOKIE_NAME)
+    payload = pyjwt.decode(token, settings.cookie_secret_key, algorithms=["HS256"])
+    assert trip_id in payload["trip_ids"]
+
+
+async def test_grant_trip_access_merges_existing_ids(
+    client: AsyncClient, db_session: AsyncSession
+):
+    """既存 Cookie の trip_ids に新しい trip_id が追記されることを検証"""
+    # 1 個目を作成 → cookie に trip_id1 のみ
+    r1 = await client.post("/trips", json={"title": "first", "detail": "d"})
+    trip_id1 = r1.json()["id"]
+
+    # 2 個目を作成 → 1 個目の trip_id を保持したまま 2 個目が追記される
+    r2 = await client.post("/trips", json={"title": "second", "detail": "d"})
+    trip_id2 = r2.json()["id"]
+
+    settings = get_settings()
+    token = client.cookies.get(SESSION_COOKIE_NAME)
+    payload = pyjwt.decode(token, settings.cookie_secret_key, algorithms=["HS256"])
+    assert set(payload["trip_ids"]) >= {trip_id1, trip_id2}
 
 
 # ---- 未認可アクセス 403 テスト ----

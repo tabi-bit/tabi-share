@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, Request, Response
 from nanoid import generate
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,6 +21,7 @@ URL_ID_SIZE = 16
 )
 async def create_trip(
     trip_in: TripCreateIn,
+    request: Request,
     response: Response,
     db: AsyncSession = Depends(get_db_session),
 ) -> TripCreateOut:
@@ -33,7 +34,7 @@ async def create_trip(
     """
     url_id: str = generate(size=URL_ID_SIZE)
     trip_id: int = await trips_cruds.create_trip(db=db, trip=trip_in, url_id=url_id)
-    grant_trip_access(response, trip_id)
+    grant_trip_access(request, response, trip_id)
 
     return TripCreateOut(id=trip_id, url_id=url_id)
 
@@ -87,6 +88,7 @@ async def get_trip(
 )
 async def get_trip_by_url_id(
     url_id: str,
+    request: Request,
     response: Response,
     db: AsyncSession = Depends(get_db_session),
 ) -> Trip:
@@ -99,7 +101,7 @@ async def get_trip_by_url_id(
     db_trip = await trips_cruds.get_trip_by_url_id(db, url_id=url_id)
     if db_trip is None:
         raise NotFound(message="Trip not found")
-    grant_trip_access(response, db_trip.id)
+    grant_trip_access(request, response, db_trip.id)
 
     return db_trip
 

@@ -67,12 +67,13 @@ const tryRefreshAndRetry = async (error: AxiosError): Promise<AxiosResponse | nu
   config._retry = true;
   try {
     await refreshTripCookie(urlId);
-    return await apiClient.request(config);
   } catch (e) {
-    // refresh 自体が失敗した場合は通常のエラーフローへフォールスルー
-    console.warn('[apiClient] Cookie refresh + retry failed', e);
+    // refresh 自体が失敗した場合のみフォールスルー。
+    // リトライ本体の失敗は呼び出し元に伝播させ、本当の失敗原因が隠蔽されないようにする。
+    console.warn('[apiClient] Cookie refresh failed', e);
     return null;
   }
+  return await apiClient.request(config);
 };
 
 // ---- インターセプター登録 ----

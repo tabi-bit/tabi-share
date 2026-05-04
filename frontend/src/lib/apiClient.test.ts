@@ -93,6 +93,23 @@ describe('apiClient — 認可Cookie失効リカバリ', () => {
     expect(putCount).toBe(1);
   });
 
+  it('リトライ自体が失敗した場合はそのエラーが呼び出し元に伝播する（元 403 で握りつぶさない）', async () => {
+    let putCount = 0;
+    server.use(
+      http.get(`*/trips/url/${URL_ID}`, () => HttpResponse.json({ id: 1, title: 'x', url_id: URL_ID })),
+      http.put('*/trips/1', () => {
+        putCount += 1;
+        return putCount === 1 ? new HttpResponse(null, { status: 403 }) : new HttpResponse(null, { status: 500 });
+      })
+    );
+
+    // 修正前は元 403 が toAppError されて返っていたが、修正後はリトライ時の 500 が伝播する
+    await expect(apiClient.put('/trips/1', {})).rejects.toMatchObject({
+      statusCode: 500,
+    });
+    expect(putCount).toBe(2);
+  });
+
   it('refresh エンドポイント自身が 403 を返してもリトライしない（自己ループ防止）', async () => {
     let refreshCount = 0;
     server.use(

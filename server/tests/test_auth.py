@@ -66,7 +66,7 @@ def test_get_allowed_trip_ids_wrong_signing_key():
         "trip_ids": [1],
         "exp": datetime.now(UTC) + timedelta(seconds=3600),
     }
-    token = pyjwt.encode(payload, "wrong-secret-key", algorithm="HS256")
+    token = pyjwt.encode(payload, "this-is-a-wrong-secret-key-that-is-at-least-32-bytes-long", algorithm="HS256")
     request = _make_request({SESSION_COOKIE_NAME: token})
     assert get_allowed_trip_ids(request) == set()
 

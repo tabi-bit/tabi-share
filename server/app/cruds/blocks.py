@@ -56,7 +56,20 @@ async def create_block(db: AsyncSession, block: BlockCreate, page_id: int) -> Bl
         db_block.destination_location = db_dest
     db.add(db_block)
     await db.commit()
-    return db_block
+
+    # レスポンス生成時の lazy='raise' エラーを回避するため、
+    # location等のリレーションを事前取得(Eager Load)して返し直す
+    stmt = (
+        select(Block)
+        .options(
+            selectinload(Block.location),
+            selectinload(Block.destination_location)
+        )
+        .where(Block.id == db_block.id)
+    )
+    result = await db.execute(stmt)
+
+    return result.scalar_one()
 
 
 async def find_blocks(db: AsyncSession, page_id: int) -> list[Block]:

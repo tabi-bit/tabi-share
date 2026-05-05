@@ -5,7 +5,7 @@ from app.auth import require_trip_access, require_page_access
 from app.cruds import pages as pages_cruds
 from app.db_connection import get_db_session
 from app.errors import NotFound
-from app.schemas.page import Page, PageCreate, PageUpdate
+from app.schemas.page import Page, PageCreate, PageCreateResponse, PageUpdate
 
 # /trips/{trip_id}/pages で作成と一覧取得
 # /pages/{page_id} で取得、更新、削除
@@ -16,14 +16,14 @@ router = APIRouter(tags=["Pages"])
     "/trips/{trip_id}/pages",
     summary="ページ作成",
     operation_id="pages-create",
-    response_model=Page,
+    response_model=PageCreateResponse,
 )
 async def create_page(
     trip_id: int,
     page: PageCreate,
     _: int = Depends(require_trip_access),
     db: AsyncSession = Depends(get_db_session),
-) -> Page:
+) -> PageCreateResponse:
     """
     説明:
 

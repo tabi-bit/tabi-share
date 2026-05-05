@@ -3,7 +3,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import require_trip_access, require_page_access
 from app.cruds import pages as pages_cruds
-from app.cruds import trips as trips_cruds
 from app.db_connection import get_db_session
 from app.errors import NotFound
 from app.schemas.page import Page, PageCreate, PageUpdate
@@ -30,10 +29,6 @@ async def create_page(
 
     - 新しいページを作成する
     """
-    db_trip = await trips_cruds.get_trip(db, trip_id=trip_id)
-    if db_trip is None:
-        raise NotFound(message="Trip not found")
-
     return await pages_cruds.create_page(db=db, page=page, trip_id=trip_id)
 
 

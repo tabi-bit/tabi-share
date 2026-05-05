@@ -40,7 +40,6 @@ async def create_block(db: AsyncSession, block: BlockCreate, page_id: int) -> Bl
     db_block = Block(**block_data, page_id=page_id)
     db.add(db_block)
     await db.commit()
-    await db.refresh(db_block)
     return db_block
 
 
@@ -148,7 +147,6 @@ async def update_block(
     )
 
     await db.commit()
-    await db.refresh(db_block)
     return db_block
 
 

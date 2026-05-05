@@ -20,7 +20,6 @@ async def create_trip(db: AsyncSession, trip: TripCreateIn, url_id: str) -> int:
     db_trip = Trip(**trip.model_dump(), url_id=url_id)
     db.add(db_trip)
     await db.commit()
-    await db.refresh(db_trip)
     return db_trip.id
 
 
@@ -85,7 +84,6 @@ async def update_trip(db: AsyncSession, trip_id: int, trip: TripUpdate) -> Trip 
         for key, value in trip.model_dump().items():
             setattr(db_trip, key, value)
         await db.commit()
-        await db.refresh(db_trip)
 
     return db_trip
 

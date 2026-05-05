@@ -20,7 +20,6 @@ async def create_page(db: AsyncSession, page: PageCreate, trip_id: int) -> Page:
     db_page = Page(**page.model_dump(), trip_id=trip_id)
     db.add(db_page)
     await db.commit()
-    await db.refresh(db_page)
     return db_page
 
 
@@ -71,7 +70,6 @@ async def update_page(db: AsyncSession, page_id: int, page: PageUpdate) -> Page 
         for key, value in page.model_dump().items():
             setattr(db_page, key, value)
         await db.commit()
-        await db.refresh(db_page)
 
     return db_page
 

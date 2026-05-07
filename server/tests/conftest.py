@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.pool import NullPool
 
-from app.auth import COOKIE_PREFIX
+from app.auth import SESSION_COOKIE_NAME
 from app.config import get_settings
 from app.cruds import blocks as blocks_cruds
 from app.cruds import pages as pages_cruds
@@ -89,10 +89,10 @@ async def client():
         yield c
 
 
-def _make_trip_cookie_value(trip_id: int) -> str:
-    """テスト用: 単一trip_id用の署名付き Cookie (JWT) の値を生成する"""
+def _make_session_cookie_value(trip_ids: list[int]) -> str:
+    """テスト用: trip_ids 配列を持つ署名付きセッション Cookie (JWT) の値を生成する"""
     payload = {
-        "trip_id": trip_id,
+        "trip_ids": sorted(trip_ids),
         "exp": datetime.now(UTC) + timedelta(seconds=settings.cookie_max_age),
     }
     return pyjwt.encode(payload, settings.cookie_secret_key, algorithm="HS256")
@@ -141,7 +141,7 @@ async def test_create_block(
 async def authed_client(client: AsyncClient, test_create_trip: Trip) -> AsyncClient:
     """test_create_trip で作成された Trip へのアクセス権 Cookie を持つクライアント"""
     client.cookies.set(
-        f"{COOKIE_PREFIX}{test_create_trip.id}",
-        _make_trip_cookie_value(test_create_trip.id),
+        SESSION_COOKIE_NAME,
+        _make_session_cookie_value([test_create_trip.id]),
     )
     return client

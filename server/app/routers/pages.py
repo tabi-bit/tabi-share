@@ -3,10 +3,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import require_trip_access, require_page_access
 from app.cruds import pages as pages_cruds
-from app.cruds import trips as trips_cruds
 from app.db_connection import get_db_session
 from app.errors import NotFound
-from app.schemas.page import Page, PageCreate, PageUpdate
+from app.schemas.page import Page, PageCreate, PageCreateResponse, PageUpdate
 
 # /trips/{trip_id}/pages で作成と一覧取得
 # /pages/{page_id} で取得、更新、削除
@@ -17,23 +16,19 @@ router = APIRouter(tags=["Pages"])
     "/trips/{trip_id}/pages",
     summary="ページ作成",
     operation_id="pages-create",
-    response_model=Page,
+    response_model=PageCreateResponse,
 )
 async def create_page(
     trip_id: int,
     page: PageCreate,
     _: int = Depends(require_trip_access),
     db: AsyncSession = Depends(get_db_session),
-) -> Page:
+) -> PageCreateResponse:
     """
     説明:
 
     - 新しいページを作成する
     """
-    db_trip = await trips_cruds.get_trip(db, trip_id=trip_id)
-    if db_trip is None:
-        raise NotFound(message="Trip not found")
-
     return await pages_cruds.create_page(db=db, page=page, trip_id=trip_id)
 
 

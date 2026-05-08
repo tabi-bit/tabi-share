@@ -3,7 +3,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import require_block_access, require_page_access
 from app.cruds import blocks as blocks_cruds
-from app.cruds import pages as pages_cruds
 from app.db_connection import get_db_session
 from app.errors import NotFound
 from app.schemas.block import Block, BlockCreate, BlockUpdate
@@ -29,10 +28,6 @@ async def create_block(
     - 新しいブロックを作成する
     - `location` / `destination_location` を含める場合は同一トランザクションで作成する
     """
-    db_page = await pages_cruds.get_page(db, page_id=page_id)
-    if db_page is None:
-        raise NotFound(message="Page not found")
-
     return await blocks_cruds.create_block(db=db, block=block, page_id=page_id)
 
 

@@ -64,7 +64,8 @@ class Trip(Base):
         "Page",
         back_populates="trip",
         cascade="all, delete-orphan",
-        lazy="selectin",
+        lazy="raise",
+        passive_deletes=True,
     )
 
 
@@ -90,7 +91,8 @@ class Page(Base):
         "Block",
         back_populates="page",
         cascade="all, delete-orphan",
-        lazy="selectin",
+        lazy="raise",
+        passive_deletes=True,
     )
 
 
@@ -152,10 +154,10 @@ class Block(Base):
     location: Mapped["Location | None"] = relationship(
         "Location",
         foreign_keys=[location_id],
-        lazy="selectin",
+        lazy="raise",
     )
     destination_location: Mapped["Location | None"] = relationship(
         "Location",
         foreign_keys=[destination_location_id],
-        lazy="selectin",
+        lazy="raise",
     )

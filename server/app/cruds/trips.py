@@ -1,8 +1,18 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
-from app.models import Trip
+from app.models import Block, Page, Trip
 from app.schemas.trip import TripCreateIn, TripUpdate
+
+
+def _trip_with_relations():
+    return select(Trip).options(
+        selectinload(Trip.pages).selectinload(Page.blocks).options(
+            selectinload(Block.location),
+            selectinload(Block.destination_location),
+        )
+    )
 
 
 async def create_trip(db: AsyncSession, trip: TripCreateIn, url_id: str) -> int:
@@ -20,7 +30,6 @@ async def create_trip(db: AsyncSession, trip: TripCreateIn, url_id: str) -> int:
     db_trip = Trip(**trip.model_dump(), url_id=url_id)
     db.add(db_trip)
     await db.commit()
-    await db.refresh(db_trip)
     return db_trip.id
 
 
@@ -34,7 +43,7 @@ async def find_trips(db: AsyncSession) -> list[Trip]:
     Returns:
         list[Trip]: すべての旅行プラン
     """
-    result = await db.execute(select(Trip))
+    result = await db.execute(_trip_with_relations())
     return list(result.scalars().all())
 
 
@@ -49,7 +58,7 @@ async def get_trip(db: AsyncSession, trip_id: int) -> Trip | None:
     Returns:
         Trip | None: 特定の旅行プラン、見つからない場合はNone
     """
-    result = await db.execute(select(Trip).where(Trip.id == trip_id))
+    result = await db.execute(_trip_with_relations().where(Trip.id == trip_id))
     return result.scalar_one_or_none()
 
 
@@ -64,7 +73,7 @@ async def get_trip_by_url_id(db: AsyncSession, url_id: str) -> Trip | None:
     Returns:
         Trip | None: 特定の旅行プラン、見つからない場合はNone
     """
-    result = await db.execute(select(Trip).where(Trip.url_id == url_id))
+    result = await db.execute(_trip_with_relations().where(Trip.url_id == url_id))
     return result.scalar_one_or_none()
 
 
@@ -85,7 +94,6 @@ async def update_trip(db: AsyncSession, trip_id: int, trip: TripUpdate) -> Trip 
         for key, value in trip.model_dump().items():
             setattr(db_trip, key, value)
         await db.commit()
-        await db.refresh(db_trip)
 
     return db_trip
 
@@ -101,7 +109,8 @@ async def delete_trip(db: AsyncSession, trip_id: int) -> bool:
     Returns:
         bool: 削除が成功した場合はTrue、失敗した場合はFalse
     """
-    db_trip = await get_trip(db, trip_id)
+    result = await db.execute(select(Trip).where(Trip.id == trip_id))
+    db_trip = result.scalar_one_or_none()
     if db_trip:
         await db.delete(db_trip)
         await db.commit()

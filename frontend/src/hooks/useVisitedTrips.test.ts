@@ -1,7 +1,8 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
+import { HttpResponse, http } from 'msw';
 import { vi } from 'vitest';
+import { server } from '../../tests/msw/server';
 
-// --- モック ---
 const mockDbGet = vi.fn();
 const mockDbPut = vi.fn();
 
@@ -15,25 +16,6 @@ vi.mock('@/lib/db', () => ({
   },
 }));
 
-vi.mock('@/lib/apiClient', () => ({
-  fetcher: vi.fn(),
-}));
-
-vi.mock('@/types/trip', () => ({
-  tripFromApi: {
-    parse: (data: unknown) => data,
-  },
-}));
-
-// SWRのキャッシュを無効化して各テストを独立させる
-vi.mock('swr', async () => {
-  const actual = await vi.importActual<typeof import('swr')>('swr');
-  return {
-    ...actual,
-    default: actual.default,
-  };
-});
-
 import { useVisitedTrips } from '@/hooks/useVisitedTrips';
 
 describe('useVisitedTrips', () => {
@@ -42,6 +24,18 @@ describe('useVisitedTrips', () => {
     localStorage.clear();
     mockDbGet.mockResolvedValue(undefined);
     mockDbPut.mockResolvedValue(undefined);
+    // urlIds に対応する Trip 取得は MSW で valid な API レスポンスを返す
+    server.use(
+      http.get('*/trips/url/:urlId', ({ params }) =>
+        HttpResponse.json({
+          id: 1,
+          title: 'mock',
+          detail: null,
+          people_num: null,
+          url_id: String(params.urlId),
+        })
+      )
+    );
   });
 
   it('初期化時にIndexedDBからurlIdsを読み込む', async () => {

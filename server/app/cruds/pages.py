@@ -1,8 +1,18 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
-from app.models import Page
+from app.models import Block, Page
 from app.schemas.page import PageCreate, PageUpdate
+
+
+def _page_with_relations():
+    return select(Page).options(
+        selectinload(Page.blocks).options(
+            selectinload(Block.location),
+            selectinload(Block.destination_location),
+        )
+    )
 
 
 async def create_page(db: AsyncSession, page: PageCreate, trip_id: int) -> Page:
@@ -20,7 +30,6 @@ async def create_page(db: AsyncSession, page: PageCreate, trip_id: int) -> Page:
     db_page = Page(**page.model_dump(), trip_id=trip_id)
     db.add(db_page)
     await db.commit()
-    await db.refresh(db_page)
     return db_page
 
 
@@ -35,7 +44,9 @@ async def find_pages(db: AsyncSession, trip_id: int) -> list[Page]:
     Returns:
         list[Page]: ページリスト
     """
-    result = await db.execute(select(Page).where(Page.trip_id == trip_id))
+    result = await db.execute(
+        _page_with_relations().where(Page.trip_id == trip_id)
+    )
     return list(result.scalars().all())
 
 
@@ -50,7 +61,7 @@ async def get_page(db: AsyncSession, page_id: int) -> Page | None:
     Returns:
         Page | None: 特定のページ、見つからない場合はNone
     """
-    result = await db.execute(select(Page).where(Page.id == page_id))
+    result = await db.execute(_page_with_relations().where(Page.id == page_id))
     return result.scalar_one_or_none()
 
 
@@ -71,7 +82,6 @@ async def update_page(db: AsyncSession, page_id: int, page: PageUpdate) -> Page 
         for key, value in page.model_dump().items():
             setattr(db_page, key, value)
         await db.commit()
-        await db.refresh(db_page)
 
     return db_page
 
@@ -87,7 +97,8 @@ async def delete_page(db: AsyncSession, page_id: int) -> bool:
     Returns:
         bool: 削除が成功した場合はTrue、失敗した場合はFalse
     """
-    db_page = await get_page(db, page_id)
+    result = await db.execute(select(Page).where(Page.id == page_id))
+    db_page = result.scalar_one_or_none()
     if db_page:
         await db.delete(db_page)
         await db.commit()

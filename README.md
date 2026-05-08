@@ -75,3 +75,14 @@ cmonitor
 ```
 
 Claude Codeの使用状況（トークン使用量、API呼び出し回数など）を確認できます。
+
+## 開発時の注意
+
+### IndexedDB のクリアが効かないとき
+
+フロントエンドは SWR のキャッシュを IndexedDB（`AppOfflineDB`）に write-through 永続化しています。ページを実行中の状態で DevTools から IndexedDB をクリアしても、SWR が直後にキャッシュ状態を更新した瞬間に同じデータを書き戻すため、クリアが無効になることがあります。
+
+回避策:
+
+- DevTools → Sources タブで実行を **Pause**（F8）してから IndexedDB をクリアしてリロードする
+- もしくは対象タブを **閉じてから** 別タブで開き直す

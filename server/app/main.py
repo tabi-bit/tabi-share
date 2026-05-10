@@ -15,7 +15,7 @@ from app.errors import (
     validation_exception_handler,
 )
 
-from .routers import blocks, pages, trips
+from .routers import blocks, pages, trip_urls, trips
 
 settings = get_settings()
 
@@ -79,6 +79,7 @@ app.add_middleware(
 app.include_router(trips.router)
 app.include_router(pages.router)
 app.include_router(blocks.router)
+app.include_router(trip_urls.router)
 
 
 app.add_exception_handler(ErrorResponseException, error_response_exception_handler)

@@ -22,6 +22,7 @@ from app.models import Block, Page
 
 # ---- Basic 認証 ----
 
+
 def require_basic_auth(
     credentials: HTTPBasicCredentials = Depends(HTTPBasic()),
 ) -> None:
@@ -39,6 +40,7 @@ def require_basic_auth(
             detail="認証に失敗しました",
             headers={"WWW-Authenticate": "Basic"},
         )
+
 
 SESSION_COOKIE_NAME = "tabishare_session"
 
@@ -84,9 +86,7 @@ def _set_session_cookie(response: Response, trip_ids: set[int]) -> None:
     )
 
 
-def grant_trip_access(
-    request: Request, response: Response, trip_id: int
-) -> None:
+def grant_trip_access(request: Request, response: Response, trip_id: int) -> None:
     """指定 trip_id へのアクセス権を Cookie に追記する。
 
     既存 Cookie の trip_ids を読み、`trip_id` をマージしてから再発行する。

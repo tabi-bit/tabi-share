@@ -49,6 +49,11 @@ class Settings(BaseSettings):
         "https://st.tabishare.net",
     ]
 
+    # Gemini API（URL ストックの AI 要約用）
+    # 未設定時は AI 要約をスキップして title/og:image のみ返す
+    gemini_api_key: str | None = None
+    gemini_model: str = "gemini-2.5-flash-lite"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

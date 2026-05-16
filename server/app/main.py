@@ -9,11 +9,13 @@ from fastapi.responses import HTMLResponse, JSONResponse
 
 from app.auth import require_basic_auth
 from app.config import get_settings
+from app.db_connection import engine
 from app.errors import (
     ErrorResponseException,
     error_response_exception_handler,
     validation_exception_handler,
 )
+from app.observability import setup_observability
 
 from .routers import blocks, pages, trips
 
@@ -75,6 +77,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+setup_observability(app, engine)
 
 app.include_router(trips.router)
 app.include_router(pages.router)

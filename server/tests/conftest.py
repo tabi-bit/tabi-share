@@ -20,6 +20,7 @@ from app.cruds import pages as pages_cruds
 from app.cruds import trips as trips_cruds
 from app.db_connection import Base, get_db_session
 from app.main import app
+from app.observability import setup_sqlalchemy_instrumentation
 from app.schemas.block import Block as BlockSchema
 from app.schemas.block import BlockCreate
 from app.schemas.page import Page, PageCreate
@@ -33,6 +34,10 @@ test_engine: AsyncEngine = create_async_engine(
     echo=False,
     poolclass=NullPool,
 )
+
+# 計装 SQL イベントをテスト engine にも attach し、ミドルウェア出力が
+# 本番と同じ統計を持つようにする
+setup_sqlalchemy_instrumentation(test_engine)
 
 # テスト用の非同期セッションファクトリ
 TestingAsyncSessionLocal = async_sessionmaker(

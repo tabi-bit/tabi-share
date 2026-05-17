@@ -1,6 +1,6 @@
 import useEmblaCarousel from 'embla-carousel-react';
 import { useAtom, useAtomValue } from 'jotai';
-import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useRef } from 'react';
 import { selectedPageIdAtom, tripPagesAtom } from '@/atoms/tripPage';
 import { cn } from '@/lib/utils';
 import type { Page } from '@/types';
@@ -15,20 +15,22 @@ type PageSwipeContainerProps = {
 const PageSwipeContainer = ({ renderPage, activeSlideScrollRef, className }: PageSwipeContainerProps) => {
   const pages = useAtomValue(tripPagesAtom);
   const [selectedPageId, setSelectedPageId] = useAtom(selectedPageIdAtom);
-  const selectedIndex = pages.findIndex(p => p.id === selectedPageId);
-  const [activeSnapIndex, setActiveSnapIndex] = useState(selectedIndex >= 0 ? selectedIndex : 0);
+  // ドット表示も含めて selectedPageId を単一の真実の源とする
+  const activeSnapIndex = useMemo(() => {
+    const idx = pages.findIndex(p => p.id === selectedPageId);
+    return idx >= 0 ? idx : 0;
+  }, [pages, selectedPageId]);
   const slideRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   const [emblaRef, emblaApi] = useEmblaCarousel({
-    startIndex: selectedIndex >= 0 ? selectedIndex : 0,
+    startIndex: activeSnapIndex,
     watchSlides: true,
   });
 
-  // スワイプ → selectedPageId の同期 + ドットインジケーター更新
+  // スワイプ → selectedPageId の同期
   const onSelect = useCallback(() => {
     if (!emblaApi) return;
     const index = emblaApi.selectedScrollSnap();
-    setActiveSnapIndex(index);
     const page = pages[index];
     if (page && page.id !== selectedPageId) {
       setSelectedPageId(page.id);

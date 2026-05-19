@@ -22,6 +22,13 @@
 - リアルタイム協調編集は後勝ちルールで競合解決
 - UIテキストと仕様書は日本語で記述
 
+## ブランチ運用
+
+- **メインブランチは `develop`**。通常の feature / fix / chore PR はすべて `develop` を base にする
+- `main` はリリース専用。`develop` → `main` のリリース PR でのみ使用する（緊急時は `hotfix/*` から直接 `main` も可）
+- GitHub のデフォルトブランチも `develop` に設定されている
+- Claude Code が起動時に `Main branch: main` と表示することがあるが、それは GitHub の "main" 概念のことではなく、運用上のメインブランチとは別物。実態は `gh repo view --json defaultBranchRef` か既存 PR の base で確認すること
+
 ## 共通コーディング規約
 
 [@docs/coding_standards.md](docs/coding_standards.md)

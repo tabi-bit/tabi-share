@@ -2,9 +2,18 @@
 Add Trip, Page, Block, and Location models with relationships.
 """
 
-from datetime import datetime
+from datetime import date, datetime
 
-from sqlalchemy import CheckConstraint, DateTime, Float, ForeignKey, String, Text, func
+from sqlalchemy import (
+    CheckConstraint,
+    Date,
+    DateTime,
+    Float,
+    ForeignKey,
+    String,
+    Text,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .db_connection import Base
@@ -44,6 +53,12 @@ class Location(Base):
 
 class Trip(Base):
     __tablename__ = "trips"
+    __table_args__ = (
+        CheckConstraint(
+            "start_date IS NULL OR end_date IS NULL OR start_date <= end_date",
+            name="ck_trips_start_date_le_end_date",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     url_id: Mapped[str] = mapped_column(
@@ -58,6 +73,12 @@ class Trip(Base):
     )
     detail: Mapped[str | None] = mapped_column(
         Text, nullable=True, comment="Detailed description of the trip"
+    )
+    start_date: Mapped[date | None] = mapped_column(
+        Date, nullable=True, comment="旅程開始日"
+    )
+    end_date: Mapped[date | None] = mapped_column(
+        Date, nullable=True, comment="旅程終了日"
     )
     # Relationships
     pages: Mapped[list["Page"]] = relationship(
@@ -81,6 +102,9 @@ class Page(Base):
     )
     title: Mapped[str] = mapped_column(
         String(200), nullable=False, comment="Title of the page"
+    )
+    date: Mapped[date | None] = mapped_column(
+        Date, nullable=True, comment="ページの単日程"
     )
     # Relationships
     trip: Mapped["Trip"] = relationship(

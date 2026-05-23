@@ -141,9 +141,12 @@ jobs:
           region: ${{ env.REGION }}
           project_id: ${{ env.PROJECT_ID }}
           service_account: ${{ env.RUNTIME_SA }}
+          # DB は外部 Neon (DATABASE_URL を介して TCP/SSL 接続) を使用するため、
+          # 古いリビジョンに残っている Cloud SQL アノテーションをデプロイのたびに明示的に外す
           flags: |
             --allow-unauthenticated
             --port=8080
+            --clear-cloudsql-instances
             --set-secrets=DATABASE_URL=${{ steps.target.outputs.secret }}:latest
             --set-secrets=API_DOCS_USERNAME=${{ steps.target.outputs.api_docs_username }}:latest
             --set-secrets=API_DOCS_PASSWORD=${{ steps.target.outputs.api_docs_password }}:latest

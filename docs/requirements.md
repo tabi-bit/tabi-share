@@ -101,14 +101,15 @@
 #### バックエンド
 
 - **フレームワーク**: Python + FastAPI
-- **データベース**: MySQL
+- **データベース**: PostgreSQL (Neon)
 - **リアルタイム通信**: WebSocket（Socket.io検討）
 
 #### インフラ
 
 - **フロントエンド**: Firebase Hosting
-- **バックエンド**: Railway
-- **データベース**: Railway MySQL
+- **バックエンド**: GCP Cloud Run (asia-northeast1)
+- **データベース**: Neon Postgres
+  - DB のリージョン移行手順は [`db-migration.md`](db-migration.md) を参照
 
 #### 外部API
 

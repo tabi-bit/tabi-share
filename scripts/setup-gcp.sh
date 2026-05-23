@@ -2,7 +2,12 @@
 # =============================================================================
 # GCP インフラ初回セットアップスクリプト
 # 実行: bash scripts/setup-gcp.sh
-# 前提: gcloud CLI がインストール済みで認証済みであること
+# 前提:
+#   - gcloud CLI がインストール済みで認証済みであること
+#   - 環境変数 GCP_PROJECT_ID をセット済みであること
+#   - DB は外部マネージド (Neon) を使用する前提。事前に Neon Project を作成し、
+#     DATABASE_URL_PROD / DATABASE_URL_STAGING Secret を手動で登録しておくこと。
+#     DB のリージョン移行手順は docs/db-migration.md を参照。
 # =============================================================================
 set -euo pipefail
 
@@ -17,9 +22,6 @@ if [[ "${PROJECT_ID}" == "your-project-id" || -z "${PROJECT_ID}" ]]; then
   echo "エラー: GCP_PROJECT_ID 環境変数を設定するか、スクリプト内の PROJECT_ID を編集してください。" >&2
   exit 1
 fi
-INSTANCE_NAME="tabi-share-db"
-DB_VERSION="POSTGRES_16"
-DB_TIER="db-f1-micro"
 
 REPO_NAME="tabi-share"
 ARTIFACT_REGISTRY="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}"
@@ -39,9 +41,9 @@ fi
 WIF_POOL_NAME="github-actions-pool"
 WIF_PROVIDER_NAME="github-actions-provider"
 
-DB_USER="tabi_share"
-PROD_DB="prod_db"
-STAGING_DB="staging_db"
+# DB は外部マネージド (Neon) を使用するため、Cloud SQL 関連の変数は使用しない。
+# 過去に Cloud SQL を使う想定だった名残として INSTANCE_NAME 等の変数は残してあるが、
+# 本スクリプトでは参照していない。GCP 内 DB に切替える場合の参考は git log で辿れる。
 
 CLOUD_RUN_PROD="tabi-share-api-prod"
 CLOUD_RUN_STAGING="tabi-share-api-staging"
@@ -50,9 +52,10 @@ CLOUD_RUN_STAGING="tabi-share-api-staging"
 # Section 2: GCP API 有効化
 # =============================================================================
 echo "==> GCP API を有効化しています..."
+# sqladmin.googleapis.com は外部マネージド DB (Neon) を使うため有効化していない。
+# GCP 内 Cloud SQL に切り替える場合は sqladmin.googleapis.com を追加すること。
 gcloud services enable \
   run.googleapis.com \
-  sqladmin.googleapis.com \
   artifactregistry.googleapis.com \
   secretmanager.googleapis.com \
   iam.googleapis.com \
@@ -88,10 +91,8 @@ if ! gcloud iam service-accounts describe "${RUNTIME_SA}" \
     --project="${PROJECT_ID}"
 fi
 
-# Cloud SQL クライアント権限
-gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
-  --member="serviceAccount:${RUNTIME_SA}" \
-  --role="roles/cloudsql.client"
+# 外部マネージド DB (Neon) を TCP/SSL で叩くため、Cloud SQL クライアント権限は不要。
+# GCP 内 Cloud SQL に切り替える場合は roles/cloudsql.client を付与すること。
 
 echo "ランタイム SA 設定完了: ${RUNTIME_SA}"
 # Note: Secret Manager の読み取り権限は Section 7 で個別シークレットに対して付与する。
@@ -173,96 +174,35 @@ echo "================================================"
 echo ""
 
 # =============================================================================
-# Section 6: Cloud SQL インスタンス・DB・ユーザー作成
+# Section 6: DB (Neon) は外部で作成する
 # =============================================================================
-echo "==> Cloud SQL インスタンスを作成しています (数分かかります)..."
-if ! gcloud sql instances describe "${INSTANCE_NAME}" \
-    --project="${PROJECT_ID}" &>/dev/null; then
-  gcloud sql instances create "${INSTANCE_NAME}" \
-    --database-version="${DB_VERSION}" \
-    --edition=ENTERPRISE \
-    --tier="${DB_TIER}" \
-    --region="${REGION}" \
-    --storage-type=SSD \
-    --storage-size=10GB \
-    --storage-auto-increase \
-    --backup-start-time=03:00 \
-    --require-ssl \
-    --project="${PROJECT_ID}"
-  echo "Cloud SQL インスタンス作成完了"
-else
-  echo "Cloud SQL インスタンスは既に存在します"
-fi
+# このプロジェクトでは Cloud SQL ではなく Neon (外部マネージド Postgres) を使用する。
+# Neon Project の作成とリージョン移行手順は docs/db-migration.md を参照。
+# 本スクリプトでは Cloud Run から DB に繋ぐための Secret (DATABASE_URL_*) が
+# 既に登録済みであることを前提とし、IAM 権限の付与のみ行う。
 
-# データベース作成
-for DB_NAME in "${PROD_DB}" "${STAGING_DB}"; do
-  if ! gcloud sql databases describe "${DB_NAME}" \
-      --instance="${INSTANCE_NAME}" --project="${PROJECT_ID}" &>/dev/null; then
-    gcloud sql databases create "${DB_NAME}" \
-      --instance="${INSTANCE_NAME}" \
-      --project="${PROJECT_ID}"
-    echo "DB 作成完了: ${DB_NAME}"
-  else
-    echo "DB は既に存在します: ${DB_NAME}"
+# =============================================================================
+# Section 7: DATABASE_URL Secret の存在チェックと IAM 設定
+# =============================================================================
+echo "==> DATABASE_URL_* Secret の存在を確認しています..."
+for SECRET_NAME in "DATABASE_URL_PROD" "DATABASE_URL_STAGING"; do
+  if ! gcloud secrets describe "${SECRET_NAME}" \
+      --project="${PROJECT_ID}" &>/dev/null; then
+    echo "エラー: Secret '${SECRET_NAME}' が存在しません。" >&2
+    echo "  先に Neon の接続文字列を取得し、以下のように登録してください:" >&2
+    echo "    printf '%s' '<DATABASE_URL>' | gcloud secrets versions add ${SECRET_NAME} --data-file=- --project=${PROJECT_ID}" >&2
+    echo "  Secret 自体が無ければ versions add の代わりに create を使用してください。" >&2
+    exit 1
   fi
 done
 
-# Cloud SQL ユーザー作成
-echo "==> Cloud SQL ユーザーを作成しています..."
-DB_PASSWORD=$(openssl rand -hex 24)
-if ! gcloud sql users describe "${DB_USER}" \
-    --instance="${INSTANCE_NAME}" --project="${PROJECT_ID}" &>/dev/null; then
-  gcloud sql users create "${DB_USER}" \
-    --instance="${INSTANCE_NAME}" \
-    --password="${DB_PASSWORD}" \
-    --project="${PROJECT_ID}"
-  echo "DB ユーザー作成完了: ${DB_USER}"
-  echo "パスワードは Secret Manager (DATABASE_URL_PROD / DATABASE_URL_STAGING) に保存されます。"
-else
-  echo "DB ユーザーは既に存在します: ${DB_USER}"
-  echo "このスクリプトでは既存のパスワードを取得できないため、処理を中断します。"
-  echo "Secret Manager の DATABASE_URL_PROD と DATABASE_URL_STAGING は手動で設定してください:"
-  echo "  postgresql://${DB_USER}:<パスワード>@/<DB名>?host=/cloudsql/${PROJECT_ID}:${REGION}:${INSTANCE_NAME}"
-  echo "パスワードをリセットする場合: gcloud sql users set-password ${DB_USER} --instance=${INSTANCE_NAME} --project=${PROJECT_ID}"
-  exit 1
-fi
-
-# =============================================================================
-# Section 7: DATABASE_URL を Secret Manager に登録
-# =============================================================================
-# Cloud SQL Auth Proxy (Unix ソケット) 経由で接続する形式を使用。
-# Public IP は不要なため取得しない。
-for ENV in prod staging; do
-  if [ "${ENV}" = "prod" ]; then
-    DB_NAME="${PROD_DB}"
-    SECRET_NAME="DATABASE_URL_PROD"
-  else
-    DB_NAME="${STAGING_DB}"
-    SECRET_NAME="DATABASE_URL_STAGING"
-  fi
-
-  DATABASE_URL="postgresql://${DB_USER}:${DB_PASSWORD}@/${DB_NAME}?host=/cloudsql/${PROJECT_ID}:${REGION}:${INSTANCE_NAME}"
-
-  if gcloud secrets describe "${SECRET_NAME}" \
-      --project="${PROJECT_ID}" &>/dev/null; then
-    echo "${DATABASE_URL}" | gcloud secrets versions add "${SECRET_NAME}" \
-      --data-file=- --project="${PROJECT_ID}"
-    echo "Secret 更新完了: ${SECRET_NAME}"
-  else
-    echo "${DATABASE_URL}" | gcloud secrets create "${SECRET_NAME}" \
-      --data-file=- --project="${PROJECT_ID}"
-    echo "Secret 作成完了: ${SECRET_NAME}"
-  fi
-
-  # ランタイム SA に Secret アクセス権を付与
+# ランタイム SA と GitHub Actions SA に Secret 読み取り権限を付与。
+# 後者はマイグレーション実行 (Cloud Run Jobs) で DATABASE_URL を参照するため必要。
+for SECRET_NAME in "DATABASE_URL_PROD" "DATABASE_URL_STAGING"; do
   gcloud secrets add-iam-policy-binding "${SECRET_NAME}" \
     --member="serviceAccount:${RUNTIME_SA}" \
     --role="roles/secretmanager.secretAccessor" \
     --project="${PROJECT_ID}"
-done
-
-# GitHub Actions SA にも Secret 読み取り権限を付与 (マイグレーション実行用)
-for SECRET_NAME in "DATABASE_URL_PROD" "DATABASE_URL_STAGING"; do
   gcloud secrets add-iam-policy-binding "${SECRET_NAME}" \
     --member="serviceAccount:${GITHUB_SA}" \
     --role="roles/secretmanager.secretAccessor" \

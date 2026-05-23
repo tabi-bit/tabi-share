@@ -198,6 +198,13 @@ describe('ViewTimeline', () => {
   });
 
   describe('同一 startTime グループ表示', () => {
+    it('単一ブロックのときはコンテナ枠（bg-neutral-100/60）が描画されない', () => {
+      const block = makeSchedule(1, at(9), at(10));
+      const { container } = render(<ViewTimeline blocks={[block]} />);
+
+      expect(container.querySelector('.bg-neutral-100\\/60')).toBeNull();
+    });
+
     it('同一 startTime の2ブロックが1つのコンテナにまとめて描画される', () => {
       const a = makeSchedule(1, at(9), at(10));
       const b = makeSchedule(2, at(9), at(11));

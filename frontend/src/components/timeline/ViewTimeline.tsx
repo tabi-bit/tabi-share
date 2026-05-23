@@ -1,12 +1,11 @@
 import { useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import type { Block } from '@/types/block';
-import { BlockScheduleView } from '../blocks/view/BlockScheduleView';
-import { BlockTransportationView } from '../blocks/view/BlockTransportationView';
+import { ViewTimelineItem } from './ViewTimelineItem';
 
 // --- 型定義 ---
 
-interface OverlapGroup {
+export interface OverlapGroup {
   blocks: Block[];
   headerBlock: Block | null; // endTime=null のブロック（あれば）
   containerBlocks: Block[]; // コンテナ内に表示するブロック
@@ -14,7 +13,7 @@ interface OverlapGroup {
   groupEnd: Date | null; // 全ブロックの max endTime（全 null なら null）
 }
 
-interface TimelineItem {
+export interface TimelineItem {
   id: string;
   type: 'group' | 'gap';
   group?: OverlapGroup;
@@ -25,27 +24,6 @@ interface ViewTimelineProps {
   blocks: Block[];
   className?: string;
 }
-
-// --- ユーティリティ ---
-
-const formatTime = (date: Date): string => {
-  return date.toLocaleTimeString('ja-JP', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  });
-};
-
-const renderBlock = (block: Block) => {
-  switch (block.type) {
-    case 'schedule':
-      return <BlockScheduleView block={block} />;
-    case 'transportation':
-      return <BlockTransportationView block={block} />;
-    default:
-      return null;
-  }
-};
 
 // --- ソート ---
 
@@ -158,163 +136,3 @@ export function ViewTimeline({ blocks, className }: ViewTimelineProps) {
     </div>
   );
 }
-
-// --- 単一ブロック表示（既存と同じ） ---
-
-interface SingleBlockTimelineProps {
-  block: Block;
-  isConnectedWithNext: boolean;
-  isLastItem: boolean;
-}
-
-function SingleBlockTimeline({ block, isConnectedWithNext, isLastItem }: SingleBlockTimelineProps) {
-  const themeColor = block.type === 'schedule' ? 'bg-teal-400' : 'bg-sky-200';
-
-  return (
-    <div className='contents'>
-      {/* 時間軸(左) */}
-      <div className='flex flex-row gap-2'>
-        <div className='flex flex-col justify-between'>
-          <div className='flex h-6 flex-row items-center font-medium text-14px text-gray-700 sm:h-8 sm:text-18px'>
-            {formatTime(block.startTime)}
-          </div>
-          {!isConnectedWithNext && block.endTime && (
-            <div className='flex h-6 flex-row items-center font-medium text-14px text-gray-700 sm:h-8 sm:text-18px'>
-              {formatTime(block.endTime)}
-            </div>
-          )}
-        </div>
-        <div className='flex min-h-24 flex-col items-center justify-between'>
-          <div className={cn('h-6 w-6 shrink-0 rounded-full sm:h-8 sm:w-8', themeColor)} />
-          {block.endTime ? (
-            <div className={cn('-my-4 h-full w-2', themeColor)}></div>
-          ) : (
-            !isLastItem && <DottedLine className='h-full self-end' />
-          )}
-          {!isConnectedWithNext && block.endTime && (
-            <div className={cn('h-6 w-6 shrink-0 rounded-full sm:h-8 sm:w-8', themeColor)} />
-          )}
-        </div>
-      </div>
-
-      {/* ブロック内容(右) */}
-      <div className='pb-4'>{renderBlock(block)}</div>
-    </div>
-  );
-}
-
-// --- 複数ブロックグループ表示 ---
-
-interface MultiBlockGroupTimelineProps {
-  group: OverlapGroup;
-  isConnectedWithNext: boolean;
-  isLastItem: boolean;
-}
-
-function MultiBlockGroupTimeline({ group, isConnectedWithNext, isLastItem }: MultiBlockGroupTimelineProps) {
-  const hasSchedule = group.blocks.some(b => b.type === 'schedule');
-  const themeColor = hasSchedule ? 'bg-teal-400' : 'bg-sky-200';
-
-  return (
-    <div className='contents'>
-      {/* 時間軸(左) */}
-      <div className='flex flex-row gap-2'>
-        <div className='flex flex-col justify-between'>
-          <div className='flex h-6 flex-row items-center font-medium text-14px text-gray-700 sm:h-8 sm:text-18px'>
-            {formatTime(group.groupStart)}
-          </div>
-          {!isConnectedWithNext && group.groupEnd && (
-            <div className='flex h-6 flex-row items-center font-medium text-14px text-gray-700 sm:h-8 sm:text-18px'>
-              {formatTime(group.groupEnd)}
-            </div>
-          )}
-        </div>
-        <div className='flex min-h-24 flex-col items-center justify-between'>
-          <div className={cn('h-6 w-6 shrink-0 rounded-full sm:h-8 sm:w-8', themeColor)} />
-          {group.groupEnd ? (
-            <div className={cn('-my-4 h-full w-2', themeColor)}></div>
-          ) : (
-            !isLastItem && <DottedLine className='h-full self-end' />
-          )}
-          {!isConnectedWithNext && group.groupEnd && (
-            <div className={cn('h-6 w-6 shrink-0 rounded-full sm:h-8 sm:w-8', themeColor)} />
-          )}
-        </div>
-      </div>
-
-      {/* ブロック内容(右) */}
-      <div className='flex flex-col gap-2 pb-4'>
-        {/* ヘッダーブロック（endTime=null） */}
-        {group.headerBlock && renderBlock(group.headerBlock)}
-
-        {/* コンテナ（他のブロック） */}
-        {group.containerBlocks.length > 0 && (
-          <div className='flex flex-col gap-3 rounded-xl bg-neutral-100/60 p-3'>
-            {group.containerBlocks.map(block => (
-              <div key={block.id}>
-                <div className='mb-1 font-medium text-12px text-neutral-500'>
-                  {formatTime(block.startTime)}
-                  {block.endTime && `–${formatTime(block.endTime)}`}
-                </div>
-                {renderBlock(block)}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// --- タイムラインアイテム ---
-
-interface ViewTimelineItemProps {
-  item: TimelineItem;
-  isLastItem: boolean;
-}
-
-function ViewTimelineItem({ item, isLastItem }: ViewTimelineItemProps) {
-  if (item.type === 'gap') {
-    return (
-      <div className='contents'>
-        <DottedLine />
-        <div />
-      </div>
-    );
-  }
-
-  const group = item.group;
-  if (!group) return null;
-  const isSingleBlock = group.blocks.length === 1;
-
-  if (isSingleBlock) {
-    return (
-      <SingleBlockTimeline
-        block={group.blocks[0]}
-        isConnectedWithNext={item.isConnectedWithNextGroup ?? false}
-        isLastItem={isLastItem}
-      />
-    );
-  }
-
-  return (
-    <MultiBlockGroupTimeline
-      group={group}
-      isConnectedWithNext={item.isConnectedWithNextGroup ?? false}
-      isLastItem={isLastItem}
-    />
-  );
-}
-
-// --- 破線 ---
-
-const DottedLine = ({ ...props }: React.ComponentProps<'div'>) => {
-  const { className, ...rest } = props;
-
-  return (
-    <div className={cn('flex h-8 flex-row pe-2.5 sm:pe-3.5', className)} {...rest}>
-      <div className='grow border-neutral-600 border-r-2 border-dashed' />
-      <div className='border-neutral-600 border-l-2 border-dashed'></div>
-    </div>
-  );
-};

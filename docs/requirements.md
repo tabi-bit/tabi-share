@@ -109,7 +109,7 @@
 - **フロントエンド**: Firebase Hosting
 - **バックエンド**: GCP Cloud Run (asia-northeast1)
 - **データベース**: Neon Postgres
-  - DB のリージョン移行手順は [`db-migration.md`](db-migration.md) を参照
+  - DB に対する破壊的変更（リージョン移行、プロバイダ移行、メジャーバージョン更新等）の運用手順は [`db-operations.md`](db-operations.md) を参照
 
 #### 外部API
 

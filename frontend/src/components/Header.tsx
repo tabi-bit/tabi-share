@@ -223,7 +223,7 @@ function HeaderFull({ className, scrollContainerRef, isDraggingRef, ...props }: 
       <AddPageDialog
         open={addPageDialogOpen}
         onOpenChange={setAddPageDialogOpen}
-        tripId={trip.id}
+        trip={trip}
         onCreated={page => {
           setSelectedPageId(page.id);
         }}
@@ -235,6 +235,7 @@ function HeaderFull({ className, scrollContainerRef, isDraggingRef, ...props }: 
           open={editPageDialogOpen}
           onOpenChange={setEditPageDialogOpen}
           page={selectedPage}
+          trip={trip}
           onDeleted={pageId => {
             const remainingPages = pages.filter(p => p.id !== pageId);
             if (remainingPages.length > 0) {

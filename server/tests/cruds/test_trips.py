@@ -1,4 +1,7 @@
+from datetime import date
+
 import pytest
+from pydantic import ValidationError
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -161,6 +164,73 @@ async def test_update_trip(db_session: AsyncSession):
 
     # assert
     assert non_existent_trip is None
+
+
+@pytest.mark.asyncio
+async def test_create_trip_with_dates(db_session: AsyncSession):
+    """
+    create_trip()/正常系/start_date と end_date を持つ
+    """
+    # arrange
+    trip_in = TripCreateIn(
+        title="trip with dates",
+        detail=None,
+        start_date=date(2026, 5, 1),
+        end_date=date(2026, 5, 3),
+    )
+
+    # act
+    trip_id = await trips_cruds.create_trip(
+        db=db_session, trip=trip_in, url_id="url_with_dates"
+    )
+    db_trip = await trips_cruds.get_trip(db=db_session, trip_id=trip_id)
+
+    # assert
+    assert db_trip is not None
+    assert db_trip.start_date == date(2026, 5, 1)
+    assert db_trip.end_date == date(2026, 5, 3)
+
+
+def test_trip_schema_rejects_inverted_date_range():
+    """
+    TripCreateIn/異常系/start_date > end_date は ValidationError
+    """
+    with pytest.raises(ValidationError):
+        TripCreateIn(
+            title="invalid",
+            detail=None,
+            start_date=date(2026, 5, 3),
+            end_date=date(2026, 5, 1),
+        )
+
+
+@pytest.mark.asyncio
+async def test_update_trip_dates_overwrite(db_session: AsyncSession):
+    """
+    update_trip()/正常系/後勝ち全置換で日付フィールドが上書きされる
+    """
+    # arrange
+    trip_in = TripCreateIn(
+        title="initial",
+        detail=None,
+        start_date=date(2026, 5, 1),
+        end_date=date(2026, 5, 3),
+    )
+    trip_id = await trips_cruds.create_trip(
+        db=db_session, trip=trip_in, url_id="url_update_dates"
+    )
+
+    # act: 日付を None にして送り、全置換で消えることを確認
+    updated = await trips_cruds.update_trip(
+        db=db_session,
+        trip_id=trip_id,
+        trip=TripUpdate(title="cleared", detail=None, start_date=None, end_date=None),
+    )
+
+    # assert
+    assert updated is not None
+    assert updated.start_date is None
+    assert updated.end_date is None
 
 
 @pytest.mark.asyncio

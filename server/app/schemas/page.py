@@ -1,3 +1,5 @@
+import datetime
+
 from pydantic import BaseModel, ConfigDict
 
 from .block import Block
@@ -5,6 +7,7 @@ from .block import Block
 
 class PageBase(BaseModel):
     title: str
+    date: datetime.date | None = None
 
 
 class PageCreate(PageBase):

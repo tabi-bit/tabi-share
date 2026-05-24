@@ -17,6 +17,41 @@ export const formatDateOnly = (value: Date): string => dayjs(value).format('YYYY
 export const formatDateDisplay = (value: Date): string => dayjs(value).format('YYYY/MM/DD');
 
 /**
+ * `Date` を `M/D(曜)` 形式に変換する。Header の Page Select や Trip 期間サブタイトルなど省スペース用途向け。
+ */
+export const formatDateMDWithDow = (value: Date): string => dayjs(value).format('M/D(dd)');
+
+/**
+ * `Date` を `YYYY/MM/DD(曜)` 形式に変換する。HomePage 旅程カードや EditTripDialog などフル表示向け。
+ */
+export const formatDateYMDWithDow = (value: Date): string => dayjs(value).format('YYYY/MM/DD(dd)');
+
+const formatRange = (
+  start: Date | null | undefined,
+  end: Date | null | undefined,
+  formatter: (d: Date) => string
+): string | null => {
+  if (!(start || end)) return null;
+  const startStr = start ? formatter(start) : '';
+  const endStr = end ? formatter(end) : '';
+  return `${startStr} 〜 ${endStr}`;
+};
+
+/**
+ * Trip 期間を `M/D(曜) 〜 M/D(曜)` 形式に整形する。片方のみ設定時は片側を省略 (`M/D(曜) 〜` / `〜 M/D(曜)`)。
+ * 両方未設定の場合は `null` を返す。
+ */
+export const formatTripRangeMD = (start: Date | null | undefined, end: Date | null | undefined): string | null =>
+  formatRange(start, end, formatDateMDWithDow);
+
+/**
+ * Trip 期間を `YYYY/MM/DD(曜) 〜 YYYY/MM/DD(曜)` 形式に整形する。片方のみ設定時は片側を省略。
+ * 両方未設定の場合は `null` を返す。
+ */
+export const formatTripRangeYMD = (start: Date | null | undefined, end: Date | null | undefined): string | null =>
+  formatRange(start, end, formatDateYMDWithDow);
+
+/**
  * `date` が `[start, end]` の範囲外かを判定する。`start` / `end` が未指定（`null` / `undefined`）の場合はその境界はチェックしない。
  * `date` が `null` のときは常に `false`（未設定は範囲外とみなさない）。
  */

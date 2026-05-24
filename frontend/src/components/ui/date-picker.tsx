@@ -1,3 +1,4 @@
+import { ja } from 'date-fns/locale/ja';
 import { CalendarIcon, XIcon } from 'lucide-react';
 import { useState } from 'react';
 import type { DateRange } from 'react-day-picker';
@@ -52,6 +53,7 @@ export const DatePicker = ({
         </PopoverTrigger>
         <PopoverContent className='w-auto p-0' align='start'>
           <Calendar
+            locale={ja}
             mode='single'
             selected={value ?? undefined}
             defaultMonth={value ?? highlightStart ?? undefined}
@@ -120,6 +122,7 @@ export const DateRangePicker = ({ start, end, onChange, placeholder = '期間を
         </PopoverTrigger>
         <PopoverContent className='w-auto p-0' align='start'>
           <Calendar
+            locale={ja}
             mode='range'
             selected={{ from: start ?? undefined, to: end ?? undefined } as DateRange}
             defaultMonth={start ?? end ?? undefined}

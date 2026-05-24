@@ -23,6 +23,39 @@ const demoPages: Page[] = [
 
 const singlePage: Page[] = [{ id: 1, title: '日帰り旅行', tripId: 1 }];
 
+const demoTripWithDates: Trip = {
+  id: 1,
+  title: '北海道旅行',
+  urlId: 'trip1',
+  startDate: new Date(2026, 4, 24),
+  endDate: new Date(2026, 4, 26),
+};
+
+const demoTripStartOnly: Trip = {
+  id: 1,
+  title: '北海道旅行',
+  urlId: 'trip1',
+  startDate: new Date(2026, 4, 24),
+};
+
+const pagesWithDates: Page[] = [
+  { id: 1, title: '札幌観光', tripId: 1, date: new Date(2026, 4, 24) },
+  { id: 2, title: '小樽散策', tripId: 1, date: new Date(2026, 4, 25) },
+  { id: 3, title: '函館見学', tripId: 1, date: new Date(2026, 4, 26) },
+];
+
+const mixedDatePages: Page[] = [
+  { id: 1, title: '札幌観光', tripId: 1, date: new Date(2026, 4, 24) },
+  { id: 2, title: '札幌観光（B案）', tripId: 1, date: new Date(2026, 4, 24) },
+  { id: 3, title: '小樽散策', tripId: 1, date: new Date(2026, 4, 25) },
+  { id: 4, title: '予備プラン', tripId: 1, date: null },
+];
+
+const longTitlePages: Page[] = [
+  { id: 1, title: '北海道満喫ガッツリ堪能プラン', tripId: 1, date: new Date(2026, 4, 24) },
+  { id: 2, title: '小樽運河と寿司めぐり', tripId: 1, date: new Date(2026, 4, 25) },
+];
+
 /** Storybook 用に atom を初期化するラッパー */
 const AtomHydrator = ({
   trip,
@@ -226,6 +259,117 @@ export const WithCustomClass: Story = {
     docs: {
       description: {
         story: 'カスタムCSSクラスを適用した例。下部に青い境界線が追加されます。',
+      },
+    },
+  },
+};
+
+export const WithDateRange: Story = {
+  args: {
+    variant: 'full',
+    scrollContainerRef: { current: null },
+    isDraggingRef: { current: false },
+  },
+  decorators: [
+    Story => {
+      const store = createStore();
+      return (
+        <Provider store={store}>
+          <AtomHydrator trip={demoTripWithDates} pages={pagesWithDates} selectedPageId={1} mode='view'>
+            <Story />
+          </AtomHydrator>
+        </Provider>
+      );
+    },
+  ],
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Trip 期間あり・Page 日付ありの基本ケース。タイトル下に期間（M/D(曜)〜M/D(曜)）、Select に MM/DD(曜) · title。',
+      },
+    },
+  },
+};
+
+export const PartialDateRange: Story = {
+  args: {
+    variant: 'full',
+    scrollContainerRef: { current: null },
+    isDraggingRef: { current: false },
+  },
+  decorators: [
+    Story => {
+      const store = createStore();
+      return (
+        <Provider store={store}>
+          <AtomHydrator trip={demoTripStartOnly} pages={pagesWithDates} selectedPageId={1} mode='view'>
+            <Story />
+          </AtomHydrator>
+        </Provider>
+      );
+    },
+  ],
+  parameters: {
+    docs: {
+      description: {
+        story: 'Trip 期間が片方のみ（開始日のみ）設定されている場合。サブタイトルは `M/D(曜) 〜` のみ。',
+      },
+    },
+  },
+};
+
+export const MixedDatePages: Story = {
+  args: {
+    variant: 'full',
+    scrollContainerRef: { current: null },
+    isDraggingRef: { current: false },
+  },
+  decorators: [
+    Story => {
+      const store = createStore();
+      return (
+        <Provider store={store}>
+          <AtomHydrator trip={demoTripWithDates} pages={mixedDatePages} selectedPageId={1} mode='edit'>
+            <Story />
+          </AtomHydrator>
+        </Provider>
+      );
+    },
+  ],
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'date 重複（同日に A案/B案 のような複数 Page）と date=null（予備プラン）が混在するケース。並び順: date 昇順 → id 昇順 → null 末尾。',
+      },
+    },
+  },
+};
+
+export const LongPageTitle: Story = {
+  args: {
+    variant: 'full',
+    scrollContainerRef: { current: null },
+    isDraggingRef: { current: false },
+  },
+  decorators: [
+    Story => {
+      const store = createStore();
+      return (
+        <Provider store={store}>
+          <AtomHydrator trip={demoTripWithDates} pages={longTitlePages} selectedPageId={1} mode='view'>
+            <Story />
+          </AtomHydrator>
+        </Provider>
+      );
+    },
+  ],
+  parameters: {
+    docs: {
+      description: {
+        story:
+          '長いタイトルで Select トリガーが 2 行に折り返されるケース。狭いビューポートで顕著（max-w-[30vw] の制約による）。',
       },
     },
   },

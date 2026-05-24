@@ -12,6 +12,7 @@ import { selectedPageAtom, selectedPageIdAtom, tripAtom, tripModeAtom, tripPages
 import { AddPageDialog } from '@/dialogs/AddPageDialog';
 import { EditPageDialog } from '@/dialogs/EditPageDialog';
 import { EditTripDialog } from '@/dialogs/EditTripDialog';
+import { formatDateMDWithDow, formatTripRangeMD } from '@/lib/date';
 import { cn } from '@/lib/utils';
 import { Logo } from './Logo';
 import { NetworkStatusButton } from './NetworkStatusButton';
@@ -58,6 +59,7 @@ function HeaderFull({ className, scrollContainerRef, isDraggingRef, ...props }: 
   const [selectedPageId, setSelectedPageId] = useAtom(selectedPageIdAtom);
   const mode = useAtomValue(tripModeAtom);
   const selectedPage = useAtomValue(selectedPageAtom);
+  const tripRangeText = formatTripRangeMD(trip?.startDate, trip?.endDate);
 
   const [isScrolled, setIsScrolled] = useState(false);
   const [editPageDialogOpen, setEditPageDialogOpen] = useState(false);
@@ -89,21 +91,23 @@ function HeaderFull({ className, scrollContainerRef, isDraggingRef, ...props }: 
     // isScrolledの次の状態を計算する
     let nextIsScrolled = isScrolled;
 
-    if (scrollTop < 50) {
+    const scrollTopThreshold = 100;
+
+    if (scrollTop < scrollTopThreshold) {
       // ページ最上部では常に表示
       nextIsScrolled = false;
     }
 
     // スクロール末端のバウンスを無視
     const maxScroll = container.scrollHeight - container.clientHeight;
-    const isNearBottom = maxScroll - scrollTop < 50;
+    const isNearBottom = maxScroll - scrollTop < scrollTopThreshold;
 
     if (isNearBottom && isScrolled && deltaY < 0) {
       // 最下部バウンスではヘッダー展開しない（ベースラインも更新しない）
       return;
     }
 
-    if (scrollTop >= 50 && Math.abs(deltaY) > 10) {
+    if (scrollTop >= scrollTopThreshold && Math.abs(deltaY) > 10) {
       if (deltaY < 0 && isScrolled) {
         // 上スクロール and ヘッダーが非表示中 -> 表示させる
         nextIsScrolled = false;
@@ -151,7 +155,7 @@ function HeaderFull({ className, scrollContainerRef, isDraggingRef, ...props }: 
         {/* 左カラム */}
         <div
           className={cn(
-            'flex justify-start transition-[font-size] sm:justify-end',
+            'flex flex-col items-start transition-[font-size] sm:items-end',
             transitionClassNames,
             isScrolled ? 'text-14px sm:text-16px' : 'text-16px sm:text-20px'
           )}
@@ -166,7 +170,10 @@ function HeaderFull({ className, scrollContainerRef, isDraggingRef, ...props }: 
               <Pencil className='size-3 shrink-0 opacity-60' />
             </button>
           ) : (
-            trip.title
+            <span>{trip.title}</span>
+          )}
+          {!isScrolled && tripRangeText && (
+            <span className='text-12px text-slate-500 sm:text-14px'>{tripRangeText}</span>
           )}
         </div>
 
@@ -188,13 +195,13 @@ function HeaderFull({ className, scrollContainerRef, isDraggingRef, ...props }: 
               }
             }}
           >
-            <SelectTrigger className='max-w-[90vw] bg-white sm:max-w-[30vw]'>
+            <SelectTrigger className='h-auto min-h-9 max-w-[90vw] bg-white *:data-[slot=select-value]:line-clamp-none *:data-[slot=select-value]:min-w-0 *:data-[slot=select-value]:flex-wrap *:data-[slot=select-value]:gap-x-2 sm:max-w-[30vw]'>
               <SelectValue placeholder='ページ選択' />
             </SelectTrigger>
             <SelectContent className='max-w-[90vw]'>
               {pages.map(page => (
                 <SelectItem key={page.id} value={String(page.id)}>
-                  {page.title}
+                  <PageLabel page={page} />
                 </SelectItem>
               ))}
               {mode === 'edit' && (
@@ -344,6 +351,15 @@ const ShareButton = () => {
     </Button>
   );
 };
+
+const PageLabel = ({ page }: { page: { title: string; date?: Date | null } }) => (
+  <>
+    {page.date && (
+      <span className='whitespace-nowrap font-mono text-12px text-slate-500'>{formatDateMDWithDow(page.date)} ·</span>
+    )}
+    <span className='min-w-[7em] flex-1 truncate'>{page.title}</span>
+  </>
+);
 
 const PageInfoEditButton = ({ isScrolled, onClick }: { isScrolled: boolean; onClick?: () => void }) => (
   <HeaderButtonBase

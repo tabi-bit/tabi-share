@@ -1,135 +1,138 @@
+import { useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import type { Block } from '@/types/block';
-import { BlockScheduleView } from '../blocks/view/BlockScheduleView';
-import { BlockTransportationView } from '../blocks/view/BlockTransportationView';
+import { ViewTimelineItem } from './ViewTimelineItem';
+
+// --- 型定義 ---
+
+export interface OverlapGroup {
+  blocks: Block[];
+  headerBlock: Block | null; // endTime=null のブロック（あれば）
+  containerBlocks: Block[]; // コンテナ内に表示するブロック
+  groupStart: Date;
+  groupEnd: Date | null; // 全ブロックの max endTime（全 null なら null）
+}
+
+export interface TimelineItem {
+  id: string;
+  type: 'group' | 'gap';
+  group?: OverlapGroup;
+  isConnectedWithNextGroup?: boolean;
+}
 
 interface ViewTimelineProps {
   blocks: Block[];
   className?: string;
 }
 
-interface TimelineItem {
-  id: string;
-  type: 'block' | 'gap';
-  isConnectedWithNextBlock?: boolean; // 次のブロックの開始時間と終了時間が同じかどうか（blockタイプの場合）
-  block?: Block;
-}
+// --- ソート ---
 
-export function ViewTimeline({ blocks, className }: ViewTimelineProps) {
-  // ブロックを時間順にソート
-  const sortedBlocks = [...blocks].sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
+const sortBlocks = (blocks: Block[]): Block[] => {
+  return [...blocks].sort((a, b) => {
+    const startDiff = a.startTime.getTime() - b.startTime.getTime();
+    if (startDiff !== 0) return startDiff;
+    // startTime が同じ場合: endTime 昇順（null 先頭）
+    if (a.endTime === null && b.endTime === null) return 0;
+    if (a.endTime === null) return -1;
+    if (b.endTime === null) return 1;
+    return a.endTime.getTime() - b.endTime.getTime();
+  });
+};
 
-  // タイムラインアイテムを構築（ブロックと間隔を含む）
-  const timelineItems: TimelineItem[] = [];
+// --- グループ化 ---
 
-  for (let i = 0; i < sortedBlocks.length; i++) {
-    const currentBlock = sortedBlocks[i];
-    const previousBlock = i > 0 ? sortedBlocks[i - 1] : null;
-    const nextBlock = i < sortedBlocks.length - 1 ? sortedBlocks[i + 1] : null;
+/** 同一 startTime のブロックを OverlapGroup にまとめる */
+export const groupByStartTime = (sortedBlocks: Block[]): OverlapGroup[] => {
+  if (sortedBlocks.length === 0) return [];
 
-    // 前のブロックとの間に時間間隔があるかが設定されていない場合、破線ブロックを追加
-    // ただし、前ブロックが終了時間を持たない場合は間隔を入れない（例: 終了時間が未定のスケジュール）
-    if (
-      previousBlock &&
-      previousBlock.endTime != null &&
-      previousBlock.endTime.getTime() !== currentBlock.startTime.getTime()
-    ) {
-      timelineItems.push({
-        type: 'gap',
-        id: `gap-${previousBlock.id}-${currentBlock.id}`,
-      });
+  const groups: OverlapGroup[] = [];
+  let i = 0;
+
+  while (i < sortedBlocks.length) {
+    const startMs = sortedBlocks[i].startTime.getTime();
+    const groupBlocks: Block[] = [sortedBlocks[i]];
+    i++;
+
+    // 同じ startTime のブロックを集める
+    while (i < sortedBlocks.length && sortedBlocks[i].startTime.getTime() === startMs) {
+      groupBlocks.push(sortedBlocks[i]);
+      i++;
     }
 
-    timelineItems.push({
-      type: 'block',
-      block: currentBlock,
-      id: String(currentBlock.id),
-      isConnectedWithNextBlock: nextBlock ? nextBlock.startTime.getTime() === currentBlock.endTime?.getTime() : false,
+    // headerBlock: endTime === null のブロック（最初の1つ）
+    const headerBlock = groupBlocks.find(b => b.endTime === null) ?? null;
+    const containerBlocks = headerBlock ? groupBlocks.filter(b => b !== headerBlock) : groupBlocks;
+
+    // groupEnd: endTime を持つブロックの中で最も遅い endTime
+    const endTimes = groupBlocks.map(b => b.endTime?.getTime()).filter((t): t is number => t != null);
+    const groupEnd = endTimes.length > 0 ? new Date(Math.max(...endTimes)) : null;
+
+    groups.push({
+      blocks: groupBlocks,
+      headerBlock,
+      containerBlocks,
+      groupStart: sortedBlocks[i - 1].startTime, // 全て同じ startTime
+      groupEnd,
     });
   }
+
+  return groups;
+};
+
+// --- タイムラインアイテム構築 ---
+
+const buildTimelineItems = (blocks: Block[]): TimelineItem[] => {
+  const sorted = sortBlocks(blocks);
+  const groups = groupByStartTime(sorted);
+  const items: TimelineItem[] = [];
+
+  let maxEndTime = -Infinity;
+
+  for (let i = 0; i < groups.length; i++) {
+    const currentGroup = groups[i];
+    const nextGroup = i < groups.length - 1 ? groups[i + 1] : null;
+
+    // gap 判定: 前のグループの maxEndTime と現在グループの startTime を比較
+    // 直前のグループが groupEnd=null の場合、そのコンポーネント自身が DottedLine を描画するため gap は不要
+    if (i > 0 && maxEndTime !== -Infinity && groups[i - 1].groupEnd !== null) {
+      if (currentGroup.groupStart.getTime() > maxEndTime) {
+        items.push({
+          type: 'gap',
+          id: `gap-${i}`,
+        });
+      }
+    }
+
+    // maxEndTime を更新
+    const currentEnd = currentGroup.groupEnd?.getTime() ?? currentGroup.groupStart.getTime();
+    maxEndTime = Math.max(maxEndTime, currentEnd);
+
+    // isConnected 判定
+    const isConnectedWithNextGroup = nextGroup
+      ? nextGroup.groupStart.getTime() === currentGroup.groupEnd?.getTime()
+      : false;
+
+    items.push({
+      type: 'group',
+      id: `group-${currentGroup.blocks.map(b => b.id).join('-')}`,
+      group: currentGroup,
+      isConnectedWithNextGroup,
+    });
+  }
+
+  return items;
+};
+
+// --- コンポーネント ---
+
+export function ViewTimeline({ blocks, className }: ViewTimelineProps) {
+  const timelineItems = useMemo(() => buildTimelineItems(blocks), [blocks]);
 
   return (
     <div className={cn('grid w-full grid-cols-[auto_1fr] gap-x-4', className)}>
       {timelineItems.map((item, index) => (
-        <ViewTimelineBlock key={item.id} item={item} isLastBlock={index === timelineItems.length - 1} />
+        <ViewTimelineItem key={item.id} item={item} isLastItem={index === timelineItems.length - 1} />
       ))}
     </div>
   );
 }
-
-interface ViewTimelineBlockProps {
-  item: TimelineItem;
-  isLastBlock?: boolean;
-}
-
-function ViewTimelineBlock({ item, isLastBlock = false }: ViewTimelineBlockProps) {
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('ja-JP', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    });
-  };
-
-  const themeColor = item.type === 'block' && item.block?.type === 'schedule' ? 'bg-teal-400' : 'bg-sky-200';
-
-  const renderBlock = (block: Block) => {
-    switch (block.type) {
-      case 'schedule':
-        return <BlockScheduleView block={block} />;
-      case 'transportation':
-        return <BlockTransportationView block={block} />;
-      default:
-        return null;
-    }
-  };
-
-  return (
-    <div className='contents'>
-      {/* 時間軸(左) */}
-      {item.type === 'block' && item.block?.startTime && (
-        <div className='flex flex-row gap-2'>
-          <div className='flex flex-col justify-between'>
-            {/* 時間ラベル */}
-            <div className='flex h-6 flex-row items-center font-medium text-14px text-gray-700 sm:h-8 sm:text-18px'>
-              {formatTime(item.block.startTime)}
-            </div>
-            {!item.isConnectedWithNextBlock && item.block.endTime && (
-              <div className='flex h-6 flex-row items-center font-medium text-14px text-gray-700 sm:h-8 sm:text-18px'>
-                {formatTime(item.block.endTime)}
-              </div>
-            )}
-          </div>
-          <div className='flex min-h-24 flex-col items-center justify-between'>
-            {/* ●およびライン */}
-            <div className={cn('h-6 w-6 shrink-0 rounded-full sm:h-8 sm:w-8', themeColor)} />
-            {item.block.endTime ? (
-              <div className={cn('-my-4 h-full w-2', themeColor)}></div>
-            ) : (
-              !isLastBlock && <DottedLine className='h-full self-end' />
-            )}
-            {!item.isConnectedWithNextBlock && item.block.endTime && (
-              <div className={cn('h-6 w-6 shrink-0 rounded-full sm:h-8 sm:w-8', themeColor)} />
-            )}
-          </div>
-        </div>
-      )}
-      {item.type === 'gap' && <DottedLine />}
-
-      {/* ブロック内容(右) */}
-      {item.type === 'block' && item.block && <div className='pb-4'>{renderBlock(item.block)}</div>}
-      {item.type === 'gap' && <div /> /* 固定高さの空スペース */}
-    </div>
-  );
-}
-
-const DottedLine = ({ ...props }: React.ComponentProps<'div'>) => {
-  const { className, ...rest } = props;
-
-  return (
-    <div className={cn('flex h-8 flex-row pe-2.5 sm:pe-3.5', className)} {...rest}>
-      <div className='grow border-neutral-600 border-r-2 border-dashed' />
-      <div className='border-neutral-600 border-l-2 border-dashed'></div>
-    </div>
-  );
-};

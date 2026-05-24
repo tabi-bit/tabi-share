@@ -26,3 +26,4 @@ paths:
 
 - テストファイルはテスト対象と同ディレクトリに `*.test.ts` / `*.test.tsx` として配置（コロケーション方式）
 - テスト名（describe/itの説明文）は日本語で記述
+- テストファイル内では非nullアサーション (`!`) を許可（`biome.json` の overrides で `noNonNullAssertion` を off 設定）。`querySelector` の結果に対し `expect(...).not.toBeNull()` の直後で `!` を使う形が標準

@@ -92,3 +92,119 @@ export const EditMode: Story = {
     type: 'edit',
   },
 };
+
+// --- 重なりケース ---
+
+/** ケース1: 同一開始時刻 + nullあり（ユーザーの例） */
+export const OverlappingSameStart: Story = {
+  args: {
+    blocks: [
+      {
+        id: 1,
+        type: 'schedule',
+        title: '温泉旅館チェックイン',
+        startTime: new Date(2024, 0, 1, 10, 0),
+        endTime: new Date(2024, 0, 1, 11, 0),
+        pageId: 1,
+        location: null,
+      },
+      {
+        id: 2,
+        type: 'schedule',
+        title: 'お土産購入',
+        startTime: new Date(2024, 0, 1, 10, 0),
+        endTime: null,
+        pageId: 1,
+        location: null,
+      },
+      {
+        id: 3,
+        type: 'transportation',
+        transportationType: 'car',
+        title: '駐車場まで移動',
+        startTime: new Date(2024, 0, 1, 10, 0),
+        endTime: new Date(2024, 0, 1, 10, 30),
+        pageId: 1,
+        location: null,
+        destinationLocation: null,
+      },
+    ] satisfies Block[],
+    type: 'view',
+  },
+};
+
+/** ケース2: 同一開始時刻・nullなし */
+export const OverlappingNoNull: Story = {
+  args: {
+    blocks: [
+      {
+        id: 1,
+        type: 'transportation',
+        transportationType: 'car',
+        title: '駐車場まで移動',
+        startTime: new Date(2024, 0, 1, 10, 0),
+        endTime: new Date(2024, 0, 1, 10, 30),
+        pageId: 1,
+        location: null,
+        destinationLocation: null,
+      },
+      {
+        id: 2,
+        type: 'schedule',
+        title: '温泉旅館チェックイン',
+        startTime: new Date(2024, 0, 1, 10, 0),
+        endTime: new Date(2024, 0, 1, 11, 0),
+        pageId: 1,
+        location: null,
+      },
+    ] satisfies Block[],
+    type: 'view',
+  },
+};
+
+/** ケース3: グループ + gap + 単独ブロック */
+export const OverlappingWithGap: Story = {
+  args: {
+    blocks: [
+      {
+        id: 1,
+        type: 'schedule',
+        title: 'お土産購入',
+        startTime: new Date(2024, 0, 1, 10, 0),
+        endTime: null,
+        pageId: 1,
+        location: null,
+      },
+      {
+        id: 2,
+        type: 'transportation',
+        transportationType: 'car',
+        title: '駐車場まで移動',
+        startTime: new Date(2024, 0, 1, 10, 0),
+        endTime: new Date(2024, 0, 1, 10, 30),
+        pageId: 1,
+        location: null,
+        destinationLocation: null,
+      },
+      {
+        id: 3,
+        type: 'schedule',
+        title: '温泉旅館チェックイン',
+        startTime: new Date(2024, 0, 1, 10, 0),
+        endTime: new Date(2024, 0, 1, 11, 0),
+        pageId: 1,
+        location: null,
+      },
+      {
+        id: 4,
+        type: 'schedule',
+        title: 'ランチ',
+        startTime: new Date(2024, 0, 1, 12, 0),
+        endTime: new Date(2024, 0, 1, 14, 0),
+        pageId: 1,
+        location: null,
+      },
+    ] satisfies Block[],
+    type: 'view',
+  },
+};

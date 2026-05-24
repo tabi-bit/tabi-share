@@ -2,7 +2,7 @@ import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { isOfflineReadAtom } from '@/atoms/network';
-import { selectedPageIdAtom, tripAtom, tripModeAtom, tripPagesAtom } from '@/atoms/tripPage';
+import { selectedPageIdAtom, sortPages, tripAtom, tripModeAtom, tripPagesAtom } from '@/atoms/tripPage';
 import { FetchErrorView } from '@/components/FetchErrorView';
 import { Header } from '@/components/Header';
 import { HeaderSkeleton } from '@/components/HeaderSkeleton';
@@ -51,7 +51,7 @@ const TripPage = () => {
   }, [trip, setTripAtom]);
 
   useEffect(() => {
-    if (pages) setTripPages(pages);
+    if (pages) setTripPages(sortPages(pages));
   }, [pages, setTripPages]);
 
   // 1秒間の最小ローディング表示を管理

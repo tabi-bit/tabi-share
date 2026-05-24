@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react';
+import { ChevronRightIcon } from 'lucide-react';
+import { useEffect, useId, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { DateRangePicker } from '@/components/ui/date-picker';
 import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,9 +16,14 @@ interface AddTripDialogProps {
 }
 
 export const AddTripDialog = ({ open, onOpenChange, onCreated }: AddTripDialogProps) => {
+  const titleId = useId();
+  const dateId = useId();
+  const detailId = useId();
   const [title, setTitle] = useState('');
   const [detail, setDetail] = useState('');
-  const [peopleNum, setPeopleNum] = useState<number | undefined>(undefined);
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [endDate, setEndDate] = useState<Date | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
   const { createTrip, isCreating } = useCreateTrip();
 
   // ダイアログが開いたときにフォームを初期化
@@ -24,7 +31,9 @@ export const AddTripDialog = ({ open, onOpenChange, onCreated }: AddTripDialogPr
     if (open && !isCreating) {
       setTitle('');
       setDetail('');
-      setPeopleNum(undefined);
+      setStartDate(null);
+      setEndDate(null);
+      setDetailOpen(false);
     }
   }, [open, isCreating]);
 
@@ -36,7 +45,9 @@ export const AddTripDialog = ({ open, onOpenChange, onCreated }: AddTripDialogPr
     const newTrip = await createTrip({
       title: title.trim(),
       detail: detail.trim() || undefined,
-      peopleNum: peopleNum,
+      peopleNum: undefined,
+      startDate,
+      endDate,
     });
 
     if (newTrip) {
@@ -46,9 +57,9 @@ export const AddTripDialog = ({ open, onOpenChange, onCreated }: AddTripDialogPr
   };
 
   // 作成中はダイアログを閉じない
-  const handleOpenChange = (open: boolean) => {
-    if (!open && isCreating) return;
-    onOpenChange(open);
+  const handleOpenChange = (next: boolean) => {
+    if (!next && isCreating) return;
+    onOpenChange(next);
   };
 
   return (
@@ -68,11 +79,11 @@ export const AddTripDialog = ({ open, onOpenChange, onCreated }: AddTripDialogPr
         <DialogBody>
           <div className='space-y-4'>
             <div className='space-y-2'>
-              <Label htmlFor='add-trip-title'>
+              <Label htmlFor={titleId}>
                 タイトル<span className='text-red-500'>*</span>
               </Label>
               <Input
-                id='add-trip-title'
+                id={titleId}
                 value={title}
                 onChange={e => setTitle(e.target.value)}
                 placeholder='例: 箱根温泉旅行'
@@ -81,31 +92,42 @@ export const AddTripDialog = ({ open, onOpenChange, onCreated }: AddTripDialogPr
               />
             </div>
             <div className='space-y-2'>
-              <Label htmlFor='add-trip-detail'>詳細</Label>
-              <LazyMarkdownEditor
-                className='max-h-72'
-                id='add-trip-detail'
-                value={detail}
-                onChange={setDetail}
-                placeholder='旅程の詳細や目的など（省略可）'
-              />
-            </div>
-            {/* 人数フィールドは一旦非表示
-            <div className='space-y-2'>
-              <Label htmlFor='add-trip-people-num'>人数</Label>
-              <Input
-                id='add-trip-people-num'
-                type='number'
-                min='1'
-                value={peopleNum ?? ''}
-                onChange={e => {
-                  const parsed = parseInt(e.target.value, 10);
-                  setPeopleNum(!Number.isNaN(parsed) && parsed >= 1 ? parsed : undefined);
+              <Label htmlFor={dateId}>
+                期間
+                <span className='ml-1 text-muted-foreground text-xs'>（任意）</span>
+              </Label>
+              <DateRangePicker
+                id={dateId}
+                start={startDate}
+                end={endDate}
+                onChange={(s, e) => {
+                  setStartDate(s);
+                  setEndDate(e);
                 }}
-                placeholder='例: 4（省略可）'
               />
             </div>
-            */}
+
+            <button
+              type='button'
+              onClick={() => setDetailOpen(prev => !prev)}
+              className='flex w-full items-center gap-1 rounded border border-input px-3 py-2 text-left text-muted-foreground text-sm hover:bg-accent'
+              aria-expanded={detailOpen}
+              aria-controls={detailId}
+            >
+              <ChevronRightIcon className={`size-4 transition-transform ${detailOpen ? 'rotate-90' : ''}`} />
+              <span>詳細を追加（任意）</span>
+            </button>
+            {detailOpen && (
+              <div id={detailId} className='space-y-2'>
+                <LazyMarkdownEditor
+                  className='max-h-72'
+                  id={`${detailId}-editor`}
+                  value={detail}
+                  onChange={setDetail}
+                  placeholder='旅程の詳細や目的など（省略可）'
+                />
+              </div>
+            )}
           </div>
         </DialogBody>
 

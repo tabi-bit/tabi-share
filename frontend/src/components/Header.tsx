@@ -28,7 +28,8 @@ type HeaderLogoOnlyProps = HeaderBaseProps & {
 
 type HeaderFullProps = HeaderBaseProps & {
   variant: 'full';
-  scrollContainerRef: React.RefObject<HTMLDivElement | null>;
+  /** スクロール監視対象。state で渡すことで、要素が差し替わったときに listener を再 attach する */
+  scrollContainer: HTMLDivElement | null;
   isDraggingRef: React.RefObject<boolean>;
 };
 
@@ -52,7 +53,7 @@ function HeaderLogoOnly({ className, ...props }: HeaderLogoOnlyProps) {
   );
 }
 
-function HeaderFull({ className, scrollContainerRef, isDraggingRef, ...props }: Omit<HeaderFullProps, 'variant'>) {
+function HeaderFull({ className, scrollContainer, isDraggingRef, ...props }: Omit<HeaderFullProps, 'variant'>) {
   const isOffline = useAtomValue(isOfflineReadAtom);
   const trip = useAtomValue(tripAtom);
   const pages = useAtomValue(tripPagesAtom);
@@ -75,44 +76,41 @@ function HeaderFull({ className, scrollContainerRef, isDraggingRef, ...props }: 
   }, []);
 
   const handleScroll = useCallback(() => {
-    const container = scrollContainerRef?.current;
+    const container = scrollContainer;
     if (!container) return;
 
     const scrollTop = container.scrollTop;
 
-    // ドラッグ中はisScrolledの更新をスキップし、スクロール位置の基準だけ更新する
+    // ドラッグ中は自動スクロールを誤検知しないよう、基準だけ更新して判定はスキップ
     if (isDraggingRef.current) {
       scrollY.current = scrollTop;
       return;
     }
 
     const deltaY = scrollTop - scrollY.current;
-
-    // isScrolledの次の状態を計算する
     let nextIsScrolled = isScrolled;
 
-    const scrollTopThreshold = 100;
+    const TOP_JITTER_PX = 30;
+    const BOTTOM_BOUNCE_PX = 40; // iOS ラバーバンドでの誤展開を防ぐ末端マージン
 
-    if (scrollTop < scrollTopThreshold) {
-      // ページ最上部では常に表示
+    // deltaY <= 0 条件: compact のままコンテナ切替(scrollTop=0始まり)→下スクロール開始時に
+    // 一瞬 expanded へ戻るちらつきを防ぐ（下スクロール中は最上部判定を効かせない）
+    if (scrollTop < TOP_JITTER_PX && deltaY <= 0) {
       nextIsScrolled = false;
     }
 
-    // スクロール末端のバウンスを無視
     const maxScroll = container.scrollHeight - container.clientHeight;
-    const isNearBottom = maxScroll - scrollTop < scrollTopThreshold;
+    const isNearBottom = maxScroll - scrollTop < BOTTOM_BOUNCE_PX;
 
     if (isNearBottom && isScrolled && deltaY < 0) {
-      // 最下部バウンスではヘッダー展開しない（ベースラインも更新しない）
+      // 最下部バウンスでの誤展開を無視（基準も更新しない）
       return;
     }
 
-    if (scrollTop >= scrollTopThreshold && Math.abs(deltaY) > 10) {
+    if (scrollTop >= TOP_JITTER_PX && Math.abs(deltaY) > 10) {
       if (deltaY < 0 && isScrolled) {
-        // 上スクロール and ヘッダーが非表示中 -> 表示させる
         nextIsScrolled = false;
       } else if (deltaY > 0 && !isScrolled) {
-        // 下スクロール and ヘッダーが表示中 -> 非表示にさせる
         nextIsScrolled = true;
       }
     }
@@ -120,19 +118,22 @@ function HeaderFull({ className, scrollContainerRef, isDraggingRef, ...props }: 
     if (nextIsScrolled !== isScrolled) {
       setIsScrolled(nextIsScrolled);
     } else {
-      // 状態が変化しなかった場合のみ、スクロール位置の基準を更新
-      // レイアウトシフトによる誤作動を防ぐ
+      // 状態が変わらない時だけ基準更新（レイアウトシフトでの誤作動防止）
       scrollY.current = scrollTop;
     }
-  }, [isScrolled, scrollContainerRef, isDraggingRef]);
+  }, [isScrolled, scrollContainer, isDraggingRef]);
+
+  // コンテナ切替時に基準を同期しないと、初回 deltaY が前コンテナとの差分になり誤判定する
+  useEffect(() => {
+    scrollY.current = scrollContainer?.scrollTop ?? 0;
+  }, [scrollContainer]);
 
   useEffect(() => {
-    const container = scrollContainerRef?.current;
-    if (!container) return;
+    if (!scrollContainer) return;
 
-    container.addEventListener('scroll', handleScroll);
-    return () => container.removeEventListener('scroll', handleScroll);
-  }, [handleScroll, scrollContainerRef]);
+    scrollContainer.addEventListener('scroll', handleScroll);
+    return () => scrollContainer.removeEventListener('scroll', handleScroll);
+  }, [handleScroll, scrollContainer]);
 
   if (!trip) return null;
 

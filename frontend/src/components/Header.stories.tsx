@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { createStore, Provider } from 'jotai';
 import { useHydrateAtoms } from 'jotai/utils';
 import type { ReactNode } from 'react';
-import { useRef } from 'react';
+import { useState } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { selectedPageIdAtom, tripAtom, tripModeAtom, tripPagesAtom } from '@/atoms/tripPage';
 import type { Page } from '@/types';
@@ -131,7 +131,7 @@ export const LogoOnly: Story = {
 export const Default: Story = {
   args: {
     variant: 'full',
-    scrollContainerRef: { current: null },
+    scrollContainer: null,
     isDraggingRef: { current: false },
   },
   decorators: [
@@ -158,7 +158,7 @@ export const Default: Story = {
 export const EditMode: Story = {
   args: {
     variant: 'full',
-    scrollContainerRef: { current: null },
+    scrollContainer: null,
     isDraggingRef: { current: false },
   },
   decorators: [
@@ -185,7 +185,7 @@ export const EditMode: Story = {
 export const SinglePage: Story = {
   args: {
     variant: 'full',
-    scrollContainerRef: { current: null },
+    scrollContainer: null,
     isDraggingRef: { current: false },
   },
   decorators: [
@@ -212,7 +212,7 @@ export const SinglePage: Story = {
 export const EmptyPages: Story = {
   args: {
     variant: 'full',
-    scrollContainerRef: { current: null },
+    scrollContainer: null,
     isDraggingRef: { current: false },
   },
   decorators: [
@@ -239,7 +239,7 @@ export const EmptyPages: Story = {
 export const WithCustomClass: Story = {
   args: {
     variant: 'full',
-    scrollContainerRef: { current: null },
+    scrollContainer: null,
     isDraggingRef: { current: false },
     className: 'border-b-2 border-blue-500',
   },
@@ -267,7 +267,7 @@ export const WithCustomClass: Story = {
 export const WithDateRange: Story = {
   args: {
     variant: 'full',
-    scrollContainerRef: { current: null },
+    scrollContainer: null,
     isDraggingRef: { current: false },
   },
   decorators: [
@@ -295,7 +295,7 @@ export const WithDateRange: Story = {
 export const PartialDateRange: Story = {
   args: {
     variant: 'full',
-    scrollContainerRef: { current: null },
+    scrollContainer: null,
     isDraggingRef: { current: false },
   },
   decorators: [
@@ -322,7 +322,7 @@ export const PartialDateRange: Story = {
 export const MixedDatePages: Story = {
   args: {
     variant: 'full',
-    scrollContainerRef: { current: null },
+    scrollContainer: null,
     isDraggingRef: { current: false },
   },
   decorators: [
@@ -350,7 +350,7 @@ export const MixedDatePages: Story = {
 export const LongPageTitle: Story = {
   args: {
     variant: 'full',
-    scrollContainerRef: { current: null },
+    scrollContainer: null,
     isDraggingRef: { current: false },
   },
   decorators: [
@@ -378,18 +378,18 @@ export const LongPageTitle: Story = {
 export const ScrolledState: Story = {
   args: {
     variant: 'full',
-    scrollContainerRef: { current: null },
+    scrollContainer: null,
     isDraggingRef: { current: false },
   },
   decorators: [
     (Story, context) => {
-      const scrollContainerRef = useRef<HTMLDivElement>(null);
+      const [scrollContainer, setScrollContainer] = useState<HTMLDivElement | null>(null);
       const store = createStore();
       return (
         <Provider store={store}>
           <AtomHydrator trip={demoTrip} pages={demoPages} selectedPageId={1} mode='view'>
-            <div ref={scrollContainerRef} style={{ height: '200vh', overflow: 'auto' }}>
-              <Story args={{ ...context.args, variant: 'full', scrollContainerRef }} />
+            <div ref={setScrollContainer} style={{ height: '200vh', overflow: 'auto' }}>
+              <Story args={{ ...context.args, variant: 'full', scrollContainer }} />
               <div style={{ padding: '2rem', marginTop: '2rem' }}>
                 <h2>スクロールしてヘッダーの変化を確認</h2>
                 <p>

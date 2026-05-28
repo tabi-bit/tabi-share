@@ -22,14 +22,17 @@ settings = get_settings()
 engine: AsyncEngine = create_async_engine(
     settings.get_database_url(),
     echo=False,
-    # チェックアウト時の SELECT 1 を省略 (1 RTT 削減)。代わりに pool_recycle で
-    # 古い接続を破棄し、まれな切断は SQLAlchemy の自動 reconnect に任せる。
-    pool_pre_ping=False,
+    # Neon Free は 5 分アイドルで compute がサスペンドされ、復帰時に
+    # アプリ側のプール内コネクションが dead 化することがある。checkout 時の
+    # SELECT 1 (Pessimistic Disconnect Handling) で死活確認するのが安全。
+    # 1 RTT 分のコストが発生するが、クエリ最適化で減らせる RTT 数より接続
+    # 失敗による 500 のほうがコスト高なので有効のままにする。
+    pool_pre_ping=True,
     pool_size=5,
     max_overflow=10,
-    # 10 分以上経った接続は次回 checkout 時に破棄して再確立。Neon Pooler 側の
-    # 接続切断やネットワーク中断を握り潰さないための保険。
-    pool_recycle=600,
+    # 30 分超過した接続は次回 checkout 時にリサイクル。pool_pre_ping と
+    # 二重防御。短すぎると無駄な再確立が増え、長すぎると古い接続を掴むリスク。
+    pool_recycle=1800,
     connect_args={"ssl": True} if settings.ssl_required else {},
 )
 

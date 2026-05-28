@@ -50,7 +50,7 @@ async def find_trips(db: AsyncSession) -> list[Trip]:
     Returns:
         list[Trip]: すべての旅行プラン
     """
-    result = await db.execute(_trip_with_relations())
+    result = await db.execute(_trip_with_relations().order_by(Trip.id))
     return list(result.unique().scalars().all())
 
 

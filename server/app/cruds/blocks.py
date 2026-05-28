@@ -99,7 +99,9 @@ async def find_blocks(db: AsyncSession, page_id: int) -> list[Block]:
     Returns:
         list[Block]: ブロックリスト
     """
-    result = await db.execute(_block_with_relations().where(Block.page_id == page_id))
+    result = await db.execute(
+        _block_with_relations().where(Block.page_id == page_id).order_by(Block.id)
+    )
     return list(result.scalars().all())
 
 

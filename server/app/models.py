@@ -87,6 +87,7 @@ class Trip(Base):
         cascade="all, delete-orphan",
         lazy="raise",
         passive_deletes=True,
+        order_by="Page.id",
     )
 
 
@@ -117,6 +118,7 @@ class Page(Base):
         cascade="all, delete-orphan",
         lazy="raise",
         passive_deletes=True,
+        order_by="Block.id",
     )
 
 

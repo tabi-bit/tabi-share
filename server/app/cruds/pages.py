@@ -48,7 +48,9 @@ async def find_pages(db: AsyncSession, trip_id: int) -> list[Page]:
     Returns:
         list[Page]: ページリスト
     """
-    result = await db.execute(_page_with_relations().where(Page.trip_id == trip_id))
+    result = await db.execute(
+        _page_with_relations().where(Page.trip_id == trip_id).order_by(Page.id)
+    )
     return list(result.unique().scalars().all())
 
 

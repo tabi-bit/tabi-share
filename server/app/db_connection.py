@@ -21,10 +21,15 @@ settings = get_settings()
 # 非同期エンジンの作成
 engine: AsyncEngine = create_async_engine(
     settings.get_database_url(),
-    echo=False,  # 本番環境では False
-    pool_pre_ping=True,  # 接続の健全性チェック
-    pool_size=5,  # 接続プールサイズ
-    max_overflow=10,  # 最大オーバーフロー接続数
+    echo=False,
+    # チェックアウト時の SELECT 1 を省略 (1 RTT 削減)。代わりに pool_recycle で
+    # 古い接続を破棄し、まれな切断は SQLAlchemy の自動 reconnect に任せる。
+    pool_pre_ping=False,
+    pool_size=5,
+    max_overflow=10,
+    # 10 分以上経った接続は次回 checkout 時に破棄して再確立。Neon Pooler 側の
+    # 接続切断やネットワーク中断を握り潰さないための保険。
+    pool_recycle=600,
     connect_args={"ssl": True} if settings.ssl_required else {},
 )
 

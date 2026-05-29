@@ -9,6 +9,7 @@ import { HeaderSkeleton } from '@/components/HeaderSkeleton';
 import { PageSwipeContainer } from '@/components/PageSwipeContainer';
 import { Title } from '@/components/Title';
 import { TimelineSkeleton } from '@/components/timeline';
+import { TripUrlList } from '@/components/tripUrl';
 import { useDragAutoScroll } from '@/hooks/useDragAutoScroll';
 import { usePages } from '@/hooks/usePages';
 import { useTripByUrlId } from '@/hooks/useTrips';
@@ -161,8 +162,9 @@ const TripPage = () => {
           {mode === 'edit' && (
             <div
               ref={scrollContainerRef}
-              className='flex flex-1 flex-col items-center overflow-auto overscroll-y-none pt-4'
+              className='flex flex-1 flex-col items-center gap-4 overflow-auto overscroll-y-none px-2 pt-4'
             >
+              <TripUrlList tripId={trip.id} />
               {selectedPageId != null && (
                 <EditTripLayout
                   selectedPageId={selectedPageId}

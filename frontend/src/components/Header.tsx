@@ -196,12 +196,17 @@ function HeaderFull({ className, scrollContainer, isDraggingRef, ...props }: Omi
               }
             }}
           >
-            <SelectTrigger className='h-auto min-h-9 max-w-[90vw] bg-white *:data-[slot=select-value]:line-clamp-none *:data-[slot=select-value]:min-w-0 *:data-[slot=select-value]:flex-wrap *:data-[slot=select-value]:gap-x-2 sm:max-w-[30vw]'>
+            <SelectTrigger className='min-h-9 max-w-[90vw] bg-white data-[size=default]:h-auto *:data-[slot=select-value]:line-clamp-none *:data-[slot=select-value]:min-w-0 *:data-[slot=select-value]:flex-wrap *:data-[slot=select-value]:gap-x-2 sm:max-w-[30vw]'>
               <SelectValue placeholder='ページ選択' />
             </SelectTrigger>
             <SelectContent className='max-w-[90vw]'>
               {pages.map(page => (
-                <SelectItem key={page.id} value={String(page.id)}>
+                <SelectItem
+                  key={page.id}
+                  value={String(page.id)}
+                  // ItemText span (shadcn の `*:[span]:last:*` で flex化される) に flex-1 + min-w-0 を当てて PageLabel 側の truncate を有効化
+                  className='*:[span]:last:min-w-0 *:[span]:last:flex-1'
+                >
                   <PageLabel page={page} />
                 </SelectItem>
               ))}
@@ -354,12 +359,15 @@ const ShareButton = () => {
 };
 
 const PageLabel = ({ page }: { page: { title: string; date?: Date | null } }) => (
-  <>
+  // flex-wrap で長すぎたら 2 行折り返し、items-center で日付（小フォント）と title の縦位置を揃える
+  <span className='flex min-w-0 flex-1 flex-wrap items-center gap-x-2'>
     {page.date && (
-      <span className='whitespace-nowrap font-mono text-12px text-slate-500'>{formatDateMDWithDow(page.date)} </span>
+      <span className='shrink-0 whitespace-nowrap font-mono text-12px text-slate-500'>
+        {formatDateMDWithDow(page.date)}
+      </span>
     )}
-    <span className='min-w-[7em] flex-1 truncate'>{page.title}</span>
-  </>
+    <span className='min-w-0 truncate'>{page.title}</span>
+  </span>
 );
 
 const PageInfoEditButton = ({ isScrolled, onClick }: { isScrolled: boolean; onClick?: () => void }) => (

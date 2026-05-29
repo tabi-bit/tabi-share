@@ -356,7 +356,7 @@ const ShareButton = () => {
 const PageLabel = ({ page }: { page: { title: string; date?: Date | null } }) => (
   <>
     {page.date && (
-      <span className='whitespace-nowrap font-mono text-12px text-slate-500'>{formatDateMDWithDow(page.date)} ·</span>
+      <span className='whitespace-nowrap font-mono text-12px text-slate-500'>{formatDateMDWithDow(page.date)} </span>
     )}
     <span className='min-w-[7em] flex-1 truncate'>{page.title}</span>
   </>

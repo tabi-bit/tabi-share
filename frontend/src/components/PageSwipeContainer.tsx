@@ -7,12 +7,12 @@ import type { Page } from '@/types';
 
 type PageSwipeContainerProps = {
   renderPage: (page: Page) => ReactNode;
-  /** 現在アクティブなスライドのスクロールコンテナの ref を外部に公開する */
-  activeSlideScrollRef?: React.RefObject<HTMLDivElement | null>;
+  /** アクティブなスライドのスクロールコンテナが変わったときに通知するコールバック */
+  onActiveSlideChange?: (el: HTMLDivElement | null) => void;
   className?: string;
 };
 
-const PageSwipeContainer = ({ renderPage, activeSlideScrollRef, className }: PageSwipeContainerProps) => {
+const PageSwipeContainer = ({ renderPage, onActiveSlideChange, className }: PageSwipeContainerProps) => {
   const pages = useAtomValue(tripPagesAtom);
   const [selectedPageId, setSelectedPageId] = useAtom(selectedPageIdAtom);
   // ドット表示も含めて selectedPageId を単一の真実の源とする
@@ -54,13 +54,12 @@ const PageSwipeContainer = ({ renderPage, activeSlideScrollRef, className }: Pag
     }
   }, [emblaApi, pages, selectedPageId]);
 
-  // アクティブスライドの scroll コンテナを外部 ref に接続
+  // アクティブスライドの scroll コンテナを外部に通知
   useEffect(() => {
-    if (!activeSlideScrollRef) return;
+    if (!onActiveSlideChange) return;
     const activeSlide = slideRefs.current[activeSnapIndex] ?? null;
-    // RefObject の current を書き換え
-    (activeSlideScrollRef as { current: HTMLDivElement | null }).current = activeSlide;
-  }, [activeSnapIndex, activeSlideScrollRef]);
+    onActiveSlideChange(activeSlide);
+  }, [activeSnapIndex, onActiveSlideChange]);
 
   return (
     <div className={cn('flex h-full flex-col', className)}>

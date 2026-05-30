@@ -11,6 +11,16 @@ import type { Trip } from '@/types/trip';
 /** 現在表示中の Trip */
 export const tripAtom = atom<Trip | null>(null);
 
+/** Page を date 昇順 → id 昇順で並び替える。date が null の Page は末尾。 */
+export const sortPages = (pages: Page[]): Page[] =>
+  [...pages].sort((a, b) => {
+    if (!(a.date || b.date)) return a.id - b.id;
+    if (!a.date) return 1;
+    if (!b.date) return -1;
+    const dateDiff = a.date.getTime() - b.date.getTime();
+    return dateDiff !== 0 ? dateDiff : a.id - b.id;
+  });
+
 /** Trip に紐づくページ一覧 */
 export const tripPagesAtom = atom<Page[]>([]);
 

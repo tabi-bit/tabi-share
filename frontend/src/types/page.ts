@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { formatDateOnly, parseDateOnly } from '@/lib/date';
 
 // --- アプリケーション層のスキーマ ---
 
@@ -15,6 +16,7 @@ export const PageSchema = z.object({
     .max(PAGE_TITLE_MAX_LENGTH, { message: `ページ名は最大${PAGE_TITLE_MAX_LENGTH}文字です` }),
   detail: z.string().nullish(),
   tripId: z.number(),
+  date: z.date().nullish(),
 });
 
 export type Page = z.infer<typeof PageSchema>;
@@ -29,6 +31,7 @@ const ApiPageSchema = z.object({
   title: z.string(),
   detail: z.string().nullish(),
   trip_id: z.number(),
+  date: z.string().date().nullish(),
 });
 
 export type ApiPage = z.infer<typeof ApiPageSchema>;
@@ -44,6 +47,7 @@ export const pageFromApi = ApiPageSchema.transform(
     title: apiData.title,
     detail: apiData.detail,
     tripId: apiData.trip_id,
+    date: apiData.date ? parseDateOnly(apiData.date) : null,
   })
 );
 
@@ -58,6 +62,7 @@ export const pageToApi = PageSchema.transform(
     title: appData.title,
     detail: appData.detail,
     trip_id: appData.tripId,
+    date: appData.date ? formatDateOnly(appData.date) : null,
   })
 );
 
@@ -78,5 +83,6 @@ export const pageMutationToApi = PageMutationSchema.transform(
     title: appData.title,
     detail: appData.detail,
     trip_id: appData.tripId,
+    date: appData.date ? formatDateOnly(appData.date) : null,
   })
 );

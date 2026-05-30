@@ -1,3 +1,5 @@
+from datetime import date
+
 import pytest
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -122,6 +124,53 @@ async def test_update_page(db_session: AsyncSession, test_create_trip: Trip):
 
     # act
     assert non_existent_page is None
+
+
+@pytest.mark.asyncio
+async def test_create_page_with_date(
+    db_session: AsyncSession, test_create_trip: Trip
+):
+    """
+    create_page()/正常系/date を持つ
+    """
+    # arrange
+    page_in = PageCreate(title="1 日目", date=date(2026, 5, 1))
+
+    # act
+    db_page = await pages_cruds.create_page(
+        db=db_session, page=page_in, trip_id=test_create_trip.id
+    )
+    fetched = await pages_cruds.get_page(db=db_session, page_id=db_page.id)
+
+    # assert
+    assert fetched is not None
+    assert fetched.date == date(2026, 5, 1)
+
+
+@pytest.mark.asyncio
+async def test_update_page_date_overwrite(
+    db_session: AsyncSession, test_create_trip: Trip
+):
+    """
+    update_page()/正常系/後勝ち全置換で date が上書きされる
+    """
+    # arrange
+    created = await pages_cruds.create_page(
+        db=db_session,
+        page=PageCreate(title="2 日目", date=date(2026, 5, 2)),
+        trip_id=test_create_trip.id,
+    )
+
+    # act: date を None にして送り、全置換で消えることを確認
+    updated = await pages_cruds.update_page(
+        db=db_session,
+        page_id=created.id,
+        page=PageUpdate(title="2 日目", date=None),
+    )
+
+    # assert
+    assert updated is not None
+    assert updated.date is None
 
 
 @pytest.mark.asyncio

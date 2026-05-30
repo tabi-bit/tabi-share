@@ -6,6 +6,8 @@ import { db } from '@/lib/db';
 import { type Trip, tripFromApi } from '@/types/trip';
 
 const VISITED_TRIPS_KEY = 'visitedTripUrlIds';
+/** useVisitedTrips の SWR キャッシュ key プレフィックス。Trip 更新側から mutate するために export */
+export const VISITED_TRIPS_CACHE_KEY = 'visitedTrips';
 // TODO: IndexedDB完全移行後、LEGACY_STORAGE_KEYとmigrateFromLocalStorageを削除する
 /** localStorage のキー（マイグレーション用） */
 const LEGACY_STORAGE_KEY = 'visitedTripUrlIds';
@@ -92,7 +94,7 @@ export const useVisitedTrips = () => {
 
   // SWRで各urlIdからTripを取得
   const { data, error, isLoading } = useSWR<Trip[]>(
-    isInitialized && urlIds.length > 0 ? ['visitedTrips', ...urlIds] : null,
+    isInitialized && urlIds.length > 0 ? [VISITED_TRIPS_CACHE_KEY, ...urlIds] : null,
     async () => {
       const results = await Promise.all(
         urlIds.map(async urlId => {

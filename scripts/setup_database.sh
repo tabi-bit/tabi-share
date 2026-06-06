@@ -61,7 +61,7 @@ run_migration() {
   local db_name=$1
   local db_type=$2
   echo "📦 Migrating ${db_type} database..."
-  if pnpm dotenvx run --env-file ../.env -- alembic -n "${db_name}" upgrade head; then
+  if pnpm dotenvx run --env-file .env -- sh -c "cd server && alembic -n \"${db_name}\" upgrade head"; then
     echo "✅ ${db_type} database migration completed successfully!"
     return 0
   else
@@ -73,10 +73,8 @@ run_migration() {
 
 # 開発用とテスト用のデータベースのマイグレーションの実行
 echo "🔄 Running database migrations..."
-cd server
-run_migration "devdb" "development" || { cd ..; exit 1; }
-run_migration "testdb" "test" || { cd ..; exit 1; }
-cd ..
+run_migration "devdb" "development" || exit 1
+run_migration "testdb" "test" || exit 1
 echo "✅ database migrations completed."
 
 echo "🐘 All database setups are complete."

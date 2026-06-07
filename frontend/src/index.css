@@ -187,6 +187,17 @@
   .fc-day-today {
     background: none !important;
   }
+
+  /* ブロック（イベント）の幅を制限し、右側に新規ブロックを追加・選択しやすい余白を作る。
+     .fc-timegrid-col-events はイベント群のコンテナで、デフォルトは margin: 0 2.5% 0 2px。
+     右マージンを広げることで全イベントが一括で細くなり、空いた右側は .fc-timegrid-col の
+     ままなので select（新規ブロック追加）操作のターゲットとして機能する。
+     .fc.fc-direction-ltr で specificity を上げ、FullCalendar 既定値を上書きする。
+     clamp で下限/上限を設け、モバイル（列幅が狭い）でもタップ領域を確保しつつ、
+     デスクトップ（列幅が広い）で余白が広がりすぎないようにする。 */
+  &.fc-direction-ltr .fc-timegrid-col-events {
+    margin-right: clamp(24px, 12.5%, 48px);
+  }
 }
 
 @layer base {

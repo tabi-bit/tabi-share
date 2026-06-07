@@ -69,8 +69,8 @@
     /* 縦2行レイアウトではアイコンを 20px に固定する。
        PC 既定の 32px(sm:w-8) のままだと、グリッドの auto トラックが幅不足で潰れた際に
        img がスケール縮小されて「極端に小さく」見えてしまうため、明示サイズで固定して防ぐ。 */
-    width: 1.25rem;
-    height: 1.25rem;
+    width: 1.5rem;
+    height: 1.5rem;
   }
 
   .BlockTransportationEdit .transport-title {
@@ -114,8 +114,8 @@
     /* 縦2行レイアウトではアイコンを 20px に固定する。
        PC 既定の 32px(sm:w-8) のままだと、グリッドの auto トラックが幅不足で潰れた際に
        img がスケール縮小されて「極端に小さく」見えてしまうため、明示サイズで固定して防ぐ。 */
-    width: 1.25rem;
-    height: 1.25rem;
+    width: 1.5rem;
+    height: 1.5rem;
   }
 
   .BlockTransportationEdit .transport-title {

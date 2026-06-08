@@ -1,8 +1,12 @@
 {
   "name": "Tabishare",
-  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
   "containerEnv": {
-    "UV_PROJECT_ENVIRONMENT": "/usr/local/python/current/"
+    "UV_PROJECT_ENVIRONMENT": "/usr/local/python/current/",
+    "PNPM_HOME": "/home/vscode/.local/share/pnpm"
+  },
+  "remoteEnv": {
+    "PATH": "/home/vscode/.local/share/pnpm:${containerEnv:PATH}"
   },
   "features": {
     "ghcr.io/devcontainers/features/python:1": {

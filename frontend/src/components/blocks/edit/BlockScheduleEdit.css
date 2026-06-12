@@ -32,3 +32,102 @@
     font-size: 10px !important;
   }
 }
+
+/* 時間(横並び)とタイトルを上下2行に分けてタイトルの横幅を確保する。
+   - モバイル(ウィンドウ < 40rem)はブロック幅によらず常に縦2行
+   - ブロック幅が狭い(< 16rem)場合は PC でも縦2行
+   高さが不足する短いブロックでも時間しか見えなくなるのを防ぐため高さ条件は設けない。
+   タイトルは折り返して複数行表示し、はみ出しはブロック下端でクリップする。 */
+@media (width < 40rem) {
+  .BlockScheduleEdit .schedule-layout {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-areas:
+      "time .     info"
+      "title title title";
+    align-items: center;
+    row-gap: 0.125rem;
+  }
+
+  .BlockScheduleEdit .schedule-time-wrapper {
+    grid-area: time;
+    /* 時間は横並び表示 */
+    flex-direction: row;
+
+    .vertical-divider {
+      display: block;
+    }
+
+    .horizontal-divider {
+      display: none;
+    }
+  }
+
+  .BlockScheduleEdit .schedule-title {
+    grid-area: title;
+  }
+
+  .BlockScheduleEdit .schedule-info-btn {
+    grid-area: info;
+    margin-left: 0;
+  }
+}
+
+@container (width < 16rem) {
+  .BlockScheduleEdit .schedule-layout {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-areas:
+      "time .     info"
+      "title title title";
+    align-items: center;
+    row-gap: 0.125rem;
+  }
+
+  .BlockScheduleEdit .schedule-time-wrapper {
+    grid-area: time;
+    /* 時間は横並び表示 */
+    flex-direction: row;
+
+    .vertical-divider {
+      display: block;
+    }
+
+    .horizontal-divider {
+      display: none;
+    }
+  }
+
+  .BlockScheduleEdit .schedule-title {
+    grid-area: title;
+  }
+
+  .BlockScheduleEdit .schedule-info-btn {
+    grid-area: info;
+    margin-left: 0;
+  }
+}
+
+/* 縦2行レイアウト時、上段(time + info)が収まらず i がはみ出すのを防ぐため段階的に時刻を縮める。
+   時刻表示と i ボタンはほぼ固定幅(時刻 ~6rem + ギャップ + i 20px + 左右パディング)なので閾値は算出可能。
+   PC でもブロック幅(@container)で判定するため、列分割で細くなったブロックに反応する。
+   1段目: まずパディングと time↔i のギャップを詰める。
+   2段目: それでも狭い場合は時刻の文字も小さくする。
+   さらに収まらない極小幅は親の overflow:hidden でクリップする。 */
+@container (width < 12rem) {
+  .BlockScheduleEdit .schedule-layout {
+    column-gap: 0.125rem;
+  }
+
+  .BlockScheduleEdit .schedule-time-wrapper {
+    padding-inline: 0.125rem;
+  }
+}
+
+@container (width < 10rem) {
+  .BlockScheduleEdit .schedule-time-wrapper {
+    font-size: 10px !important;
+  }
+}

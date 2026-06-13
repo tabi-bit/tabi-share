@@ -11,6 +11,11 @@ const DEBUG_DELAY_PARAM =
     : null;
 const INITIAL_RTT_THRESHOLD_MS = 5000;
 const RELAXED_RTT_THRESHOLD_MS = 10000;
+// タブ復帰・再接続直後はモバイル無線の再接続遅延で初回ヘルスチェックが失敗しやすい。
+// 一度だけ待ってから緩和しきい値で再判定するための待機時間。
+export const RESUME_RETRY_DELAY_MS = 1500;
+
+const delay = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms));
 
 // --- 型 ---
 
@@ -39,7 +44,8 @@ export const thresholdManager = (() => {
 // --- 2段階判定ロジック ---
 
 export const checkNetworkStatus = async (
-  baseUrl: string = import.meta.env.VITE_API_BASE_URL ?? ''
+  baseUrl: string = import.meta.env.VITE_API_BASE_URL ?? '',
+  thresholdMs?: number
 ): Promise<NetworkCheckResult> => {
   // Step 1: navigator.onLine チェック
   if (!navigator.onLine) {
@@ -48,7 +54,7 @@ export const checkNetworkStatus = async (
 
   // Step 2: fetch と RTTしきい値タイマーを Promise.race で競わせる
   const controller = new AbortController();
-  const rttThresholdMs = thresholdManager.get();
+  const rttThresholdMs = thresholdMs ?? thresholdManager.get();
   const start = performance.now();
 
   const healthUrl = DEBUG_DELAY_PARAM
@@ -89,9 +95,32 @@ export const checkNetworkStatus = async (
 
 // --- atom 更新 ---
 
-export const evaluateNetwork = async (store: ReturnType<typeof createStore>): Promise<void> => {
+export type EvaluateNetworkOptions = {
+  /**
+   * タブ復帰(visibilitychange)・再接続(online)など、ネットワークが不安定に
+   * なりやすいタイミングで true にする。オンライン→オフラインへ反転しそうな
+   * 場合に、緩和しきい値で1度だけ再判定してから確定させ、誤検知を防ぐ。
+   */
+  allowRetry?: boolean;
+};
+
+export const evaluateNetwork = async (
+  store: ReturnType<typeof createStore>,
+  options: EvaluateNetworkOptions = {}
+): Promise<void> => {
   const wasPreviouslyOffline = store.get(isOfflineAtom);
-  const result = await checkNetworkStatus();
+  let result = await checkNetworkStatus();
+
+  // タブ復帰・再接続時の誤検知対策:
+  // それまでオンラインだったのに navigator.onLine は true のままヘルスチェックだけ
+  // 失敗した場合(モバイル無線の復帰遅延など)、少し待ってから緩和しきい値で再判定する。
+  // navigator-offline はブラウザ確定のオフラインなので再判定しない。
+  if (options.allowRetry && !wasPreviouslyOffline && result.isOffline && result.reason !== 'navigator-offline') {
+    await delay(RESUME_RETRY_DELAY_MS);
+    result = navigator.onLine
+      ? await checkNetworkStatus(undefined, RELAXED_RTT_THRESHOLD_MS)
+      : { isOffline: true, reason: 'navigator-offline' };
+  }
 
   const changed = wasPreviouslyOffline !== result.isOffline;
   if (changed) {

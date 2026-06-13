@@ -26,7 +26,10 @@ export const EditTripLayout = ({ selectedPageId, onDragStart, onDragEnd, refresh
   const { deleteBlock } = useDeleteBlock(selectedPageId);
   const calendarRef = useRef<FullCalendar>(null);
   const calendarContainerRef = useRef<HTMLDivElement>(null);
-  const isFirstEventMount = useRef(true);
+  // ページごとに初回スクロールが完了したか。実際にスクロールが実行されるまでfalseのまま維持する
+  const hasScrolledToFirstEvent = useRef(false);
+  // 初回スクロール用に予約したrequestAnimationFrameのID（クリーンアップ用）
+  const scrollRafId = useRef<number | null>(null);
 
   // AddBlockDialog用のstate
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -80,13 +83,32 @@ export const EditTripLayout = ({ selectedPageId, onDragStart, onDragEnd, refresh
   // selectedPageId変更時にスクロールフラグをリセット
   // biome-ignore lint/correctness/useExhaustiveDependencies: selectedPageId変更を検知してrefをリセットするための意図的な依存配列
   useEffect(() => {
-    isFirstEventMount.current = true;
+    hasScrolledToFirstEvent.current = false;
   }, [selectedPageId]);
 
+  // アンマウント時に予約済みのスクロールrAFをクリーンアップする
+  useEffect(() => {
+    return () => {
+      if (scrollRafId.current != null) {
+        cancelAnimationFrame(scrollRafId.current);
+        scrollRafId.current = null;
+      }
+    };
+  }, []);
+
+  // 初回イベントマウント時にタイムラインを最初のイベントへスクロールする。
+  // eventDidMountはイベントごと・再レンダーごとに発火するため、ページごとに1度だけ実行する。
+  // blocksのロード完了前はイベントがDOMに存在せず発火しないため、ロード完了後の最初の
+  // マウントが確実なトリガーになる。スクロールはレイアウト確定後に行うようrAFで1フレーム待ち、
+  // 実際に実行されるまでフラグを落とさないことで「ロード未完→スクロール未発火」のレースを防ぐ。
   const handleEventMount = (arg: ViewMountArg) => {
-    if (!isFirstEventMount.current) return;
-    arg.el.scrollIntoView({ block: 'center', behavior: 'smooth' });
-    isFirstEventMount.current = false;
+    if (hasScrolledToFirstEvent.current || scrollRafId.current != null) return;
+    const eventEl = arg.el;
+    scrollRafId.current = requestAnimationFrame(() => {
+      scrollRafId.current = null;
+      eventEl.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      hasScrolledToFirstEvent.current = true;
+    });
   };
 
   // Date参照の安定化（親re-renderで新しいDateが生成されないようにする）

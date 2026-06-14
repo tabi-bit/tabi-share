@@ -1,10 +1,11 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
 import useSWR, { type SWRConfiguration, useSWRConfig } from 'swr';
 import useSWRMutation from 'swr/mutation';
 import { z } from 'zod';
 import { apiClient, fetcher } from '@/lib/apiClient';
 import { getErrorMessage } from '@/lib/errors';
+import { sortBlocks } from '@/lib/sortBlocks';
 import { type Block, BlockSchema, blockFromApi, blockToApi } from '@/types/block';
 
 const PAGES_BASE_PATH = '/pages';
@@ -23,8 +24,11 @@ export const useBlocks = (pageId: number | null, options?: Pick<SWRConfiguration
     options
   );
 
+  // サーバー返却順はソート保証がないため、サービス層で startTime 昇順に整列して返す
+  const blocks = useMemo<Block[] | undefined>(() => (data ? sortBlocks(data) : data), [data]);
+
   return {
-    blocks: data,
+    blocks,
     error,
     isLoading,
   };

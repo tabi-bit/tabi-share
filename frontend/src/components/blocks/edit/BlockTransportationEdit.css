@@ -32,3 +32,121 @@
     font-size: 10px !important;
   }
 }
+
+/* 時間(横並び)とタイトルを上下2行に分けてタイトルの横幅を確保する。
+   - モバイル(ウィンドウ < 40rem)はブロック幅によらず常に縦2行
+   - ブロック幅が狭い(< 16rem)場合は PC でも縦2行
+   高さが不足する短いブロックでも時間しか見えなくなるのを防ぐため高さ条件は設けない。
+   タイトルは折り返して複数行表示し、はみ出しはブロック下端でクリップする。 */
+@media (width < 40rem) {
+  .BlockTransportationEdit .transport-layout {
+    display: grid;
+    grid-template-columns: auto auto 1fr auto;
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-areas:
+      "time icon .     info"
+      "title title title title";
+    align-items: center;
+    row-gap: 0.125rem;
+  }
+
+  .BlockTransportationEdit .transport-time-wrapper {
+    grid-area: time;
+    /* 時間は横並び表示 */
+    flex-direction: row;
+
+    .vertical-divider {
+      display: block;
+    }
+
+    .horizontal-divider {
+      display: none;
+    }
+  }
+
+  .BlockTransportationEdit .transport-icon {
+    grid-area: icon;
+    /* 縦2行レイアウトではアイコンを 20px に固定する。
+       PC 既定の 32px(sm:w-8) のままだと、グリッドの auto トラックが幅不足で潰れた際に
+       img がスケール縮小されて「極端に小さく」見えてしまうため、明示サイズで固定して防ぐ。 */
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+
+  .BlockTransportationEdit .transport-title {
+    grid-area: title;
+  }
+
+  .BlockTransportationEdit .transport-info-btn {
+    grid-area: info;
+    margin-left: 0;
+  }
+}
+
+@container (width < 16rem) {
+  .BlockTransportationEdit .transport-layout {
+    display: grid;
+    grid-template-columns: auto auto 1fr auto;
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-areas:
+      "time icon .     info"
+      "title title title title";
+    align-items: center;
+    row-gap: 0.125rem;
+  }
+
+  .BlockTransportationEdit .transport-time-wrapper {
+    grid-area: time;
+    /* 時間は横並び表示 */
+    flex-direction: row;
+
+    .vertical-divider {
+      display: block;
+    }
+
+    .horizontal-divider {
+      display: none;
+    }
+  }
+
+  .BlockTransportationEdit .transport-icon {
+    grid-area: icon;
+    /* 縦2行レイアウトではアイコンを 20px に固定する。
+       PC 既定の 32px(sm:w-8) のままだと、グリッドの auto トラックが幅不足で潰れた際に
+       img がスケール縮小されて「極端に小さく」見えてしまうため、明示サイズで固定して防ぐ。 */
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+
+  .BlockTransportationEdit .transport-title {
+    grid-area: title;
+  }
+
+  .BlockTransportationEdit .transport-info-btn {
+    grid-area: info;
+    margin-left: 0;
+  }
+}
+
+/* 縦2行レイアウト時、上段(time + icon + info)が収まらず i がはみ出すのを防ぐため段階的に時刻を縮める。
+   各要素はほぼ固定幅(時刻 ~6rem + アイコン 20px + i 20px + ギャップ + 左右パディング)なので閾値は算出可能。
+   予定ブロックより移動手段アイコン 1 列分(20px + ギャップ)だけ閾値を広めに取る。
+   PC でもブロック幅(@container)で判定するため、列分割で細くなったブロックに反応する。
+   1段目: まずパディングと各要素のギャップを詰める。
+   2段目: それでも狭い場合は時刻の文字も小さくする。
+   さらに収まらない極小幅は親の overflow:hidden でクリップする。 */
+@container (width < 13rem) {
+  .BlockTransportationEdit .transport-layout {
+    column-gap: 0.125rem;
+  }
+
+  .BlockTransportationEdit .transport-time-wrapper {
+    padding-inline: 0.125rem;
+  }
+}
+
+@container (width < 11rem) {
+  .BlockTransportationEdit .transport-time-wrapper {
+    font-size: 10px !important;
+  }
+}

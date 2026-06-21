@@ -12,6 +12,7 @@ import { selectedPageAtom, selectedPageIdAtom, tripAtom, tripModeAtom, tripPages
 import { AddPageDialog } from '@/dialogs/AddPageDialog';
 import { EditPageDialog } from '@/dialogs/EditPageDialog';
 import { EditTripDialog } from '@/dialogs/EditTripDialog';
+import { formatDateMDWithDow, formatTripRangeMD } from '@/lib/date';
 import { cn } from '@/lib/utils';
 import { Logo } from './Logo';
 import { NetworkStatusButton } from './NetworkStatusButton';
@@ -27,7 +28,8 @@ type HeaderLogoOnlyProps = HeaderBaseProps & {
 
 type HeaderFullProps = HeaderBaseProps & {
   variant: 'full';
-  scrollContainerRef: React.RefObject<HTMLDivElement | null>;
+  /** スクロール監視対象。state で渡すことで、要素が差し替わったときに listener を再 attach する */
+  scrollContainer: HTMLDivElement | null;
   isDraggingRef: React.RefObject<boolean>;
 };
 
@@ -51,13 +53,14 @@ function HeaderLogoOnly({ className, ...props }: HeaderLogoOnlyProps) {
   );
 }
 
-function HeaderFull({ className, scrollContainerRef, isDraggingRef, ...props }: Omit<HeaderFullProps, 'variant'>) {
+function HeaderFull({ className, scrollContainer, isDraggingRef, ...props }: Omit<HeaderFullProps, 'variant'>) {
   const isOffline = useAtomValue(isOfflineReadAtom);
   const trip = useAtomValue(tripAtom);
   const pages = useAtomValue(tripPagesAtom);
   const [selectedPageId, setSelectedPageId] = useAtom(selectedPageIdAtom);
   const mode = useAtomValue(tripModeAtom);
   const selectedPage = useAtomValue(selectedPageAtom);
+  const tripRangeText = formatTripRangeMD(trip?.startDate, trip?.endDate);
 
   const [isScrolled, setIsScrolled] = useState(false);
   const [editPageDialogOpen, setEditPageDialogOpen] = useState(false);
@@ -73,42 +76,41 @@ function HeaderFull({ className, scrollContainerRef, isDraggingRef, ...props }: 
   }, []);
 
   const handleScroll = useCallback(() => {
-    const container = scrollContainerRef?.current;
+    const container = scrollContainer;
     if (!container) return;
 
     const scrollTop = container.scrollTop;
 
-    // ドラッグ中はisScrolledの更新をスキップし、スクロール位置の基準だけ更新する
+    // ドラッグ中は自動スクロールを誤検知しないよう、基準だけ更新して判定はスキップ
     if (isDraggingRef.current) {
       scrollY.current = scrollTop;
       return;
     }
 
     const deltaY = scrollTop - scrollY.current;
-
-    // isScrolledの次の状態を計算する
     let nextIsScrolled = isScrolled;
 
-    if (scrollTop < 50) {
-      // ページ最上部では常に表示
+    const TOP_JITTER_PX = 30;
+    const BOTTOM_BOUNCE_PX = 40; // iOS ラバーバンドでの誤展開を防ぐ末端マージン
+
+    // deltaY <= 0 条件: compact のままコンテナ切替(scrollTop=0始まり)→下スクロール開始時に
+    // 一瞬 expanded へ戻るちらつきを防ぐ（下スクロール中は最上部判定を効かせない）
+    if (scrollTop < TOP_JITTER_PX && deltaY <= 0) {
       nextIsScrolled = false;
     }
 
-    // スクロール末端のバウンスを無視
     const maxScroll = container.scrollHeight - container.clientHeight;
-    const isNearBottom = maxScroll - scrollTop < 50;
+    const isNearBottom = maxScroll - scrollTop < BOTTOM_BOUNCE_PX;
 
     if (isNearBottom && isScrolled && deltaY < 0) {
-      // 最下部バウンスではヘッダー展開しない（ベースラインも更新しない）
+      // 最下部バウンスでの誤展開を無視（基準も更新しない）
       return;
     }
 
-    if (scrollTop >= 50 && Math.abs(deltaY) > 10) {
+    if (scrollTop >= TOP_JITTER_PX && Math.abs(deltaY) > 10) {
       if (deltaY < 0 && isScrolled) {
-        // 上スクロール and ヘッダーが非表示中 -> 表示させる
         nextIsScrolled = false;
       } else if (deltaY > 0 && !isScrolled) {
-        // 下スクロール and ヘッダーが表示中 -> 非表示にさせる
         nextIsScrolled = true;
       }
     }
@@ -116,19 +118,22 @@ function HeaderFull({ className, scrollContainerRef, isDraggingRef, ...props }: 
     if (nextIsScrolled !== isScrolled) {
       setIsScrolled(nextIsScrolled);
     } else {
-      // 状態が変化しなかった場合のみ、スクロール位置の基準を更新
-      // レイアウトシフトによる誤作動を防ぐ
+      // 状態が変わらない時だけ基準更新（レイアウトシフトでの誤作動防止）
       scrollY.current = scrollTop;
     }
-  }, [isScrolled, scrollContainerRef, isDraggingRef]);
+  }, [isScrolled, scrollContainer, isDraggingRef]);
+
+  // コンテナ切替時に基準を同期しないと、初回 deltaY が前コンテナとの差分になり誤判定する
+  useEffect(() => {
+    scrollY.current = scrollContainer?.scrollTop ?? 0;
+  }, [scrollContainer]);
 
   useEffect(() => {
-    const container = scrollContainerRef?.current;
-    if (!container) return;
+    if (!scrollContainer) return;
 
-    container.addEventListener('scroll', handleScroll);
-    return () => container.removeEventListener('scroll', handleScroll);
-  }, [handleScroll, scrollContainerRef]);
+    scrollContainer.addEventListener('scroll', handleScroll);
+    return () => scrollContainer.removeEventListener('scroll', handleScroll);
+  }, [handleScroll, scrollContainer]);
 
   if (!trip) return null;
 
@@ -151,7 +156,7 @@ function HeaderFull({ className, scrollContainerRef, isDraggingRef, ...props }: 
         {/* 左カラム */}
         <div
           className={cn(
-            'flex justify-start transition-[font-size] sm:justify-end',
+            'flex flex-col items-start transition-[font-size] sm:items-end',
             transitionClassNames,
             isScrolled ? 'text-14px sm:text-16px' : 'text-16px sm:text-20px'
           )}
@@ -166,7 +171,10 @@ function HeaderFull({ className, scrollContainerRef, isDraggingRef, ...props }: 
               <Pencil className='size-3 shrink-0 opacity-60' />
             </button>
           ) : (
-            trip.title
+            <span>{trip.title}</span>
+          )}
+          {!isScrolled && tripRangeText && (
+            <span className='text-12px text-slate-500 sm:text-14px'>{tripRangeText}</span>
           )}
         </div>
 
@@ -188,13 +196,18 @@ function HeaderFull({ className, scrollContainerRef, isDraggingRef, ...props }: 
               }
             }}
           >
-            <SelectTrigger className='max-w-[90vw] bg-white sm:max-w-[30vw]'>
+            <SelectTrigger className='min-h-9 max-w-[90vw] bg-white data-[size=default]:h-auto *:data-[slot=select-value]:line-clamp-none *:data-[slot=select-value]:min-w-0 *:data-[slot=select-value]:flex-wrap *:data-[slot=select-value]:gap-x-2 sm:max-w-[30vw]'>
               <SelectValue placeholder='ページ選択' />
             </SelectTrigger>
             <SelectContent className='max-w-[90vw]'>
               {pages.map(page => (
-                <SelectItem key={page.id} value={String(page.id)}>
-                  {page.title}
+                <SelectItem
+                  key={page.id}
+                  value={String(page.id)}
+                  // ItemText span (shadcn の `*:[span]:last:*` で flex化される) に flex-1 + min-w-0 を当てて PageLabel 側の truncate を有効化
+                  className='*:[span]:last:min-w-0 *:[span]:last:flex-1'
+                >
+                  <PageLabel page={page} />
                 </SelectItem>
               ))}
               {mode === 'edit' && (
@@ -223,7 +236,7 @@ function HeaderFull({ className, scrollContainerRef, isDraggingRef, ...props }: 
       <AddPageDialog
         open={addPageDialogOpen}
         onOpenChange={setAddPageDialogOpen}
-        tripId={trip.id}
+        trip={trip}
         onCreated={page => {
           setSelectedPageId(page.id);
         }}
@@ -235,6 +248,7 @@ function HeaderFull({ className, scrollContainerRef, isDraggingRef, ...props }: 
           open={editPageDialogOpen}
           onOpenChange={setEditPageDialogOpen}
           page={selectedPage}
+          trip={trip}
           onDeleted={pageId => {
             const remainingPages = pages.filter(p => p.id !== pageId);
             if (remainingPages.length > 0) {
@@ -343,6 +357,18 @@ const ShareButton = () => {
     </Button>
   );
 };
+
+const PageLabel = ({ page }: { page: { title: string; date?: Date | null } }) => (
+  // flex-wrap で長すぎたら 2 行折り返し、items-center で日付（小フォント）と title の縦位置を揃える
+  <span className='flex min-w-0 flex-1 flex-wrap items-center gap-x-2'>
+    {page.date && (
+      <span className='shrink-0 whitespace-nowrap font-mono text-12px text-slate-500'>
+        {formatDateMDWithDow(page.date)}
+      </span>
+    )}
+    <span className='min-w-0 truncate'>{page.title}</span>
+  </span>
+);
 
 const PageInfoEditButton = ({ isScrolled, onClick }: { isScrolled: boolean; onClick?: () => void }) => (
   <HeaderButtonBase

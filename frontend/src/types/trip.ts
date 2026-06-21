@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { formatDateOnly, parseDateOnly } from '@/lib/date';
 
 // --- アプリケーション層のスキーマ ---
 
@@ -11,6 +12,8 @@ export const TripSchema = z.object({
   detail: z.string().nullish(),
   peopleNum: z.number().nullish(),
   urlId: z.string(),
+  startDate: z.date().nullish(),
+  endDate: z.date().nullish(),
 });
 
 export type Trip = z.infer<typeof TripSchema>;
@@ -31,6 +34,8 @@ const ApiTripSchema = z.object({
   detail: z.string().nullish(),
   people_num: z.number().nullish(),
   url_id: z.string().max(100),
+  start_date: z.string().date().nullish(),
+  end_date: z.string().date().nullish(),
 });
 
 export type ApiTrip = z.infer<typeof ApiTripSchema>;
@@ -42,9 +47,13 @@ export type ApiTrip = z.infer<typeof ApiTripSchema>;
  */
 export const tripFromApi = ApiTripSchema.transform(
   (apiData): Trip => ({
-    ...apiData,
+    id: apiData.id,
+    title: apiData.title,
+    detail: apiData.detail,
     peopleNum: apiData.people_num,
     urlId: apiData.url_id,
+    startDate: apiData.start_date ? parseDateOnly(apiData.start_date) : null,
+    endDate: apiData.end_date ? parseDateOnly(apiData.end_date) : null,
   })
 );
 
@@ -78,5 +87,7 @@ export const tripMutationToApi = TripMutationSchema.transform(
     title: appData.title,
     detail: appData.detail ?? '',
     people_num: appData.peopleNum,
+    start_date: appData.startDate ? formatDateOnly(appData.startDate) : null,
+    end_date: appData.endDate ? formatDateOnly(appData.endDate) : null,
   })
 );

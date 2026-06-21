@@ -37,32 +37,3 @@ fi
 # アプリケーション固有のセットアップ（依存関係のインストール、マイグレーションなど）を実行する
 echo "🚀 Starting application setup..."
 ./scripts/setup.sh
-
-
-# --- データベースのセットアップ ---
-# データベースの起動、ユーザー作成、データベース作成、マイグレーションを行うスクリプトを実行する
-echo "🚀 Starting database setup..."
-sh ./scripts/setup_database.sh
-
-# Claude Code
-pnpm add -g @anthropic-ai/claude-code
-uv tool install claude-monitor
-
-# Gemini CLI
-pnpm add -g @google/gemini-cli
-echo "🎉 All setup steps completed successfully!"
-
-# Firebase CLI Tools
-pnpm add -g firebase-tools
-
-# AI検索用にripgrepをインストール
-sudo apt-get update
-sudo apt-get install -y ripgrep libnss3-tools
-echo "🔍 ripgrep installed for AI search functionality."
-
-# PWA開発用のmkcertをインストール
-curl -JLO "https://dl.filippo.io/mkcert/latest?for=linux/amd64"
-chmod +x mkcert-v*-linux-amd64
-sudo cp mkcert-v*-linux-amd64 /usr/local/bin/mkcert
-mkcert -install
-echo "🔒 mkcert installed for local HTTPS development."

@@ -227,6 +227,8 @@ export const EditTripLayout = ({ selectedPageId, onDragStart, onDragEnd, refresh
           editable
           longPressDelay={300}
           unselectAuto={false}
+          // 重なるブロックはかぶさず、きれいに横並びの列に分割する
+          slotEventOverlap={false}
           // データとイベントハンドラ
           events={events}
           select={handleSelect}

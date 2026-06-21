@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { createStore, Provider } from 'jotai';
 import { useHydrateAtoms } from 'jotai/utils';
 import type { ReactNode } from 'react';
-import { useRef } from 'react';
+import { useState } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { selectedPageIdAtom, tripAtom, tripModeAtom, tripPagesAtom } from '@/atoms/tripPage';
 import type { Page } from '@/types';
@@ -22,6 +22,39 @@ const demoPages: Page[] = [
 ];
 
 const singlePage: Page[] = [{ id: 1, title: '日帰り旅行', tripId: 1 }];
+
+const demoTripWithDates: Trip = {
+  id: 1,
+  title: '北海道旅行',
+  urlId: 'trip1',
+  startDate: new Date(2026, 4, 24),
+  endDate: new Date(2026, 4, 26),
+};
+
+const demoTripStartOnly: Trip = {
+  id: 1,
+  title: '北海道旅行',
+  urlId: 'trip1',
+  startDate: new Date(2026, 4, 24),
+};
+
+const pagesWithDates: Page[] = [
+  { id: 1, title: '札幌観光', tripId: 1, date: new Date(2026, 4, 24) },
+  { id: 2, title: '小樽散策', tripId: 1, date: new Date(2026, 4, 25) },
+  { id: 3, title: '函館見学', tripId: 1, date: new Date(2026, 4, 26) },
+];
+
+const mixedDatePages: Page[] = [
+  { id: 1, title: '札幌観光', tripId: 1, date: new Date(2026, 4, 24) },
+  { id: 2, title: '札幌観光（B案）', tripId: 1, date: new Date(2026, 4, 24) },
+  { id: 3, title: '小樽散策', tripId: 1, date: new Date(2026, 4, 25) },
+  { id: 4, title: '予備プラン', tripId: 1, date: null },
+];
+
+const longTitlePages: Page[] = [
+  { id: 1, title: '北海道満喫ガッツリ堪能プラン', tripId: 1, date: new Date(2026, 4, 24) },
+  { id: 2, title: '小樽運河と寿司めぐり', tripId: 1, date: new Date(2026, 4, 25) },
+];
 
 /** Storybook 用に atom を初期化するラッパー */
 const AtomHydrator = ({
@@ -98,7 +131,7 @@ export const LogoOnly: Story = {
 export const Default: Story = {
   args: {
     variant: 'full',
-    scrollContainerRef: { current: null },
+    scrollContainer: null,
     isDraggingRef: { current: false },
   },
   decorators: [
@@ -125,7 +158,7 @@ export const Default: Story = {
 export const EditMode: Story = {
   args: {
     variant: 'full',
-    scrollContainerRef: { current: null },
+    scrollContainer: null,
     isDraggingRef: { current: false },
   },
   decorators: [
@@ -152,7 +185,7 @@ export const EditMode: Story = {
 export const SinglePage: Story = {
   args: {
     variant: 'full',
-    scrollContainerRef: { current: null },
+    scrollContainer: null,
     isDraggingRef: { current: false },
   },
   decorators: [
@@ -179,7 +212,7 @@ export const SinglePage: Story = {
 export const EmptyPages: Story = {
   args: {
     variant: 'full',
-    scrollContainerRef: { current: null },
+    scrollContainer: null,
     isDraggingRef: { current: false },
   },
   decorators: [
@@ -206,7 +239,7 @@ export const EmptyPages: Story = {
 export const WithCustomClass: Story = {
   args: {
     variant: 'full',
-    scrollContainerRef: { current: null },
+    scrollContainer: null,
     isDraggingRef: { current: false },
     className: 'border-b-2 border-blue-500',
   },
@@ -231,21 +264,132 @@ export const WithCustomClass: Story = {
   },
 };
 
+export const WithDateRange: Story = {
+  args: {
+    variant: 'full',
+    scrollContainer: null,
+    isDraggingRef: { current: false },
+  },
+  decorators: [
+    Story => {
+      const store = createStore();
+      return (
+        <Provider store={store}>
+          <AtomHydrator trip={demoTripWithDates} pages={pagesWithDates} selectedPageId={1} mode='view'>
+            <Story />
+          </AtomHydrator>
+        </Provider>
+      );
+    },
+  ],
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Trip 期間あり・Page 日付ありの基本ケース。タイトル下に期間（M/D(曜)〜M/D(曜)）、Select に MM/DD(曜) · title。',
+      },
+    },
+  },
+};
+
+export const PartialDateRange: Story = {
+  args: {
+    variant: 'full',
+    scrollContainer: null,
+    isDraggingRef: { current: false },
+  },
+  decorators: [
+    Story => {
+      const store = createStore();
+      return (
+        <Provider store={store}>
+          <AtomHydrator trip={demoTripStartOnly} pages={pagesWithDates} selectedPageId={1} mode='view'>
+            <Story />
+          </AtomHydrator>
+        </Provider>
+      );
+    },
+  ],
+  parameters: {
+    docs: {
+      description: {
+        story: 'Trip 期間が片方のみ（開始日のみ）設定されている場合。サブタイトルは `M/D(曜) 〜` のみ。',
+      },
+    },
+  },
+};
+
+export const MixedDatePages: Story = {
+  args: {
+    variant: 'full',
+    scrollContainer: null,
+    isDraggingRef: { current: false },
+  },
+  decorators: [
+    Story => {
+      const store = createStore();
+      return (
+        <Provider store={store}>
+          <AtomHydrator trip={demoTripWithDates} pages={mixedDatePages} selectedPageId={1} mode='edit'>
+            <Story />
+          </AtomHydrator>
+        </Provider>
+      );
+    },
+  ],
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'date 重複（同日に A案/B案 のような複数 Page）と date=null（予備プラン）が混在するケース。並び順: date 昇順 → id 昇順 → null 末尾。',
+      },
+    },
+  },
+};
+
+export const LongPageTitle: Story = {
+  args: {
+    variant: 'full',
+    scrollContainer: null,
+    isDraggingRef: { current: false },
+  },
+  decorators: [
+    Story => {
+      const store = createStore();
+      return (
+        <Provider store={store}>
+          <AtomHydrator trip={demoTripWithDates} pages={longTitlePages} selectedPageId={1} mode='view'>
+            <Story />
+          </AtomHydrator>
+        </Provider>
+      );
+    },
+  ],
+  parameters: {
+    docs: {
+      description: {
+        story:
+          '長いタイトルで Select トリガーが 2 行に折り返されるケース。狭いビューポートで顕著（max-w-[30vw] の制約による）。',
+      },
+    },
+  },
+};
+
 export const ScrolledState: Story = {
   args: {
     variant: 'full',
-    scrollContainerRef: { current: null },
+    scrollContainer: null,
     isDraggingRef: { current: false },
   },
   decorators: [
     (Story, context) => {
-      const scrollContainerRef = useRef<HTMLDivElement>(null);
+      const [scrollContainer, setScrollContainer] = useState<HTMLDivElement | null>(null);
       const store = createStore();
       return (
         <Provider store={store}>
           <AtomHydrator trip={demoTrip} pages={demoPages} selectedPageId={1} mode='view'>
-            <div ref={scrollContainerRef} style={{ height: '200vh', overflow: 'auto' }}>
-              <Story args={{ ...context.args, variant: 'full', scrollContainerRef }} />
+            <div ref={setScrollContainer} style={{ height: '200vh', overflow: 'auto' }}>
+              <Story args={{ ...context.args, variant: 'full', scrollContainer }} />
               <div style={{ padding: '2rem', marginTop: '2rem' }}>
                 <h2>スクロールしてヘッダーの変化を確認</h2>
                 <p>

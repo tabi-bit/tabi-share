@@ -8,6 +8,7 @@ import { PwaInstallBanner } from '@/components/PwaInstallBanner';
 import { Button } from '@/components/ui/button';
 import { AddTripDialog } from '@/dialogs/AddTripDialog';
 import { useVisitedTrips } from '@/hooks/useVisitedTrips';
+import { formatTripRangeYMD } from '@/lib/date';
 import { cn } from '@/lib/utils';
 
 const HomePage = () => {
@@ -50,15 +51,19 @@ const HomePage = () => {
           {/* Trip一覧 */}
           {!isLoading && hasTrips && (
             <div className='space-y-3'>
-              {trips.map(trip => (
-                <Link
-                  key={trip.id}
-                  to={`/trip/${trip.urlId}`}
-                  className='block rounded-lg bg-white p-4 shadow-sm transition hover:shadow-md'
-                >
-                  <h3 className='mb-1 font-semibold text-gray-900 text-lg'>{trip.title}</h3>
-                </Link>
-              ))}
+              {trips.map(trip => {
+                const rangeText = formatTripRangeYMD(trip.startDate, trip.endDate);
+                return (
+                  <Link
+                    key={trip.id}
+                    to={`/trip/${trip.urlId}`}
+                    className='block rounded-lg bg-white p-4 shadow-sm transition hover:shadow-md'
+                  >
+                    <h3 className='font-semibold text-gray-900 text-lg'>{trip.title}</h3>
+                    {rangeText && <p className='text-gray-500 text-xs'>{rangeText}</p>}
+                  </Link>
+                );
+              })}
             </div>
           )}
         </div>

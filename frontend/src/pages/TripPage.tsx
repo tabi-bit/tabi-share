@@ -1,8 +1,8 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { isOfflineReadAtom } from '@/atoms/network';
-import { selectedPageIdAtom, tripAtom, tripModeAtom, tripPagesAtom } from '@/atoms/tripPage';
+import { selectedPageIdAtom, sortPages, tripAtom, tripModeAtom, tripPagesAtom } from '@/atoms/tripPage';
 import { FetchErrorView } from '@/components/FetchErrorView';
 import { Header } from '@/components/Header';
 import { HeaderSkeleton } from '@/components/HeaderSkeleton';
@@ -17,7 +17,13 @@ import { EditTripLayout } from './TripPage/EditTripLayout';
 import { ViewTripLayout } from './TripPage/ViewTripLayout';
 
 const TripPage = () => {
+  // useDragAutoScroll は ref を読み続けるので維持。Header は state で再 attach するため両方持つ
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [scrollContainerEl, setScrollContainerEl] = useState<HTMLDivElement | null>(null);
+  const handleScrollContainerChange = useCallback((el: HTMLDivElement | null) => {
+    scrollContainerRef.current = el;
+    setScrollContainerEl(el);
+  }, []);
   const { isDraggingRef, startDrag, stopDrag } = useDragAutoScroll(scrollContainerRef);
   const [selectedPageId, setSelectedPageId] = useAtom(selectedPageIdAtom);
   const [mode, setMode] = useAtom(tripModeAtom);
@@ -51,7 +57,7 @@ const TripPage = () => {
   }, [trip, setTripAtom]);
 
   useEffect(() => {
-    if (pages) setTripPages(pages);
+    if (pages) setTripPages(sortPages(pages));
   }, [pages, setTripPages]);
 
   // 1秒間の最小ローディング表示を管理
@@ -137,7 +143,7 @@ const TripPage = () => {
       {trip && pages && (
         <div className='flex h-dvh w-full flex-col'>
           <Title>{trip.title}</Title>
-          <Header variant='full' scrollContainerRef={scrollContainerRef} isDraggingRef={isDraggingRef} />
+          <Header variant='full' scrollContainer={scrollContainerEl} isDraggingRef={isDraggingRef} />
           {pages.length === 0 && (
             <div className='flex flex-1 items-center justify-center text-gray-500'>
               編集モードからページを追加してください
@@ -145,7 +151,7 @@ const TripPage = () => {
           )}
           {pages.length > 0 && mode === 'view' && (
             <PageSwipeContainer
-              activeSlideScrollRef={scrollContainerRef}
+              onActiveSlideChange={handleScrollContainerChange}
               className='min-h-0 flex-1'
               renderPage={page => (
                 <div className='flex h-full flex-col items-center pt-4'>
@@ -160,7 +166,7 @@ const TripPage = () => {
           )}
           {mode === 'edit' && (
             <div
-              ref={scrollContainerRef}
+              ref={handleScrollContainerChange}
               className='flex flex-1 flex-col items-center overflow-auto overscroll-y-none pt-4'
             >
               {selectedPageId != null && (

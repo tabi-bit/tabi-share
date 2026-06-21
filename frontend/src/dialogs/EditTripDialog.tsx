@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -11,6 +11,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { DateRangePicker } from '@/components/ui/date-picker';
 import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -28,8 +29,13 @@ interface EditTripDialogProps {
 }
 
 export const EditTripDialog = ({ open, onOpenChange, trip, onDeleted }: EditTripDialogProps) => {
+  const titleId = useId();
+  const dateId = useId();
+  const detailId = useId();
   const [tripTitle, setTripTitle] = useState(trip.title);
   const [tripDetail, setTripDetail] = useState(trip.detail ?? '');
+  const [startDate, setStartDate] = useState<Date | null>(trip.startDate ?? null);
+  const [endDate, setEndDate] = useState<Date | null>(trip.endDate ?? null);
   const { updateTrip } = useUpdateTrip();
   const { deleteTrip } = useDeleteTrip();
   const { removeVisitedTrip } = useVisitedTrips();
@@ -39,6 +45,8 @@ export const EditTripDialog = ({ open, onOpenChange, trip, onDeleted }: EditTrip
     if (open) {
       setTripTitle(trip.title);
       setTripDetail(trip.detail ?? '');
+      setStartDate(trip.startDate ?? null);
+      setEndDate(trip.endDate ?? null);
     }
   }, [open, trip]);
 
@@ -59,12 +67,16 @@ export const EditTripDialog = ({ open, onOpenChange, trip, onDeleted }: EditTrip
       return;
     }
 
-    if (trimmedTitle !== trip.title || trimmedDetail !== (trip.detail ?? '')) {
-      updateTrip({
-        id: trip.id,
-        data: { title: trimmedTitle, detail: trimmedDetail || undefined, peopleNum: trip.peopleNum },
-      });
-    }
+    updateTrip({
+      id: trip.id,
+      data: {
+        title: trimmedTitle,
+        detail: trimmedDetail || undefined,
+        peopleNum: trip.peopleNum,
+        startDate,
+        endDate,
+      },
+    });
 
     onOpenChange(false);
   };
@@ -79,11 +91,11 @@ export const EditTripDialog = ({ open, onOpenChange, trip, onDeleted }: EditTrip
         <DialogBody>
           <div className='space-y-4'>
             <div className='space-y-2'>
-              <Label htmlFor='edit-trip-title'>
+              <Label htmlFor={titleId}>
                 旅程タイトル<span className='text-red-500'>*</span>
               </Label>
               <Input
-                id='edit-trip-title'
+                id={titleId}
                 value={tripTitle}
                 onChange={e => setTripTitle(e.target.value)}
                 placeholder='旅程のタイトル'
@@ -92,10 +104,22 @@ export const EditTripDialog = ({ open, onOpenChange, trip, onDeleted }: EditTrip
               />
             </div>
             <div className='space-y-2'>
-              <Label htmlFor='edit-trip-detail'>旅程全体メモ</Label>
+              <Label htmlFor={dateId}>期間</Label>
+              <DateRangePicker
+                id={dateId}
+                start={startDate}
+                end={endDate}
+                onChange={(s, e) => {
+                  setStartDate(s);
+                  setEndDate(e);
+                }}
+              />
+            </div>
+            <div className='space-y-2'>
+              <Label htmlFor={detailId}>旅程全体メモ</Label>
               <LazyMarkdownEditor
                 className='max-h-72'
-                id='edit-trip-detail'
+                id={detailId}
                 value={tripDetail}
                 onChange={setTripDetail}
                 placeholder='旅程の詳細や目的など（任意）'

@@ -39,10 +39,7 @@ describe('sortBlocks', () => {
   });
 
   it('元の配列を破壊しない（非破壊ソート）', () => {
-    const blocks: Block[] = [
-      makeBlock(1, '2026-01-01T12:00:00Z', null),
-      makeBlock(2, '2026-01-01T09:00:00Z', null),
-    ];
+    const blocks: Block[] = [makeBlock(1, '2026-01-01T12:00:00Z', null), makeBlock(2, '2026-01-01T09:00:00Z', null)];
 
     const sorted = sortBlocks(blocks);
 

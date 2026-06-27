@@ -97,10 +97,8 @@ export const EditTripLayout = ({ selectedPageId, onDragStart, onDragEnd, refresh
   }, []);
 
   // 初回イベントマウント時にタイムラインを最初のイベントへスクロールする。
-  // eventDidMountはイベントごと・再レンダーごとに発火するため、ページごとに1度だけ実行する。
-  // blocksのロード完了前はイベントがDOMに存在せず発火しないため、ロード完了後の最初の
-  // マウントが確実なトリガーになる。スクロールはレイアウト確定後に行うようrAFで1フレーム待ち、
-  // 実際に実行されるまでフラグを落とさないことで「ロード未完→スクロール未発火」のレースを防ぐ。
+  // blocksのロード完了後の最初のマウントを確実なトリガーにし、rAFで1フレーム待ってから
+  // 実行することでレイアウト未確定によるスクロール失敗を防ぐ（ページごとに1度だけ実行）。
   const handleEventMount = (arg: ViewMountArg) => {
     if (hasScrolledToFirstEvent.current || scrollRafId.current != null) return;
     const eventEl = arg.el;

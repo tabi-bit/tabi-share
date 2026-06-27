@@ -1,8 +1,9 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
 import useSWR, { type SWRConfiguration, useSWRConfig } from 'swr';
 import useSWRMutation from 'swr/mutation';
 import { z } from 'zod';
+import { sortPages } from '@/atoms/tripPage';
 import { apiClient, fetcher } from '@/lib/apiClient';
 import { getErrorMessage } from '@/lib/errors';
 import { type Page, PageSchema, pageFromApi, pageToApi } from '@/types/page';
@@ -23,8 +24,11 @@ export const usePages = (tripId: number | null, options?: Pick<SWRConfiguration,
     options
   );
 
+  // サーバー返却順はソート保証がないため、サービス層で date 昇順 → id 昇順に整列して返す
+  const pages = useMemo<Page[] | undefined>(() => (data ? sortPages(data) : data), [data]);
+
   return {
-    pages: data,
+    pages,
     error,
     isLoading,
   };

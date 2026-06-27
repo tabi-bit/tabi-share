@@ -80,9 +80,15 @@ export const EditTripLayout = ({ selectedPageId, onDragStart, onDragEnd, refresh
     }
   }, [blocks]);
 
-  // selectedPageId変更時にスクロールフラグをリセット
+  // selectedPageId変更時にスクロールフラグをリセット。
+  // 旧ページで予約済みのrAFが切替後に発火するとhasScrolledToFirstEventを再び立ててしまい
+  // 新ページの初回スクロールが潰されるため、ここでも明示的にキャンセルする。
   // biome-ignore lint/correctness/useExhaustiveDependencies: selectedPageId変更を検知してrefをリセットするための意図的な依存配列
   useEffect(() => {
+    if (scrollRafId.current != null) {
+      cancelAnimationFrame(scrollRafId.current);
+      scrollRafId.current = null;
+    }
     hasScrolledToFirstEvent.current = false;
   }, [selectedPageId]);
 

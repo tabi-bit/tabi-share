@@ -34,12 +34,6 @@ const HomePage = () => {
             </Button>
           </div>
 
-          {isLoading && (
-            <div className='mt-8 flex justify-center'>
-              <LoaderCircle className='size-8 animate-spin text-gray-400' aria-label='読み込み中' />
-            </div>
-          )}
-
           {!(isLoading || hasTrips) && (
             <div className='relative flex flex-col items-center px-24 sm:px-0'>
               <p className='relative mt-8 w-full text-center text-gray-500'>
@@ -54,6 +48,12 @@ const HomePage = () => {
 
           {/* PWAインストールバナー */}
           <PwaInstallBanner className='mt-4 mb-2' />
+
+          {isLoading && (
+            <div className='mt-8 flex justify-center'>
+              <LoaderCircle className='size-8 animate-spin text-gray-400' aria-label='読み込み中' />
+            </div>
+          )}
 
           {/* Trip一覧 */}
           {!isLoading && hasTrips && (

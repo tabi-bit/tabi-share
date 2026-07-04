@@ -9,10 +9,14 @@ import type { Page } from '@/types';
 import type { Trip } from '@/types/trip';
 import { Header } from './Header';
 
+const DEMO_TS = new Date('2026-01-01T00:00:00Z');
+
 const demoTrip: Trip = {
   id: 1,
   title: '北海道旅行',
   urlId: 'trip1',
+  createdAt: DEMO_TS,
+  updatedAt: DEMO_TS,
 };
 
 const demoPages: Page[] = [
@@ -29,6 +33,8 @@ const demoTripWithDates: Trip = {
   urlId: 'trip1',
   startDate: new Date(2026, 4, 24),
   endDate: new Date(2026, 4, 26),
+  createdAt: DEMO_TS,
+  updatedAt: DEMO_TS,
 };
 
 const demoTripStartOnly: Trip = {
@@ -36,6 +42,8 @@ const demoTripStartOnly: Trip = {
   title: '北海道旅行',
   urlId: 'trip1',
   startDate: new Date(2026, 4, 24),
+  createdAt: DEMO_TS,
+  updatedAt: DEMO_TS,
 };
 
 const pagesWithDates: Page[] = [
@@ -193,7 +201,11 @@ export const SinglePage: Story = {
       const store = createStore();
       return (
         <Provider store={store}>
-          <AtomHydrator trip={{ id: 1, title: '日帰り温泉ツアー', urlId: 'trip1' }} pages={singlePage} mode='view'>
+          <AtomHydrator
+            trip={{ id: 1, title: '日帰り温泉ツアー', urlId: 'trip1', createdAt: DEMO_TS, updatedAt: DEMO_TS }}
+            pages={singlePage}
+            mode='view'
+          >
             <Story />
           </AtomHydrator>
         </Provider>
@@ -220,7 +232,11 @@ export const EmptyPages: Story = {
       const store = createStore();
       return (
         <Provider store={store}>
-          <AtomHydrator trip={{ id: 1, title: '新しい旅行計画', urlId: 'trip1' }} pages={[]} mode='edit'>
+          <AtomHydrator
+            trip={{ id: 1, title: '新しい旅行計画', urlId: 'trip1', createdAt: DEMO_TS, updatedAt: DEMO_TS }}
+            pages={[]}
+            mode='edit'
+          >
             <Story />
           </AtomHydrator>
         </Provider>

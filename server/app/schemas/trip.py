@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, model_validator
 from pydantic.fields import Field
@@ -45,5 +45,7 @@ class Trip(TripBase):
     id: int
     url_id: str
     pages: list[Page] = []
+    created_at: datetime
+    updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

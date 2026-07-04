@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { AddTripDialog } from '@/dialogs/AddTripDialog';
 import { useVisitedTrips } from '@/hooks/useVisitedTrips';
 import { formatTripRangeYMD } from '@/lib/date';
+import { sortTripsByLatestUpdate } from '@/lib/sortTrips';
 import { cn } from '@/lib/utils';
 
 const HomePage = () => {
@@ -18,6 +19,7 @@ const HomePage = () => {
   const isOffline = useAtomValue(isOfflineReadAtom);
 
   const hasTrips = trips != null && trips.length > 0;
+  const sortedTrips = hasTrips ? sortTripsByLatestUpdate(trips) : trips;
 
   return (
     <div className='flex h-dvh w-full flex-col overflow-auto bg-teal-50'>
@@ -49,9 +51,9 @@ const HomePage = () => {
           <PwaInstallBanner className='mt-4 mb-2' />
 
           {/* Trip一覧 */}
-          {!isLoading && hasTrips && (
+          {!isLoading && hasTrips && sortedTrips != null && (
             <div className='space-y-3'>
-              {trips.map(trip => {
+              {sortedTrips.map(trip => {
                 const rangeText = formatTripRangeYMD(trip.startDate, trip.endDate);
                 return (
                   <Link

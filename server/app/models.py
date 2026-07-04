@@ -6,15 +6,19 @@ from datetime import date, datetime
 
 from sqlalchemy import (
     CheckConstraint,
+    Connection,
     Date,
     DateTime,
     Float,
     ForeignKey,
     String,
     Text,
+    event,
     func,
+    select,
+    update,
 )
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, Mapper, mapped_column, relationship
 
 from .db_connection import Base
 
@@ -59,6 +63,9 @@ class Trip(Base):
             name="ck_trips_start_date_le_end_date",
         ),
     )
+    # onupdate=func.now() でセットされた updated_at をコミット直後の応答で
+    # そのまま参照できるよう、UPDATE 時に RETURNING で取得させる
+    __mapper_args__ = {"eager_defaults": True}
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     url_id: Mapped[str] = mapped_column(
@@ -79,6 +86,17 @@ class Trip(Base):
     )
     end_date: Mapped[date | None] = mapped_column(
         Date, nullable=True, comment="旅程終了日"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        comment="作成日時",
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        comment="更新日時（配下Page/Blockの変更でも更新される）",
     )
     # Relationships
     pages: Mapped[list["Page"]] = relationship(
@@ -185,3 +203,40 @@ class Block(Base):
         foreign_keys=[destination_location_id],
         lazy="raise",
     )
+
+
+# ---------------------------------------------------------------------------
+# 親 Trip の updated_at 自動更新
+# ---------------------------------------------------------------------------
+# Trip 自身の UPDATE は Trip.updated_at の onupdate=func.now() で処理される。
+# ここでは配下の Page / Block の変更でも親 Trip の updated_at を bump する。
+# passive_deletes=True により Trip 削除に伴う Page/Block の連鎖削除は DB CASCADE
+# で行われ ORM イベントは発火しないため、消える Trip を bump しようとする心配はない。
+
+
+def _bump_trip_updated_at(connection: Connection, trip_id: int) -> None:
+    connection.execute(
+        update(Trip).where(Trip.id == trip_id).values(updated_at=func.now())
+    )
+
+
+def _bump_trip_updated_at_via_page(connection: Connection, page_id: int) -> None:
+    connection.execute(
+        update(Trip)
+        .where(Trip.id.in_(select(Page.trip_id).where(Page.id == page_id)))
+        .values(updated_at=func.now())
+    )
+
+
+@event.listens_for(Page, "after_insert")
+@event.listens_for(Page, "after_update")
+@event.listens_for(Page, "after_delete")
+def _on_page_change(mapper: Mapper, connection: Connection, target: Page) -> None:
+    _bump_trip_updated_at(connection, target.trip_id)
+
+
+@event.listens_for(Block, "after_insert")
+@event.listens_for(Block, "after_update")
+@event.listens_for(Block, "after_delete")
+def _on_block_change(mapper: Mapper, connection: Connection, target: Block) -> None:
+    _bump_trip_updated_at_via_page(connection, target.page_id)

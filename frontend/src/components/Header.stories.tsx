@@ -16,7 +16,7 @@ const demoTrip: Trip = {
   title: '北海道旅行',
   urlId: 'trip1',
   createdAt: DEMO_TS,
-  updatedAt: DEMO_TS,
+  lastEditedAt: DEMO_TS,
 };
 
 const demoPages: Page[] = [
@@ -34,7 +34,7 @@ const demoTripWithDates: Trip = {
   startDate: new Date(2026, 4, 24),
   endDate: new Date(2026, 4, 26),
   createdAt: DEMO_TS,
-  updatedAt: DEMO_TS,
+  lastEditedAt: DEMO_TS,
 };
 
 const demoTripStartOnly: Trip = {
@@ -43,7 +43,7 @@ const demoTripStartOnly: Trip = {
   urlId: 'trip1',
   startDate: new Date(2026, 4, 24),
   createdAt: DEMO_TS,
-  updatedAt: DEMO_TS,
+  lastEditedAt: DEMO_TS,
 };
 
 const pagesWithDates: Page[] = [
@@ -202,7 +202,7 @@ export const SinglePage: Story = {
       return (
         <Provider store={store}>
           <AtomHydrator
-            trip={{ id: 1, title: '日帰り温泉ツアー', urlId: 'trip1', createdAt: DEMO_TS, updatedAt: DEMO_TS }}
+            trip={{ id: 1, title: '日帰り温泉ツアー', urlId: 'trip1', createdAt: DEMO_TS, lastEditedAt: DEMO_TS }}
             pages={singlePage}
             mode='view'
           >
@@ -233,7 +233,7 @@ export const EmptyPages: Story = {
       return (
         <Provider store={store}>
           <AtomHydrator
-            trip={{ id: 1, title: '新しい旅行計画', urlId: 'trip1', createdAt: DEMO_TS, updatedAt: DEMO_TS }}
+            trip={{ id: 1, title: '新しい旅行計画', urlId: 'trip1', createdAt: DEMO_TS, lastEditedAt: DEMO_TS }}
             pages={[]}
             mode='edit'
           >

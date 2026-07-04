@@ -168,5 +168,5 @@ export const demoTrip: Trip = {
   urlId: 'trip1',
   title: 'サンプル旅行',
   createdAt: new Date('2026-01-01T00:00:00Z'),
-  updatedAt: new Date('2026-01-01T00:00:00Z'),
+  lastEditedAt: new Date('2026-01-01T00:00:00Z'),
 };

@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { AddTripDialog } from '@/dialogs/AddTripDialog';
 import { useVisitedTrips } from '@/hooks/useVisitedTrips';
 import { formatTripRangeYMD } from '@/lib/date';
-import { sortTripsByLatestUpdate } from '@/lib/sortTrips';
+import { sortTripsByLastEdited } from '@/lib/sortTrips';
 import { cn } from '@/lib/utils';
 
 const HomePage = () => {
@@ -19,7 +19,7 @@ const HomePage = () => {
   const isOffline = useAtomValue(isOfflineReadAtom);
 
   const hasTrips = trips != null && trips.length > 0;
-  const sortedTrips = hasTrips ? sortTripsByLatestUpdate(trips) : trips;
+  const sortedTrips = hasTrips ? sortTripsByLastEdited(trips) : trips;
 
   return (
     <div className='flex h-dvh w-full flex-col overflow-auto bg-teal-50'>

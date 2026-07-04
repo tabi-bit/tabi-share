@@ -38,12 +38,23 @@ def upgrade() -> None:
             sa.DateTime(timezone=True),
             server_default=sa.text("now()"),
             nullable=False,
-            comment="更新日時",
+            comment="更新日時（trips 行自身のカラム変更時刻）",
+        ),
+    )
+    op.add_column(
+        "trips",
+        sa.Column(
+            "last_edited_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+            comment="最終編集日時（配下 Page/Block の変更も含む）",
         ),
     )
 
 
 def downgrade() -> None:
     """Downgrade schema."""
+    op.drop_column("trips", "last_edited_at")
     op.drop_column("trips", "updated_at")
     op.drop_column("trips", "created_at")

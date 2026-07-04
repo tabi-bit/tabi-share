@@ -46,6 +46,6 @@ class Trip(TripBase):
     url_id: str
     pages: list[Page] = []
     created_at: datetime
-    updated_at: datetime
+    last_edited_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

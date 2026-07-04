@@ -15,7 +15,7 @@ export const TripSchema = z.object({
   startDate: z.date().nullish(),
   endDate: z.date().nullish(),
   createdAt: z.date(),
-  updatedAt: z.date(),
+  lastEditedAt: z.date(),
 });
 
 export type Trip = z.infer<typeof TripSchema>;
@@ -39,7 +39,7 @@ const ApiTripSchema = z.object({
   start_date: z.string().date().nullish(),
   end_date: z.string().date().nullish(),
   created_at: z.string().datetime({ offset: true }),
-  updated_at: z.string().datetime({ offset: true }),
+  last_edited_at: z.string().datetime({ offset: true }),
 });
 
 export type ApiTrip = z.infer<typeof ApiTripSchema>;
@@ -59,7 +59,7 @@ export const tripFromApi = ApiTripSchema.transform(
     startDate: apiData.start_date ? parseDateOnly(apiData.start_date) : null,
     endDate: apiData.end_date ? parseDateOnly(apiData.end_date) : null,
     createdAt: new Date(apiData.created_at),
-    updatedAt: new Date(apiData.updated_at),
+    lastEditedAt: new Date(apiData.last_edited_at),
   })
 );
 
@@ -80,13 +80,13 @@ export type CreateTripFromApi = z.infer<typeof createTripFromApi>;
 
 /**
  * 作成/更新リクエスト用のアプリケーション層スキーマ
- * id, urlId, createdAt, updatedAt はサーバーで管理されるため除外
+ * id, urlId, createdAt, lastEditedAt はサーバーで管理されるため除外
  */
 export const TripMutationSchema = TripSchema.omit({
   id: true,
   urlId: true,
   createdAt: true,
-  updatedAt: true,
+  lastEditedAt: true,
 });
 export type TripMutation = z.infer<typeof TripMutationSchema>;
 
@@ -94,7 +94,7 @@ export type TripMutation = z.infer<typeof TripMutationSchema>;
  * アプリケーション層の作成/更新データをAPI送信用に変換するスキーマ
  */
 export const tripMutationToApi = TripMutationSchema.transform(
-  (appData): Omit<ApiTrip, 'id' | 'url_id' | 'created_at' | 'updated_at'> => ({
+  (appData): Omit<ApiTrip, 'id' | 'url_id' | 'created_at' | 'last_edited_at'> => ({
     title: appData.title,
     detail: appData.detail ?? '',
     people_num: appData.peopleNum,

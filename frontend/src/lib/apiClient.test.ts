@@ -20,7 +20,7 @@ const setTrip = (urlId: string | null): void => {
           peopleNum: null,
           urlId,
           createdAt: new Date('2026-01-01T00:00:00Z'),
-          updatedAt: new Date('2026-01-01T00:00:00Z'),
+          lastEditedAt: new Date('2026-01-01T00:00:00Z'),
         }
   );
 };

@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import require_trip_access, require_page_access
 from app.cruds import pages as pages_cruds
-from app.db_connection import get_db_session
+from app.db_connection import get_db_session, get_read_db_session
 from app.errors import NotFound
 from app.schemas.page import Page, PageCreate, PageCreateResponse, PageUpdate
 
@@ -41,7 +41,7 @@ async def create_page(
 async def get_pages(
     trip_id: int,
     _: int = Depends(require_trip_access),
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_read_db_session),
 ) -> list[Page]:
     """
     説明:
@@ -60,7 +60,7 @@ async def get_pages(
 async def get_page(
     page_id: int,
     _: int = Depends(require_page_access),
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_read_db_session),
 ) -> Page:
     """
     説明:

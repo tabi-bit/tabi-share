@@ -16,7 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
-from app.db_connection import get_db_session
+from app.db_connection import get_read_db_session
 from app.errors import Forbidden, NotFound
 from app.models import Block, Page
 
@@ -112,7 +112,7 @@ def require_trip_access(trip_id: int, request: Request) -> int:
 async def require_page_access(
     page_id: int,
     request: Request,
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_read_db_session),
 ) -> int:
     """page_id から trip_id を解決し、アクセス権を検証する。"""
     result = await db.execute(select(Page.trip_id).where(Page.id == page_id))
@@ -129,7 +129,7 @@ async def require_page_access(
 async def require_block_access(
     block_id: int,
     request: Request,
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_read_db_session),
 ) -> int:
     """block_id から trip_id を解決し、アクセス権を検証する。"""
     result = await db.execute(

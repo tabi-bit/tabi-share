@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import require_block_access, require_page_access
 from app.cruds import blocks as blocks_cruds
-from app.db_connection import get_db_session
+from app.db_connection import get_db_session, get_read_db_session
 from app.errors import NotFound
 from app.schemas.block import Block, BlockCreate, BlockUpdate
 
@@ -40,7 +40,7 @@ async def create_block(
 async def get_blocks(
     page_id: int,
     _: int = Depends(require_page_access),
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_read_db_session),
 ) -> list[Block]:
     """
     説明:
@@ -59,7 +59,7 @@ async def get_blocks(
 async def get_block(
     block_id: int,
     _: int = Depends(require_block_access),
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_read_db_session),
 ) -> Block:
     """
     説明:

@@ -1,4 +1,5 @@
 import { useAtomValue } from 'jotai';
+import { LoaderCircle } from 'lucide-react';
 import type React from 'react';
 import { useId, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -32,6 +33,12 @@ const HomePage = () => {
               + 新しく旅に出る
             </Button>
           </div>
+
+          {isLoading && (
+            <div className='mt-8 flex justify-center'>
+              <LoaderCircle className='size-8 animate-spin text-gray-400' aria-label='読み込み中' />
+            </div>
+          )}
 
           {!(isLoading || hasTrips) && (
             <div className='relative flex flex-col items-center px-24 sm:px-0'>

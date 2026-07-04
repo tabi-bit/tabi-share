@@ -9,7 +9,20 @@ import { appStore } from './store';
 const URL_ID = 'abc123';
 
 const setTrip = (urlId: string | null): void => {
-  appStore.set(tripAtom, urlId === null ? null : { id: 1, title: 't', detail: null, peopleNum: null, urlId });
+  appStore.set(
+    tripAtom,
+    urlId === null
+      ? null
+      : {
+          id: 1,
+          title: 't',
+          detail: null,
+          peopleNum: null,
+          urlId,
+          createdAt: new Date('2026-01-01T00:00:00Z'),
+          lastEditedAt: new Date('2026-01-01T00:00:00Z'),
+        }
+  );
 };
 
 describe('apiClient — 認可Cookie失効リカバリ', () => {

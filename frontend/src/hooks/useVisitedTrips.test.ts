@@ -160,4 +160,18 @@ describe('useVisitedTrips', () => {
       expect(result.current).toBeDefined();
     });
   });
+
+  it('IndexedDB 読み込み中は isLoading が true で、完了後に false になる', async () => {
+    mockDbGet.mockResolvedValue({ key: 'visitedTripUrlIds', value: [] });
+
+    const { result } = renderHook(() => useVisitedTrips());
+
+    // マウント直後（IndexedDB 読み込み中）は isLoading が true
+    expect(result.current.isLoading).toBe(true);
+
+    // 初期化完了後は false（urlIds が空なので SWR も走らない）
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+  });
 });

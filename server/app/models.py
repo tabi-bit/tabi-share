@@ -6,15 +6,18 @@ from datetime import date, datetime
 
 from sqlalchemy import (
     CheckConstraint,
+    Connection,
     Date,
     DateTime,
     Float,
     ForeignKey,
     String,
     Text,
+    event,
     func,
+    text,
 )
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, Mapper, mapped_column, relationship
 
 from .db_connection import Base
 
@@ -59,6 +62,9 @@ class Trip(Base):
             name="ck_trips_start_date_le_end_date",
         ),
     )
+    # onupdate=func.now() でセットされた updated_at / last_edited_at をコミット
+    # 直後の応答でそのまま参照できるよう、UPDATE 時に RETURNING で取得させる
+    __mapper_args__ = {"eager_defaults": True}
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     url_id: Mapped[str] = mapped_column(
@@ -79,6 +85,23 @@ class Trip(Base):
     )
     end_date: Mapped[date | None] = mapped_column(
         Date, nullable=True, comment="旅程終了日"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        comment="作成日時",
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        comment="更新日時（trips 行自身のカラム変更時刻）",
+    )
+    last_edited_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        comment="最終編集日時（配下 Page/Block の変更も含む）",
     )
     # Relationships
     pages: Mapped[list["Page"]] = relationship(
@@ -185,3 +208,52 @@ class Block(Base):
         foreign_keys=[destination_location_id],
         lazy="raise",
     )
+
+
+# ---------------------------------------------------------------------------
+# 親 Trip の last_edited_at 自動更新
+# ---------------------------------------------------------------------------
+# Trip 自身の UPDATE では onupdate=func.now() で last_edited_at と updated_at
+# の両方が bump される。ここでは配下の Page / Block の変更で親 Trip の
+# last_edited_at のみを bump し、updated_at (行自身のカラム変更時刻) は触らない。
+#
+# 実装メモ:
+# - raw SQL (text) を使うのは、SQLAlchemy Core の update() 経由だと trips.updated_at
+#   の onupdate=func.now() が自動発火して last_edited_at と一緒に updated_at も
+#   意図せず bump されてしまうため。
+# - clock_timestamp() (wall time) を使うのは、now()/transaction_timestamp() が
+#   トランザクション開始時刻を返す仕様のため、同一 tx 内の複数 bump が同一値になる
+#   のを避け、テスト・本番ともに実イベント時刻に紐づく値にするため。
+# - passive_deletes=True により Trip 削除に伴う Page/Block の連鎖削除は DB CASCADE
+#   で行われ ORM イベントは発火しないため、消える Trip を bump しようとする心配はない。
+
+
+def _bump_trip_last_edited_at(connection: Connection, trip_id: int) -> None:
+    connection.execute(
+        text("UPDATE trips SET last_edited_at = clock_timestamp() WHERE id = :trip_id"),
+        {"trip_id": trip_id},
+    )
+
+
+def _bump_trip_last_edited_at_via_page(connection: Connection, page_id: int) -> None:
+    connection.execute(
+        text(
+            "UPDATE trips SET last_edited_at = clock_timestamp() "
+            "WHERE id = (SELECT trip_id FROM pages WHERE id = :page_id)"
+        ),
+        {"page_id": page_id},
+    )
+
+
+@event.listens_for(Page, "after_insert")
+@event.listens_for(Page, "after_update")
+@event.listens_for(Page, "after_delete")
+def _on_page_change(mapper: Mapper, connection: Connection, target: Page) -> None:
+    _bump_trip_last_edited_at(connection, target.trip_id)
+
+
+@event.listens_for(Block, "after_insert")
+@event.listens_for(Block, "after_update")
+@event.listens_for(Block, "after_delete")
+def _on_block_change(mapper: Mapper, connection: Connection, target: Block) -> None:
+    _bump_trip_last_edited_at_via_page(connection, target.page_id)

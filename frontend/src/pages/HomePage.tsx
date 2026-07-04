@@ -1,4 +1,5 @@
 import { useAtomValue } from 'jotai';
+import { LoaderCircle } from 'lucide-react';
 import type React from 'react';
 import { useId, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -9,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { AddTripDialog } from '@/dialogs/AddTripDialog';
 import { useVisitedTrips } from '@/hooks/useVisitedTrips';
 import { formatTripRangeYMD } from '@/lib/date';
+import { sortTripsByLastEdited } from '@/lib/sortTrips';
 import { cn } from '@/lib/utils';
 
 const HomePage = () => {
@@ -18,6 +20,7 @@ const HomePage = () => {
   const isOffline = useAtomValue(isOfflineReadAtom);
 
   const hasTrips = trips != null && trips.length > 0;
+  const sortedTrips = hasTrips ? sortTripsByLastEdited(trips) : trips;
 
   return (
     <div className='flex h-dvh w-full flex-col overflow-auto bg-teal-50'>
@@ -48,10 +51,16 @@ const HomePage = () => {
           {/* PWAインストールバナー */}
           <PwaInstallBanner className='mt-4 mb-2' />
 
+          {isLoading && (
+            <div className='mt-8 flex justify-center'>
+              <LoaderCircle className='size-8 animate-spin text-gray-400' aria-label='読み込み中' />
+            </div>
+          )}
+
           {/* Trip一覧 */}
-          {!isLoading && hasTrips && (
+          {!isLoading && hasTrips && sortedTrips != null && (
             <div className='space-y-3'>
-              {trips.map(trip => {
+              {sortedTrips.map(trip => {
                 const rangeText = formatTripRangeYMD(trip.startDate, trip.endDate);
                 return (
                   <Link

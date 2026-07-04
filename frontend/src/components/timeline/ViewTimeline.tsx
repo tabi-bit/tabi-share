@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { sortBlocks } from '@/lib/sortBlocks';
 import { cn } from '@/lib/utils';
 import type { Block } from '@/types/block';
 import { ViewTimelineItem } from './ViewTimelineItem';
@@ -24,20 +25,6 @@ interface ViewTimelineProps {
   blocks: Block[];
   className?: string;
 }
-
-// --- ソート ---
-
-const sortBlocks = (blocks: Block[]): Block[] => {
-  return [...blocks].sort((a, b) => {
-    const startDiff = a.startTime.getTime() - b.startTime.getTime();
-    if (startDiff !== 0) return startDiff;
-    // startTime が同じ場合: endTime 昇順（null 先頭）
-    if (a.endTime === null && b.endTime === null) return 0;
-    if (a.endTime === null) return -1;
-    if (b.endTime === null) return 1;
-    return a.endTime.getTime() - b.endTime.getTime();
-  });
-};
 
 // --- グループ化 ---
 

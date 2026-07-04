@@ -93,27 +93,31 @@ export const useVisitedTrips = () => {
   }, []);
 
   // SWRで各urlIdからTripを取得
-  const { data, error, isLoading } = useSWR<Trip[]>(
-    isInitialized && urlIds.length > 0 ? [VISITED_TRIPS_CACHE_KEY, ...urlIds] : null,
-    async () => {
-      const results = await Promise.all(
-        urlIds.map(async urlId => {
-          try {
-            const res = await fetcher(`/trips/url/${urlId}`);
-            return tripFromApi.parse(res);
-          } catch (err) {
-            // 404 "Trip not found" の場合は訪問済みリストから除去
-            if (isAxiosError(err) && err.response?.status === 404 && err.response.data?.detail === 'Trip not found') {
-              const current = await getUrlIdsFromDB();
-              await saveUrlIdsToDB(current.filter(id => id !== urlId));
-            }
-            return null;
+  const {
+    data,
+    error,
+    isLoading: swrIsLoading,
+  } = useSWR<Trip[]>(isInitialized && urlIds.length > 0 ? [VISITED_TRIPS_CACHE_KEY, ...urlIds] : null, async () => {
+    const results = await Promise.all(
+      urlIds.map(async urlId => {
+        try {
+          const res = await fetcher(`/trips/url/${urlId}`);
+          return tripFromApi.parse(res);
+        } catch (err) {
+          // 404 "Trip not found" の場合は訪問済みリストから除去
+          if (isAxiosError(err) && err.response?.status === 404 && err.response.data?.detail === 'Trip not found') {
+            const current = await getUrlIdsFromDB();
+            await saveUrlIdsToDB(current.filter(id => id !== urlId));
           }
-        })
-      );
-      return results.filter((trip): trip is Trip => trip !== null);
-    }
-  );
+          return null;
+        }
+      })
+    );
+    return results.filter((trip): trip is Trip => trip !== null);
+  });
+
+  // IndexedDB 読み込み中も consumer 側で「ロード中」と扱えるようにする
+  const isLoading = !isInitialized || swrIsLoading;
 
   return {
     trips: data,

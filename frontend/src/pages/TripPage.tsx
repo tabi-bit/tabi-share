@@ -2,13 +2,14 @@ import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { isOfflineReadAtom } from '@/atoms/network';
-import { selectedPageIdAtom, sortPages, tripAtom, tripModeAtom, tripPagesAtom } from '@/atoms/tripPage';
+import { selectedPageIdAtom, tripAtom, tripModeAtom, tripPagesAtom } from '@/atoms/tripPage';
 import { FetchErrorView } from '@/components/FetchErrorView';
 import { Header } from '@/components/Header';
 import { HeaderSkeleton } from '@/components/HeaderSkeleton';
 import { PageSwipeContainer } from '@/components/PageSwipeContainer';
 import { Title } from '@/components/Title';
 import { TimelineSkeleton } from '@/components/timeline';
+import { useActivePage } from '@/hooks/useActivePage';
 import { useDragAutoScroll } from '@/hooks/useDragAutoScroll';
 import { usePages } from '@/hooks/usePages';
 import { useTripByUrlId } from '@/hooks/useTrips';
@@ -37,6 +38,7 @@ const TripPage = () => {
   const { trip, error: tripError, isLoading: isTripLoading } = useTripByUrlId(urlId ?? null, { refreshInterval });
   const { pages, error: pagesError, isLoading: isPagesLoading } = usePages(trip?.id ?? null, { refreshInterval });
   const { addVisitedTrip } = useVisitedTrips();
+  const { storedPageId, isActivePageInitialized, saveActivePageId } = useActivePage(trip?.id ?? null);
 
   const isLoading = isTripLoading || isPagesLoading || !minLoadingComplete;
   const isError = tripError || pagesError;
@@ -56,8 +58,9 @@ const TripPage = () => {
     if (trip) setTripAtom(trip);
   }, [trip, setTripAtom]);
 
+  // usePages がソート済みで返すため、そのまま atom に同期する
   useEffect(() => {
-    if (pages) setTripPages(sortPages(pages));
+    if (pages) setTripPages(pages);
   }, [pages, setTripPages]);
 
   // 1秒間の最小ローディング表示を管理
@@ -68,11 +71,21 @@ const TripPage = () => {
     return () => clearTimeout(timer);
   }, []);
 
+  // 初期表示ページの決定: IndexedDB の保存値が現存ページに含まれれば復帰、なければソート済み先頭
   useEffect(() => {
-    if (selectedPageId == null && pages != null && pages.length > 0) {
-      setSelectedPageId(pages[0].id);
-    }
-  }, [pages, selectedPageId, setSelectedPageId]);
+    if (selectedPageId != null) return;
+    if (pages == null || pages.length === 0) return;
+    if (!isActivePageInitialized) return;
+
+    const restoredId =
+      storedPageId != null && pages.some(page => page.id === storedPageId) ? storedPageId : pages[0].id;
+    setSelectedPageId(restoredId);
+  }, [pages, selectedPageId, storedPageId, isActivePageInitialized, setSelectedPageId]);
+
+  // 表示中ページが変わるたびに IndexedDB へ永続化（再訪時に復帰するため）
+  useEffect(() => {
+    if (selectedPageId != null) saveActivePageId(selectedPageId);
+  }, [selectedPageId, saveActivePageId]);
 
   useEffect(() => {
     if (mode === 'view') {

@@ -1,7 +1,12 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import require_block_access, require_page_access
+from app.auth import (
+    require_block_access,
+    require_block_access_write,
+    require_page_access,
+    require_page_access_write,
+)
 from app.cruds import blocks as blocks_cruds
 from app.db_connection import get_db_session, get_read_db_session
 from app.errors import NotFound
@@ -19,7 +24,7 @@ router = APIRouter(tags=["Blocks"])
 async def create_block(
     page_id: int,
     block: BlockCreate,
-    _: int = Depends(require_page_access),
+    _: int = Depends(require_page_access_write),
     db: AsyncSession = Depends(get_db_session),
 ) -> Block:
     """
@@ -82,7 +87,7 @@ async def get_block(
 async def update_block(
     block_id: int,
     block: BlockUpdate,
-    _: int = Depends(require_block_access),
+    _: int = Depends(require_block_access_write),
     db: AsyncSession = Depends(get_db_session),
 ) -> Block:
     """
@@ -107,7 +112,7 @@ async def update_block(
 )
 async def delete_block(
     block_id: int,
-    _: int = Depends(require_block_access),
+    _: int = Depends(require_block_access_write),
     db: AsyncSession = Depends(get_db_session),
 ) -> None:
     """

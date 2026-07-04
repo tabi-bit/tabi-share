@@ -45,7 +45,8 @@ async def find_trips(db: AsyncSession) -> list[Trip]:
     Returns:
         list[Trip]: すべての旅行プラン
     """
-    result = await db.execute(_trip_with_relations())
+    # joinedload では返却順が JOIN 結果に依存し不定になるため、明示的に並び順を保証する
+    result = await db.execute(_trip_with_relations().order_by(Trip.id))
     return list(result.unique().scalars().all())
 
 

@@ -16,7 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
-from app.db_connection import get_db_session
+from app.db_connection import get_db_session, get_read_db_session
 from app.errors import Forbidden, NotFound
 from app.models import Block, Page
 
@@ -109,39 +109,56 @@ def require_trip_access(trip_id: int, request: Request) -> int:
     return trip_id
 
 
-async def require_page_access(
-    page_id: int,
-    request: Request,
-    db: AsyncSession = Depends(get_db_session),
-) -> int:
-    """page_id から trip_id を解決し、アクセス権を検証する。"""
-    result = await db.execute(select(Page.trip_id).where(Page.id == page_id))
-    trip_id = result.scalar_one_or_none()
-    if trip_id is None:
-        raise NotFound(message="Page not found")
-
-    allowed = get_allowed_trip_ids(request)
-    if trip_id not in allowed:
-        raise Forbidden()
-    return trip_id
+# 認可 Depends はエンドポイント本体と同じセッション依存を使うことで、FastAPI の
+# 依存関係キャッシュにより 1 リクエスト 1 コネクションに収める。
+# 読み系エンドポイントには get_read_db_session 版、書き込み系には get_db_session 版を使う。
 
 
-async def require_block_access(
-    block_id: int,
-    request: Request,
-    db: AsyncSession = Depends(get_db_session),
-) -> int:
-    """block_id から trip_id を解決し、アクセス権を検証する。"""
-    result = await db.execute(
-        select(Page.trip_id)
-        .join(Block, Block.page_id == Page.id)
-        .where(Block.id == block_id)
-    )
-    trip_id = result.scalar_one_or_none()
-    if trip_id is None:
-        raise NotFound(message="Block not found")
+def _page_access_dependency(db_dependency):
+    async def _require_page_access(
+        page_id: int,
+        request: Request,
+        db: AsyncSession = Depends(db_dependency),
+    ) -> int:
+        """page_id から trip_id を解決し、アクセス権を検証する。"""
+        result = await db.execute(select(Page.trip_id).where(Page.id == page_id))
+        trip_id = result.scalar_one_or_none()
+        if trip_id is None:
+            raise NotFound(message="Page not found")
 
-    allowed = get_allowed_trip_ids(request)
-    if trip_id not in allowed:
-        raise Forbidden()
-    return trip_id
+        allowed = get_allowed_trip_ids(request)
+        if trip_id not in allowed:
+            raise Forbidden()
+        return trip_id
+
+    return _require_page_access
+
+
+def _block_access_dependency(db_dependency):
+    async def _require_block_access(
+        block_id: int,
+        request: Request,
+        db: AsyncSession = Depends(db_dependency),
+    ) -> int:
+        """block_id から trip_id を解決し、アクセス権を検証する。"""
+        result = await db.execute(
+            select(Page.trip_id)
+            .join(Block, Block.page_id == Page.id)
+            .where(Block.id == block_id)
+        )
+        trip_id = result.scalar_one_or_none()
+        if trip_id is None:
+            raise NotFound(message="Block not found")
+
+        allowed = get_allowed_trip_ids(request)
+        if trip_id not in allowed:
+            raise Forbidden()
+        return trip_id
+
+    return _require_block_access
+
+
+require_page_access = _page_access_dependency(get_read_db_session)
+require_page_access_write = _page_access_dependency(get_db_session)
+require_block_access = _block_access_dependency(get_read_db_session)
+require_block_access_write = _block_access_dependency(get_db_session)

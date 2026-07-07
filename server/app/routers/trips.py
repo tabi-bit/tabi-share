@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import grant_trip_access, require_basic_auth, require_trip_access
 from app.cruds import trips as trips_cruds
-from app.db_connection import get_db_session
+from app.db_connection import get_db_session, get_read_db_session
 from app.errors import NotFound
 from app.schemas.trip import Trip, TripCreateIn, TripCreateOut, TripUpdate
 
@@ -47,7 +47,7 @@ async def create_trip(
 )
 async def list_trips(
     _: None = Depends(require_basic_auth),
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_read_db_session),
 ) -> list[Trip]:
     """
     説明:
@@ -66,7 +66,7 @@ async def list_trips(
 async def get_trip(
     trip_id: int,
     _: int = Depends(require_trip_access),
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_read_db_session),
 ) -> Trip:
     """
     説明:
@@ -90,7 +90,7 @@ async def get_trip_by_url_id(
     url_id: str,
     request: Request,
     response: Response,
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_read_db_session),
 ) -> Trip:
     """
     説明:

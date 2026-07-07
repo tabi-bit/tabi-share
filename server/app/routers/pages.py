@@ -1,9 +1,13 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import require_trip_access, require_page_access
+from app.auth import (
+    require_page_access,
+    require_page_access_write,
+    require_trip_access,
+)
 from app.cruds import pages as pages_cruds
-from app.db_connection import get_db_session
+from app.db_connection import get_db_session, get_read_db_session
 from app.errors import NotFound
 from app.schemas.page import Page, PageCreate, PageCreateResponse, PageUpdate
 
@@ -41,7 +45,7 @@ async def create_page(
 async def get_pages(
     trip_id: int,
     _: int = Depends(require_trip_access),
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_read_db_session),
 ) -> list[Page]:
     """
     説明:
@@ -60,7 +64,7 @@ async def get_pages(
 async def get_page(
     page_id: int,
     _: int = Depends(require_page_access),
-    db: AsyncSession = Depends(get_db_session),
+    db: AsyncSession = Depends(get_read_db_session),
 ) -> Page:
     """
     説明:
@@ -83,7 +87,7 @@ async def get_page(
 async def update_page(
     page_id: int,
     page: PageUpdate,
-    _: int = Depends(require_page_access),
+    _: int = Depends(require_page_access_write),
     db: AsyncSession = Depends(get_db_session),
 ) -> Page:
     """
@@ -106,7 +110,7 @@ async def update_page(
 )
 async def delete_page(
     page_id: int,
-    _: int = Depends(require_page_access),
+    _: int = Depends(require_page_access_write),
     db: AsyncSession = Depends(get_db_session),
 ):
     """

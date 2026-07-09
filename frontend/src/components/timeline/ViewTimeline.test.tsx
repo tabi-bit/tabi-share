@@ -1,18 +1,23 @@
 import { render, screen, within } from '@testing-library/react';
 import { vi } from 'vitest';
 
-import type { ScheduleBlock, TransportationBlock } from '@/types/block';
-import { groupByStartTime, ViewTimeline } from './ViewTimeline';
+import { sortBlocks } from '@/lib/sortBlocks';
+import type { Block, ScheduleBlock, TransportationBlock } from '@/types/block';
+import { buildTimelineItems, groupByStartTime, ViewTimeline } from './ViewTimeline';
 
 vi.mock('../blocks/view/BlockScheduleView', () => ({
-  BlockScheduleView: ({ block }: { block: ScheduleBlock }) => (
-    <div data-testid={`schedule-${block.id}`}>{block.title}</div>
+  BlockScheduleView: ({ block, isNow }: { block: ScheduleBlock; isNow?: boolean }) => (
+    <div data-testid={`schedule-${block.id}`} data-is-now={isNow ? 'true' : 'false'}>
+      {block.title}
+    </div>
   ),
 }));
 
 vi.mock('../blocks/view/BlockTransportationView', () => ({
-  BlockTransportationView: ({ block }: { block: TransportationBlock }) => (
-    <div data-testid={`transportation-${block.id}`}>{block.title}</div>
+  BlockTransportationView: ({ block, isNow }: { block: TransportationBlock; isNow?: boolean }) => (
+    <div data-testid={`transportation-${block.id}`} data-is-now={isNow ? 'true' : 'false'}>
+      {block.title}
+    </div>
   ),
 }));
 
@@ -316,5 +321,173 @@ describe('ViewTimeline', () => {
       expect(screen.getByText('09:05')).toBeInTheDocument();
       expect(screen.getByText('09:30')).toBeInTheDocument();
     });
+  });
+
+  describe('現在時刻インジケータ', () => {
+    const pageDate = new Date(2026, 0, 1);
+
+    it('pageDate と now の日付が異なる場合、NOW インジケータは表示されない', () => {
+      const block = makeSchedule(1, at(9), at(10));
+      render(<ViewTimeline blocks={[block]} pageDate={pageDate} now={new Date(2026, 0, 2, 10, 0)} />);
+
+      expect(screen.queryByTestId('now-indicator')).not.toBeInTheDocument();
+    });
+
+    it('pageDate が null の場合、NOW インジケータは表示されない', () => {
+      const block = makeSchedule(1, at(9), at(10));
+      render(<ViewTimeline blocks={[block]} pageDate={null} now={at(9, 30)} />);
+
+      expect(screen.queryByTestId('now-indicator')).not.toBeInTheDocument();
+    });
+
+    it('now がブロック時間内のとき、そのブロックに isNow=true が渡される', () => {
+      const a = makeSchedule(1, at(9), at(10));
+      const b = makeSchedule(2, at(11), at(12));
+      render(<ViewTimeline blocks={[a, b]} pageDate={pageDate} now={at(9, 30)} />);
+
+      expect(screen.getByTestId('schedule-1')).toHaveAttribute('data-is-now', 'true');
+      expect(screen.getByTestId('schedule-2')).toHaveAttribute('data-is-now', 'false');
+      // ブロック内 NOW ではラインは表示されない
+      expect(screen.queryByTestId('now-indicator')).not.toBeInTheDocument();
+    });
+
+    it('now が明示的 gap 内のとき、点線を保ちつつ NOW オーバーレイが重なる', () => {
+      const a = makeSchedule(1, at(9), at(10));
+      const b = makeSchedule(2, at(12), at(13));
+      const { container } = render(<ViewTimeline blocks={[a, b]} pageDate={pageDate} now={at(11, 0)} />);
+
+      // NOW オーバーレイ
+      expect(screen.getByTestId('now-indicator')).toBeInTheDocument();
+      // 点線は残る (border-dashed は DottedLine の 2 本)
+      expect(countBorderDashed(container)).toBe(2);
+      // ブロックは isNow=false
+      expect(screen.getByTestId('schedule-1')).toHaveAttribute('data-is-now', 'false');
+      expect(screen.getByTestId('schedule-2')).toHaveAttribute('data-is-now', 'false');
+    });
+
+    it('now が最初のブロックより前のとき、NOW が先頭に挿入される', () => {
+      const block = makeSchedule(1, at(10), at(11));
+      const { container } = render(<ViewTimeline blocks={[block]} pageDate={pageDate} now={at(8, 0)} />);
+
+      const root = container.firstChild as HTMLElement;
+      expect(root.firstElementChild).toHaveAttribute('data-testid', 'now-indicator');
+    });
+
+    it('now が最後のブロックより後のとき、NOW が末尾に挿入される', () => {
+      const block = makeSchedule(1, at(10), at(11));
+      const { container } = render(<ViewTimeline blocks={[block]} pageDate={pageDate} now={at(22, 0)} />);
+
+      const root = container.firstChild as HTMLElement;
+      expect(root.lastElementChild).toHaveAttribute('data-testid', 'now-indicator');
+    });
+
+    it('endTime=null ブロック後の暗黙 gap に now が入るとき、点線を残しつつ NOW オーバーレイが重なる', () => {
+      const a = makeSchedule(1, at(9), null);
+      const b = makeSchedule(2, at(12), at(13));
+      const { container } = render(<ViewTimeline blocks={[a, b]} pageDate={pageDate} now={at(10, 30)} />);
+
+      // NOW オーバーレイ
+      expect(screen.getByTestId('now-indicator')).toBeInTheDocument();
+      // 直前グループの inline DottedLine (2 dashed) + gap item の DottedLine (2 dashed) = 4 個
+      expect(countBorderDashed(container)).toBe(4);
+    });
+
+    it('重複した複数ブロックが同時刻を含むとき、全ブロックに isNow=true が付く', () => {
+      const a = makeSchedule(1, at(10), at(14));
+      const b = makeSchedule(2, at(11), at(13));
+      render(<ViewTimeline blocks={[a, b]} pageDate={pageDate} now={at(12, 0)} />);
+
+      expect(screen.getByTestId('schedule-1')).toHaveAttribute('data-is-now', 'true');
+      expect(screen.getByTestId('schedule-2')).toHaveAttribute('data-is-now', 'true');
+    });
+
+    it('ブロックが空でも pageDate=today の場合 NOW インジケータが1つ表示される', () => {
+      render(<ViewTimeline blocks={[]} pageDate={pageDate} now={at(10, 0)} />);
+
+      expect(screen.getByTestId('now-indicator')).toBeInTheDocument();
+    });
+
+    it('末尾ブロックが endTime=null で NOW が bottom-stuck のとき、末尾ブロックに inline 点線を描画しない', () => {
+      // 末尾は endTime=null の点イベント。now はそれより後（bottom-stuck）。
+      // 末尾ブロック直後は now-bottom 行しかないので、末尾ブロックから伸びる inline DottedLine は不要。
+      const a = makeSchedule(1, at(10), at(11));
+      const b = makeSchedule(2, at(15), null);
+      const { container } = render(<ViewTimeline blocks={[a, b]} pageDate={pageDate} now={at(18, 0)} />);
+
+      // NOW インジケータ (bottom-stuck)
+      expect(screen.getByTestId('now-indicator')).toBeInTheDocument();
+      // gap 1 個 (a と b の間) = border-dashed 2 個。末尾 b からの inline DottedLine は 0 個。
+      expect(countBorderDashed(container)).toBe(2);
+    });
+  });
+});
+
+describe('buildTimelineItems - NOW 挿入位置', () => {
+  const at = (h: number, m = 0) => new Date(2026, 0, 1, h, m);
+  const makeSchedule = (id: number, start: Date, end: Date | null): ScheduleBlock => ({
+    id,
+    type: 'schedule',
+    title: `S${id}`,
+    startTime: start,
+    endTime: end,
+    detail: null,
+    pageId: 1,
+    location: null,
+  });
+  const buildFromBlocks = (blocks: Block[], now: Date | null) =>
+    buildTimelineItems(groupByStartTime(sortBlocks(blocks)), now);
+
+  it('明示的 gap 内で ratio が gap アイテムに乗って計算される', () => {
+    const a = makeSchedule(1, at(10), at(11));
+    const b = makeSchedule(2, at(13), at(14));
+    // gap: 11:00 〜 13:00 (2h), now = 12:00 → ratio 0.5
+    const items = buildFromBlocks([a, b], at(12, 0));
+
+    const gapItem = items.find(item => item.type === 'gap');
+    expect(gapItem).toBeDefined();
+    expect(gapItem?.ratio).toBeCloseTo(0.5, 5);
+    // 独立した 'now' 行は追加されない（overlay として同じ gap 上に描画）
+    expect(items.some(item => item.type === 'now')).toBe(false);
+  });
+
+  it('明示的 gap の 25% 時点で ratio が 0.25 になる', () => {
+    const a = makeSchedule(1, at(10), at(11));
+    const b = makeSchedule(2, at(15), at(16));
+    // gap: 11:00 〜 15:00 (4h), now = 12:00 → ratio 0.25
+    const items = buildFromBlocks([a, b], at(12, 0));
+
+    const gapItem = items.find(item => item.type === 'gap');
+    expect(gapItem?.ratio).toBeCloseTo(0.25, 5);
+  });
+
+  it('gap 内に NOW がない場合、gap.ratio は undefined', () => {
+    const a = makeSchedule(1, at(10), at(11));
+    const b = makeSchedule(2, at(13), at(14));
+    // now は範囲外
+    const items = buildFromBlocks([a, b], at(20, 0));
+
+    const gapItem = items.find(item => item.type === 'gap');
+    expect(gapItem?.ratio).toBeUndefined();
+  });
+
+  it('暗黙 gap (endTime=null 後) でも gap item + ratio で処理される', () => {
+    const a = makeSchedule(1, at(9), null);
+    const b = makeSchedule(2, at(12), at(13));
+    // gap: 9:00 〜 12:00 (3h), now = 10:30 → ratio 0.5
+    const items = buildFromBlocks([a, b], at(10, 30));
+
+    const gapItem = items.find(item => item.type === 'gap');
+    expect(gapItem).toBeDefined();
+    expect(gapItem?.ratio).toBeCloseTo(0.5, 5);
+    // 独立した 'now' 行は追加されない
+    expect(items.some(item => item.type === 'now')).toBe(false);
+  });
+
+  it('now=null のとき NOW 系アイテムは一切追加されない', () => {
+    const block = makeSchedule(1, at(9), at(10));
+    const items = buildFromBlocks([block], null);
+
+    expect(items.some(item => item.type === 'now')).toBe(false);
+    expect(items.find(item => item.type === 'gap')?.ratio).toBeUndefined();
   });
 });

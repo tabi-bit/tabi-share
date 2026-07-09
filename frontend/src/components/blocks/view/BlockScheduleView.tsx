@@ -1,6 +1,7 @@
 import { Globe, MapPin } from 'lucide-react';
 import { useRef, useState } from 'react';
 import angleDownIcon from '@/assets/icons/angle-down-white.svg';
+import { BlockNowBadge } from '@/components/timeline/NowIndicator';
 import { MarkdownViewer } from '@/components/ui/markdown';
 import { useResizeObserver } from '@/hooks/useResizeObserver';
 import { cn, getDomain } from '@/lib/utils';
@@ -22,7 +23,7 @@ const buildGoogleMapsUrl = (location: {
   return `https://www.google.com/maps/search/?api=1&query=${query}${placeIdParam}`;
 };
 
-export function BlockScheduleView({ block, className }: BlockScheduleViewProps) {
+export function BlockScheduleView({ block, isNow, className }: BlockScheduleViewProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [isOverflowDetail, setIsOverflowDetail] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -55,12 +56,14 @@ export function BlockScheduleView({ block, className }: BlockScheduleViewProps) 
     <div
       ref={resizeRef}
       className={cn(
-        'flex w-full flex-col gap-2 rounded-lg bg-linear-to-r from-teal-400 px-4 py-2',
+        'relative flex w-full flex-col gap-2 rounded-lg bg-linear-to-r from-teal-400 px-4 py-2',
         isHovered ? 'to-teal-400' : 'to-teal-500',
         isHovered ? 'drop-shadow-xl' : 'drop-shadow-lg',
+        isNow && 'ring-2 ring-red-500',
         className
       )}
     >
+      {isNow && <BlockNowBadge />}
       <div className='font-bold text-14px text-white sm:text-16px'>{block.title}</div>
       {block.location && (
         <div className='flex flex-col gap-0.5'>

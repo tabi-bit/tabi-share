@@ -61,3 +61,8 @@ export const isDateOutsideRange = (date: Date | null, start?: Date | null, end?:
   if (end && date > end) return true;
   return false;
 };
+
+/**
+ * 2 つの `Date` がローカル時刻で同じ年月日か判定する。
+ */
+export const isSameLocalDate = (a: Date, b: Date): boolean => dayjs(a).isSame(b, 'day');

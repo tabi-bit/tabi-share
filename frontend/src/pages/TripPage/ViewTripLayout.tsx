@@ -5,17 +5,23 @@ import { Timeline } from '@/components/timeline/Timeline';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { MarkdownViewer } from '@/components/ui/markdown';
 import { useBlocks } from '@/hooks/useBlocks';
+import { useCurrentTime } from '@/hooks/useCurrentTime';
+import { isSameLocalDate } from '@/lib/date';
 import type { Page } from '@/types';
 
 type ViewTripLayoutProps = {
   selectedPageId: Page['id'];
+  pageDate: Page['date'];
   tripDetail: string | null;
   isFirstPage: boolean;
 };
 
-const ViewTripLayout = ({ selectedPageId, tripDetail, isFirstPage }: ViewTripLayoutProps) => {
+const ViewTripLayout = ({ selectedPageId, pageDate, tripDetail, isFirstPage }: ViewTripLayoutProps) => {
   const { blocks, error: blocksError, isLoading: isBlocksLoading } = useBlocks(selectedPageId ?? null);
   const [accordionValue, setAccordionValue] = useState(isFirstPage ? 'trip-detail' : '');
+  // pageDate が今日と一致するページだけ tick を回して、非該当ページの毎分再レンダーを避ける
+  const isToday = pageDate != null && isSameLocalDate(pageDate, new Date());
+  const now = useCurrentTime({ enabled: isToday });
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: selectedPageId変更時にAccordionの開閉状態を切り替えるための意図的な依存
   useEffect(() => {
@@ -54,7 +60,7 @@ const ViewTripLayout = ({ selectedPageId, tripDetail, isFirstPage }: ViewTripLay
               </AccordionItem>
             </Accordion>
           )}
-          <Timeline blocks={blocks} type='view' className='pb-4' />
+          <Timeline blocks={blocks} type='view' pageDate={pageDate} now={now} className='pb-4' />
         </div>
       )}
     </>

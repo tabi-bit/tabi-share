@@ -1,6 +1,6 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { Plus } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { isOfflineReadAtom } from '@/atoms/network';
 import { selectedPageIdAtom, tripAtom, tripModeAtom, tripPagesAtom } from '@/atoms/tripPage';
@@ -25,10 +25,10 @@ const TripPage = () => {
   // useDragAutoScroll は ref を読み続けるので維持。Header は state で再 attach するため両方持つ
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [scrollContainerEl, setScrollContainerEl] = useState<HTMLDivElement | null>(null);
-  const handleScrollContainerChange = useCallback((el: HTMLDivElement | null) => {
+  const handleScrollContainerChange = (el: HTMLDivElement | null) => {
     scrollContainerRef.current = el;
     setScrollContainerEl(el);
-  }, []);
+  };
   const { isDraggingRef, startDrag, stopDrag } = useDragAutoScroll(scrollContainerRef);
   const [selectedPageId, setSelectedPageId] = useAtom(selectedPageIdAtom);
   const [mode, setMode] = useAtom(tripModeAtom);

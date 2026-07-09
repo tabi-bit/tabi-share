@@ -1,5 +1,5 @@
 import { isAxiosError } from 'axios';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/apiClient';
 import { db } from '@/lib/db';
@@ -76,21 +76,21 @@ export const useVisitedTrips = () => {
   }, [urlIds, isInitialized]);
 
   // urlIdを訪問済みリストに追加
-  const addVisitedTrip = useCallback((urlId: string) => {
+  const addVisitedTrip = (urlId: string) => {
     setUrlIds(prev => {
       if (prev.includes(urlId)) return prev;
       return [...prev, urlId];
     });
-  }, []);
+  };
 
   // urlIdを訪問済みリストから削除
-  const removeVisitedTrip = useCallback((urlId: string) => {
+  const removeVisitedTrip = (urlId: string) => {
     setUrlIds(prev => {
       const updated = prev.filter(id => id !== urlId);
       if (updated.length === prev.length) return prev;
       return updated;
     });
-  }, []);
+  };
 
   // SWRで各urlIdからTripを取得
   const {

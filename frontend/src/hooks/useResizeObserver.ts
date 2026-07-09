@@ -1,5 +1,5 @@
 import { debounce } from 'lodash-es';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 
 /**
  * windowのresizeイベントを100msでデバウンスしてcallbackを実行するカスタムフック
@@ -9,8 +9,8 @@ import { useEffect, useMemo, useRef } from 'react';
 export const useResizeObserver = (callback: (entry: ResizeObserverEntry) => void, debounceMs: number = 100) => {
   const ref = useRef<HTMLDivElement>(null);
 
-  // デバウンスされたコールバック
-  const debouncedCallback = useMemo(() => debounce(callback, debounceMs), [callback, debounceMs]);
+  // デバウンスされたコールバック（React Compiler が callback/debounceMs 変化時のみ再生成）
+  const debouncedCallback = debounce(callback, debounceMs);
 
   useEffect(() => {
     const element = ref.current;

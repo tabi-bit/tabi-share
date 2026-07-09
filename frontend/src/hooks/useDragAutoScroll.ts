@@ -1,5 +1,5 @@
 import type { RefObject } from 'react';
-import { useCallback, useRef } from 'react';
+import { useRef } from 'react';
 
 const EDGE_ZONE = 80;
 const MAX_SCROLL_SPEED = 15;
@@ -25,7 +25,7 @@ export const useDragAutoScroll = (scrollContainerRef: RefObject<HTMLElement | nu
   // Android: overflow:hidden方式用
   const savedOverflowRef = useRef<string | null>(null);
 
-  const autoScrollLoop = useCallback(() => {
+  const autoScrollLoop = () => {
     const container = scrollContainerRef.current;
     if (!(container && isDraggingRef.current)) return;
 
@@ -50,56 +50,53 @@ export const useDragAutoScroll = (scrollContainerRef: RefObject<HTMLElement | nu
     }
 
     rafIdRef.current = requestAnimationFrame(autoScrollLoop);
-  }, [scrollContainerRef]);
+  };
 
-  const startDrag = useCallback(
-    (isTouch: boolean) => {
-      if (isDraggingRef.current) return;
-      isDraggingRef.current = true;
+  const startDrag = (isTouch: boolean) => {
+    if (isDraggingRef.current) return;
+    isDraggingRef.current = true;
 
-      const container = scrollContainerRef.current;
-      if (container) {
-        if (isTouch) {
-          // Android: overflow:hidden方式（コンポジタースレッドのタッチスクロールを防止）
-          savedOverflowRef.current = container.style.overflow;
-          container.style.overflow = 'hidden';
-        } else {
-          // PC: scrollイベントハンドラでscrollTopをロック
-          lockedScrollTopRef.current = container.scrollTop;
-          const onScroll = () => {
-            if (isDraggingRef.current) {
-              container.scrollTop = lockedScrollTopRef.current;
-            }
-          };
-          scrollHandlerRef.current = onScroll;
-          container.addEventListener('scroll', onScroll);
-        }
-
-        const rect = container.getBoundingClientRect();
-        pointerYRef.current = (rect.top + rect.bottom) / 2;
+    const container = scrollContainerRef.current;
+    if (container) {
+      if (isTouch) {
+        // Android: overflow:hidden方式（コンポジタースレッドのタッチスクロールを防止）
+        savedOverflowRef.current = container.style.overflow;
+        container.style.overflow = 'hidden';
+      } else {
+        // PC: scrollイベントハンドラでscrollTopをロック
+        lockedScrollTopRef.current = container.scrollTop;
+        const onScroll = () => {
+          if (isDraggingRef.current) {
+            container.scrollTop = lockedScrollTopRef.current;
+          }
+        };
+        scrollHandlerRef.current = onScroll;
+        container.addEventListener('scroll', onScroll);
       }
 
-      const handlePointerMove = (e: PointerEvent) => {
-        pointerYRef.current = e.clientY;
-      };
-      const handleTouchMove = (e: TouchEvent) => {
-        if (e.touches.length > 0) {
-          pointerYRef.current = e.touches[0].clientY;
-        }
-      };
-      document.addEventListener('pointermove', handlePointerMove);
-      document.addEventListener('touchmove', handleTouchMove, { passive: true });
-      cleanupRef.current = () => {
-        document.removeEventListener('pointermove', handlePointerMove);
-        document.removeEventListener('touchmove', handleTouchMove);
-      };
+      const rect = container.getBoundingClientRect();
+      pointerYRef.current = (rect.top + rect.bottom) / 2;
+    }
 
-      rafIdRef.current = requestAnimationFrame(autoScrollLoop);
-    },
-    [scrollContainerRef, autoScrollLoop]
-  );
+    const handlePointerMove = (e: PointerEvent) => {
+      pointerYRef.current = e.clientY;
+    };
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length > 0) {
+        pointerYRef.current = e.touches[0].clientY;
+      }
+    };
+    document.addEventListener('pointermove', handlePointerMove);
+    document.addEventListener('touchmove', handleTouchMove, { passive: true });
+    cleanupRef.current = () => {
+      document.removeEventListener('pointermove', handlePointerMove);
+      document.removeEventListener('touchmove', handleTouchMove);
+    };
 
-  const stopDrag = useCallback(() => {
+    rafIdRef.current = requestAnimationFrame(autoScrollLoop);
+  };
+
+  const stopDrag = () => {
     if (!isDraggingRef.current) return;
     isDraggingRef.current = false;
 
@@ -123,7 +120,7 @@ export const useDragAutoScroll = (scrollContainerRef: RefObject<HTMLElement | nu
     }
     cleanupRef.current?.();
     cleanupRef.current = null;
-  }, [scrollContainerRef]);
+  };
 
   return { isDraggingRef, startDrag, stopDrag };
 };

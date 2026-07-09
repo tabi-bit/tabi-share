@@ -1,5 +1,5 @@
 import type { RefObject } from 'react';
-import { useCallback, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 
 interface UseCalendarDragDetectionReturn {
   /** FC eventDragStart / eventResizeStart に渡す */
@@ -116,19 +116,19 @@ export const useCalendarDragDetection = (
   }, [calendarContainerRef, onDragStart]);
 
   // FCイベントドラッグ・リサイズ開始（タッチ経由）
-  const handleEventDragStart = useCallback(() => {
+  const handleEventDragStart = () => {
     onDragStart?.(true);
-  }, [onDragStart]);
+  };
 
   // FCイベントドラッグ・リサイズ終了
-  const handleEventDragStop = useCallback(() => {
+  const handleEventDragStop = () => {
     onDragEnd?.();
-  }, [onDragEnd]);
+  };
 
   // FC select発火前に呼ぶ（MutationObserverで開始したスクロールロックを解除）
-  const onBeforeSelect = useCallback(() => {
+  const onBeforeSelect = () => {
     onDragEnd?.();
-  }, [onDragEnd]);
+  };
 
   return { handleEventDragStart, handleEventDragStop, onBeforeSelect };
 };

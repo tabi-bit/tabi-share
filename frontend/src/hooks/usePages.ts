@@ -1,4 +1,3 @@
-import { useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
 import useSWR, { type SWRConfiguration, useSWRConfig } from 'swr';
 import useSWRMutation from 'swr/mutation';
@@ -25,7 +24,7 @@ export const usePages = (tripId: number | null, options?: Pick<SWRConfiguration,
   );
 
   // サーバー返却順はソート保証がないため、サービス層で date 昇順 → id 昇順に整列して返す
-  const pages = useMemo<Page[] | undefined>(() => (data ? sortPages(data) : data), [data]);
+  const pages: Page[] | undefined = data ? sortPages(data) : data;
 
   return {
     pages,
@@ -60,17 +59,14 @@ export const useCreatePage = (tripId: number | null) => {
   const listKey = tripId ? `${TRIPS_BASE_PATH}/${tripId}/pages` : null;
   const { mutate } = useSWRConfig();
 
-  const createPageFetcher = useCallback(
-    async (_key: string | null, { arg: pageData }: { arg: CreatePageArg }) => {
-      CreatePageSchema.parse(pageData);
-      // アプリ層→API層に変換してからバリデーション・送信
-      const apiData = pageToApi.parse({ ...pageData, id: 0 }); // idは仮値
-      const { id: _, ...payload } = apiData; // idを除外
-      const response = await apiClient.post(`${TRIPS_BASE_PATH}/${tripId}/pages`, payload);
-      return pageFromApi.parse(response.data);
-    },
-    [tripId]
-  );
+  const createPageFetcher = async (_key: string | null, { arg: pageData }: { arg: CreatePageArg }) => {
+    CreatePageSchema.parse(pageData);
+    // アプリ層→API層に変換してからバリデーション・送信
+    const apiData = pageToApi.parse({ ...pageData, id: 0 }); // idは仮値
+    const { id: _, ...payload } = apiData; // idを除外
+    const response = await apiClient.post(`${TRIPS_BASE_PATH}/${tripId}/pages`, payload);
+    return pageFromApi.parse(response.data);
+  };
 
   const { trigger, isMutating, error, data } = useSWRMutation<Page, Error, string | null, CreatePageArg>(
     listKey, // リストの更新
@@ -107,7 +103,7 @@ export const useUpdatePage = (tripId: number | null) => {
   const listKey = tripId ? `${TRIPS_BASE_PATH}/${tripId}/pages` : null;
   const { mutate } = useSWRConfig();
 
-  const updatePageFetcher = useCallback(async (_key: string | null, { arg }: { arg: UpdatePageArg }) => {
+  const updatePageFetcher = async (_key: string | null, { arg }: { arg: UpdatePageArg }) => {
     const { id, data } = arg;
     UpdatePageSchema.parse(data);
     // アプリ層→API層に変換してからバリデーション・送信
@@ -115,7 +111,7 @@ export const useUpdatePage = (tripId: number | null) => {
     const { id: _, ...payload } = apiData; // idを除外（URLパスで指定）
     const response = await apiClient.put(`${PAGES_BASE_PATH}/${id}`, payload);
     return pageFromApi.parse(response.data);
-  }, []);
+  };
 
   const { trigger, isMutating, error, data } = useSWRMutation(listKey, updatePageFetcher, {
     // API成功時の処理（サーバーからの正式なレスポンスで確定させる）
@@ -125,30 +121,27 @@ export const useUpdatePage = (tripId: number | null) => {
     },
   });
 
-  const updatePage = useCallback(
-    async (arg: UpdatePageArg) => {
-      const optimisticPage = { ...arg.data, id: arg.id } as Page;
+  const updatePage = async (arg: UpdatePageArg) => {
+    const optimisticPage = { ...arg.data, id: arg.id } as Page;
 
-      // 【個別データ】の楽観的更新
-      const individualKey = `${PAGES_BASE_PATH}/${arg.id}`;
-      mutate(individualKey, optimisticPage, { revalidate: false });
+    // 【個別データ】の楽観的更新
+    const individualKey = `${PAGES_BASE_PATH}/${arg.id}`;
+    mutate(individualKey, optimisticPage, { revalidate: false });
 
-      // 【リストデータ】の楽観的更新
-      return trigger(arg, {
-        optimisticData: (currentPages: Page[] | undefined) => {
-          if (!currentPages) return [];
-          return currentPages.map(p => (p.id === arg.id ? { ...p, ...arg.data } : p));
-        },
-        revalidate: false,
-        rollbackOnError: true,
-        onError: (err: unknown) => {
-          toast.error(getErrorMessage(err));
-          mutate(`${PAGES_BASE_PATH}/${arg.id}`); // 個別データのロールバック
-        },
-      });
-    },
-    [trigger, mutate]
-  );
+    // 【リストデータ】の楽観的更新
+    return trigger(arg, {
+      optimisticData: (currentPages: Page[] | undefined) => {
+        if (!currentPages) return [];
+        return currentPages.map(p => (p.id === arg.id ? { ...p, ...arg.data } : p));
+      },
+      revalidate: false,
+      rollbackOnError: true,
+      onError: (err: unknown) => {
+        toast.error(getErrorMessage(err));
+        mutate(`${PAGES_BASE_PATH}/${arg.id}`); // 個別データのロールバック
+      },
+    });
+  };
 
   return {
     updatePage,
@@ -168,11 +161,11 @@ export const useDeletePage = (tripId: number | null) => {
   const listKey = tripId ? `${TRIPS_BASE_PATH}/${tripId}/pages` : null;
   const { mutate } = useSWRConfig();
 
-  const deletePageFetcher = useCallback(async (_: string | null, { arg: id }: { arg: DeletePageArg }) => {
+  const deletePageFetcher = async (_: string | null, { arg: id }: { arg: DeletePageArg }) => {
     DeletePageSchema.parse(id);
     await apiClient.delete(`${PAGES_BASE_PATH}/${id}`);
     return id;
-  }, []);
+  };
 
   const { trigger, isMutating, error } = useSWRMutation(listKey, deletePageFetcher, {
     onSuccess: deletedId => {
@@ -182,28 +175,25 @@ export const useDeletePage = (tripId: number | null) => {
     },
   });
 
-  const deletePage = useCallback(
-    (id: DeletePageArg) => {
-      const individualKey = `${PAGES_BASE_PATH}/${id}`;
-      // 【個別データ】を楽観的に削除
-      mutate(individualKey, undefined, { revalidate: false });
+  const deletePage = (id: DeletePageArg) => {
+    const individualKey = `${PAGES_BASE_PATH}/${id}`;
+    // 【個別データ】を楽観的に削除
+    mutate(individualKey, undefined, { revalidate: false });
 
-      // 【リストデータ】の楽観的更新
-      return trigger(id, {
-        optimisticData: (currentPages: Page[] | undefined) => {
-          if (!currentPages) return [];
-          return currentPages.filter(p => p.id !== id);
-        },
-        revalidate: false,
-        rollbackOnError: true,
-        onError: (err: unknown) => {
-          toast.error(getErrorMessage(err));
-          mutate(individualKey); // エラー時に個別データを再検証して戻す
-        },
-      });
-    },
-    [trigger, mutate]
-  );
+    // 【リストデータ】の楽観的更新
+    return trigger(id, {
+      optimisticData: (currentPages: Page[] | undefined) => {
+        if (!currentPages) return [];
+        return currentPages.filter(p => p.id !== id);
+      },
+      revalidate: false,
+      rollbackOnError: true,
+      onError: (err: unknown) => {
+        toast.error(getErrorMessage(err));
+        mutate(individualKey); // エラー時に個別データを再検証して戻す
+      },
+    });
+  };
 
   return {
     deletePage,

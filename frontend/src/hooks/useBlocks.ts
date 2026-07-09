@@ -1,4 +1,3 @@
-import { useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
 import useSWR, { type SWRConfiguration, useSWRConfig } from 'swr';
 import useSWRMutation from 'swr/mutation';
@@ -25,7 +24,7 @@ export const useBlocks = (pageId: number | null, options?: Pick<SWRConfiguration
   );
 
   // サーバー返却順はソート保証がないため、サービス層で startTime 昇順に整列して返す
-  const blocks = useMemo<Block[] | undefined>(() => (data ? sortBlocks(data) : data), [data]);
+  const blocks: Block[] | undefined = data ? sortBlocks(data) : data;
 
   return {
     blocks,
@@ -62,16 +61,13 @@ export const useCreateBlock = (pageId: number | null) => {
   const listKey = pageId ? `${PAGES_BASE_PATH}/${pageId}/blocks` : null;
   const { mutate } = useSWRConfig();
 
-  const createBlockFetcher = useCallback(
-    async (_key: string | null, { arg }: { arg: CreateBlockArg }) => {
-      // アプリ層→API層に変換。id はダミー値で、送信時に除外する
-      const apiData = blockToApi.parse({ ...arg.block, id: 0 });
-      const { id: _, ...payload } = apiData;
-      const response = await apiClient.post<Block>(`${PAGES_BASE_PATH}/${pageId}/blocks`, payload);
-      return blockFromApi.parse(response.data);
-    },
-    [pageId]
-  );
+  const createBlockFetcher = async (_key: string | null, { arg }: { arg: CreateBlockArg }) => {
+    // アプリ層→API層に変換。id はダミー値で、送信時に除外する
+    const apiData = blockToApi.parse({ ...arg.block, id: 0 });
+    const { id: _, ...payload } = apiData;
+    const response = await apiClient.post<Block>(`${PAGES_BASE_PATH}/${pageId}/blocks`, payload);
+    return blockFromApi.parse(response.data);
+  };
 
   const { trigger, isMutating, error, data } = useSWRMutation<Block, Error, string | null, CreateBlockArg>(
     listKey, // リストの更新
@@ -110,13 +106,13 @@ export const useUpdateBlock = (pageId: number | null) => {
   const listKey = pageId ? `${PAGES_BASE_PATH}/${pageId}/blocks` : null;
   const { mutate } = useSWRConfig();
 
-  const updateBlockFetcher = useCallback(async (_key: string | null, { arg }: { arg: UpdateBlockArg }) => {
+  const updateBlockFetcher = async (_key: string | null, { arg }: { arg: UpdateBlockArg }) => {
     const { id, data } = arg;
     const apiData = blockToApi.parse({ ...data, id });
     const { id: _, ...payload } = apiData;
     const response = await apiClient.put<Block>(`${BLOCKS_BASE_PATH}/${id}`, payload);
     return blockFromApi.parse(response.data);
-  }, []);
+  };
 
   const { trigger, isMutating, error, data } = useSWRMutation(listKey, updateBlockFetcher, {
     // API成功時の処理（サーバーからの正式なレスポンスで確定させる）
@@ -126,30 +122,27 @@ export const useUpdateBlock = (pageId: number | null) => {
     },
   });
 
-  const updateBlock = useCallback(
-    async (arg: UpdateBlockArg) => {
-      const optimisticBlock = { ...arg.data, id: arg.id } as Block;
+  const updateBlock = async (arg: UpdateBlockArg) => {
+    const optimisticBlock = { ...arg.data, id: arg.id } as Block;
 
-      // 【個別データ】の楽観的更新
-      const individualKey = `${BLOCKS_BASE_PATH}/${arg.id}`;
-      mutate(individualKey, optimisticBlock, { revalidate: false });
+    // 【個別データ】の楽観的更新
+    const individualKey = `${BLOCKS_BASE_PATH}/${arg.id}`;
+    mutate(individualKey, optimisticBlock, { revalidate: false });
 
-      // 【リストデータ】の楽観的更新
-      return trigger(arg, {
-        optimisticData: (currentBlocks: Block[] | undefined) => {
-          if (!currentBlocks) return [];
-          return currentBlocks.map(b => (b.id === arg.id ? { ...b, ...arg.data } : b)) as Block[];
-        },
-        revalidate: false,
-        rollbackOnError: true,
-        onError: (err: unknown) => {
-          toast.error(getErrorMessage(err));
-          mutate(`${BLOCKS_BASE_PATH}/${arg.id}`); // 個別データのロールバック
-        },
-      });
-    },
-    [trigger, mutate]
-  );
+    // 【リストデータ】の楽観的更新
+    return trigger(arg, {
+      optimisticData: (currentBlocks: Block[] | undefined) => {
+        if (!currentBlocks) return [];
+        return currentBlocks.map(b => (b.id === arg.id ? { ...b, ...arg.data } : b)) as Block[];
+      },
+      revalidate: false,
+      rollbackOnError: true,
+      onError: (err: unknown) => {
+        toast.error(getErrorMessage(err));
+        mutate(`${BLOCKS_BASE_PATH}/${arg.id}`); // 個別データのロールバック
+      },
+    });
+  };
 
   return {
     updateBlock,
@@ -169,11 +162,11 @@ export const useDeleteBlock = (pageId: number | null) => {
   const listKey = pageId ? `${PAGES_BASE_PATH}/${pageId}/blocks` : null;
   const { mutate } = useSWRConfig();
 
-  const deleteBlockFetcher = useCallback(async (_: string | null, { arg: id }: { arg: DeleteBlockArg }) => {
+  const deleteBlockFetcher = async (_: string | null, { arg: id }: { arg: DeleteBlockArg }) => {
     DeleteBlockSchema.parse(id);
     await apiClient.delete(`${BLOCKS_BASE_PATH}/${id}`);
     return id;
-  }, []);
+  };
 
   const { trigger, isMutating, error } = useSWRMutation(listKey, deleteBlockFetcher, {
     onSuccess: deletedId => {
@@ -183,28 +176,25 @@ export const useDeleteBlock = (pageId: number | null) => {
     },
   });
 
-  const deleteBlock = useCallback(
-    (id: DeleteBlockArg) => {
-      const individualKey = `${BLOCKS_BASE_PATH}/${id}`;
-      // 【個別データ】を楽観的に削除
-      mutate(individualKey, undefined, { revalidate: false });
+  const deleteBlock = (id: DeleteBlockArg) => {
+    const individualKey = `${BLOCKS_BASE_PATH}/${id}`;
+    // 【個別データ】を楽観的に削除
+    mutate(individualKey, undefined, { revalidate: false });
 
-      // 【リストデータ】の楽観的更新
-      return trigger(id, {
-        optimisticData: (currentBlocks: Block[] | undefined) => {
-          if (!currentBlocks) return [];
-          return currentBlocks.filter(b => b.id !== id);
-        },
-        revalidate: false,
-        rollbackOnError: true,
-        onError: (err: unknown) => {
-          toast.error(getErrorMessage(err));
-          mutate(individualKey); // エラー時に個別データを再検証して戻す
-        },
-      });
-    },
-    [trigger, mutate]
-  );
+    // 【リストデータ】の楽観的更新
+    return trigger(id, {
+      optimisticData: (currentBlocks: Block[] | undefined) => {
+        if (!currentBlocks) return [];
+        return currentBlocks.filter(b => b.id !== id);
+      },
+      revalidate: false,
+      rollbackOnError: true,
+      onError: (err: unknown) => {
+        toast.error(getErrorMessage(err));
+        mutate(individualKey); // エラー時に個別データを再検証して戻す
+      },
+    });
+  };
 
   return {
     deleteBlock,

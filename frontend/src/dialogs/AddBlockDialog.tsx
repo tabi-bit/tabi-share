@@ -1,5 +1,5 @@
 import { MapPin, X } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -77,8 +77,9 @@ export const AddBlockDialog = ({
   const [placeDialogOpen, setPlaceDialogOpen] = useState(false);
   const [pendingLocation, setPendingLocation] = useState<LocationUpdate | null>(null);
 
-  // フォームをリセットする関数
-  const resetForm = useCallback(() => {
+  // ダイアログが開いたときにフォームを新しい初期値で初期化（送信中はリセットしない）
+  useEffect(() => {
+    if (!(open && !isSubmitting)) return;
     setBlockType('schedule');
     setTitle('');
     setStartTime(formatTimeInput(initialStartTime));
@@ -90,14 +91,7 @@ export const AddBlockDialog = ({
     setDetail('');
     setTransportationType('car');
     setPendingLocation(null);
-  }, [initialStartTime, initialEndTime]);
-
-  // ダイアログが開いたときにフォームを新しい初期値で初期化（送信中はリセットしない）
-  useEffect(() => {
-    if (open && !isSubmitting) {
-      resetForm();
-    }
-  }, [open, resetForm, isSubmitting]);
+  }, [open, isSubmitting, initialStartTime, initialEndTime]);
 
   // 送信中はダイアログを閉じない
   const handleOpenChange = (newOpen: boolean) => {

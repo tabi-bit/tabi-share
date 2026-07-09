@@ -91,6 +91,22 @@ export const groupByStartTime = (sortedBlocks: Block[]): OverlapGroup[] => {
 
 // --- NOW 判定ヘルパー ---
 
+/**
+ * `source` の時刻 (H:M:S.ms) を `dateSource` の年月日にリベースした Date を返す。
+ * ブロック時刻は年月日部分が任意 anchor 日なので (block.ts コメント参照)、`now` を
+ * 同じ anchor 日にそろえてから `.getTime()` 比較を行うために使う。
+ */
+const rebaseTimeOntoDate = (source: Date, dateSource: Date): Date =>
+  new Date(
+    dateSource.getFullYear(),
+    dateSource.getMonth(),
+    dateSource.getDate(),
+    source.getHours(),
+    source.getMinutes(),
+    source.getSeconds(),
+    source.getMilliseconds()
+  );
+
 /** 現在時刻を含むブロック（endTime あり、startTime ≤ now ≤ endTime）の id 集合を全ブロックから求める。 */
 const collectNowBlockIds = (groups: OverlapGroup[], nowTime: number): ReadonlySet<number> => {
   const ids = new Set<number>();
@@ -112,7 +128,12 @@ const collectNowBlockIds = (groups: OverlapGroup[], nowTime: number): ReadonlySe
  */
 export const buildTimelineItems = (groups: OverlapGroup[], now: Date | null = null): TimelineItem[] => {
   const items: TimelineItem[] = [];
-  const nowTime = now?.getTime() ?? null;
+  // ブロック側は「時刻データ + 任意 anchor 日」で持っているため、実時刻の now をそのまま
+  // .getTime() 比較すると年月日ズレの影響で常に bottom-stuck 側に落ちてしまう。
+  // 先頭ブロックの anchor 日にリベースしてから比較する。
+  const anchor = groups[0]?.blocks[0]?.startTime;
+  const rebasedNow = now != null && anchor != null ? rebaseTimeOntoDate(now, anchor) : now;
+  const nowTime = rebasedNow?.getTime() ?? null;
 
   const nowBlockIds = nowTime != null ? collectNowBlockIds(groups, nowTime) : null;
   const isInBlock = (nowBlockIds?.size ?? 0) > 0;

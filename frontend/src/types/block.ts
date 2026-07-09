@@ -44,6 +44,11 @@ export const TRANSPORTATION_OPTIONS = [
  *
  * location は `LocationUpdate`（id optional）を持つ。新規選択直後は id 未確定、
  * サーバから返った後は id 付き。PUT 時はそのまま埋め込んで後勝ちで送る。
+ *
+ * NOTE: `startTime` / `endTime` の年月日部分は意味を持たない (時刻データのみを使用する)。
+ * ブロックが「どの日か」は親 `Page.date` が持つ。FullCalendar は
+ * `calendarApi.gotoDate(blocks[0].startTime)` で block 側の anchor 日にビューを合わせている。
+ * したがって現実の日時と比較する際は必ず時刻部分に正規化 (rebase) する必要がある。
  */
 const AppBaseBlockSchema = z.object({
   id: z.number(),

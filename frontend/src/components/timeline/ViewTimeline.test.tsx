@@ -490,4 +490,31 @@ describe('buildTimelineItems - NOW 挿入位置', () => {
     expect(items.some(item => item.type === 'now')).toBe(false);
     expect(items.find(item => item.type === 'gap')?.ratio).toBeUndefined();
   });
+
+  it('ブロックと now の年月日が異なっても、時刻がブロック時間内なら in-block と判定される (anchor rebase)', () => {
+    // ブロックは 2020-01-01 の anchor 日、実時刻 (now) は 2026-07-09
+    // block.ts のスキーマコメント通り、date 部分は無視して時刻のみで判定されるはず
+    const oldAnchor = (h: number, m = 0) => new Date(2020, 0, 1, h, m);
+    const a = { ...makeSchedule(1, at(10), at(11)), startTime: oldAnchor(10), endTime: oldAnchor(11) };
+    const nowInBlock = new Date(2026, 6, 9, 10, 30);
+    const items = buildFromBlocks([a as unknown as ScheduleBlock], nowInBlock);
+
+    // in-block なので独立 NOW 行は追加されない
+    expect(items.some(item => item.type === 'now')).toBe(false);
+    // group item に in-block 検出結果が乗っている
+    const groupItem = items.find(item => item.type === 'group');
+    expect(groupItem?.nowBlockIds?.has(1)).toBe(true);
+  });
+
+  it('ブロックと now の年月日が異なっても、gap 内の時刻なら gap ratio が計算される (anchor rebase)', () => {
+    const oldAnchor = (h: number, m = 0) => new Date(2020, 0, 1, h, m);
+    const a = { ...makeSchedule(1, at(10), at(11)), startTime: oldAnchor(10), endTime: oldAnchor(11) };
+    const b = { ...makeSchedule(2, at(13), at(14)), startTime: oldAnchor(13), endTime: oldAnchor(14) };
+    // 実時刻は 6 年後の 2026-07-09、時刻は 12:00 (gap 11:00〜13:00 の中央)
+    const nowInGap = new Date(2026, 6, 9, 12, 0);
+    const items = buildFromBlocks([a, b] as unknown as ScheduleBlock[], nowInGap);
+
+    const gapItem = items.find(item => item.type === 'gap');
+    expect(gapItem?.ratio).toBeCloseTo(0.5, 5);
+  });
 });

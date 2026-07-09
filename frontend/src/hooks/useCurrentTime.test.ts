@@ -29,7 +29,8 @@ describe('useCurrentTime', () => {
   });
 
   it('visibilitychange で visible になった時に時刻が更新される', () => {
-    const { result } = renderHook(() => useCurrentTime());
+    // interval を非現実的な長さにして、時刻更新が visibilitychange 経由でしか起きないようにする
+    const { result } = renderHook(() => useCurrentTime({ intervalMs: 60 * 60 * 1000 }));
     const initial = result.current!.getTime();
 
     act(() => {
@@ -38,7 +39,7 @@ describe('useCurrentTime', () => {
       document.dispatchEvent(new Event('visibilitychange'));
     });
 
-    expect(result.current!.getTime()).toBeGreaterThanOrEqual(initial + 5 * 60_000);
+    expect(result.current!.getTime()).toBe(initial + 5 * 60_000);
   });
 
   it('アンマウント時に interval と listener がクリーンアップされる', () => {

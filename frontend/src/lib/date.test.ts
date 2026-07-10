@@ -7,6 +7,7 @@ import {
   formatTripRangeMD,
   formatTripRangeYMD,
   isDateOutsideRange,
+  isSameLocalDate,
   parseDateOnly,
 } from './date';
 
@@ -123,5 +124,15 @@ describe('isDateOutsideRange', () => {
   it('end のみ指定で後は true / 前は false', () => {
     expect(isDateOutsideRange(new Date(2026, 4, 27), null, end)).toBe(true);
     expect(isDateOutsideRange(new Date(2026, 4, 1), null, end)).toBe(false);
+  });
+});
+
+describe('isSameLocalDate', () => {
+  it('同じ年月日なら時刻が違ってもtrue', () => {
+    expect(isSameLocalDate(new Date(2026, 0, 1, 9, 0), new Date(2026, 0, 1, 23, 30))).toBe(true);
+  });
+
+  it('日付が違うとfalse', () => {
+    expect(isSameLocalDate(new Date(2026, 0, 1), new Date(2026, 0, 2))).toBe(false);
   });
 });

@@ -6,11 +6,18 @@ interface TimelineAxisProps {
   startTime: Date;
   endTime: Date | null;
   isConnectedWithNext: boolean;
-  isLastItem: boolean;
+  /** この group より後ろに別の group が存在するか。endTime=null の inline DottedLine 判定に使う。 */
+  hasFollowingGroup: boolean;
   themeColor: string;
 }
 
-export function TimelineAxis({ startTime, endTime, isConnectedWithNext, isLastItem, themeColor }: TimelineAxisProps) {
+export function TimelineAxis({
+  startTime,
+  endTime,
+  isConnectedWithNext,
+  hasFollowingGroup,
+  themeColor,
+}: TimelineAxisProps) {
   return (
     <div className='flex flex-row gap-2'>
       <div className='flex flex-col justify-between'>
@@ -28,7 +35,7 @@ export function TimelineAxis({ startTime, endTime, isConnectedWithNext, isLastIt
         {endTime ? (
           <div className={cn('-my-4 h-full w-2', themeColor)}></div>
         ) : (
-          !isLastItem && <DottedLine className='h-full self-end' />
+          hasFollowingGroup && <DottedLine className='h-full self-end' />
         )}
         {!isConnectedWithNext && endTime && (
           <div className={cn('h-6 w-6 shrink-0 rounded-full sm:h-8 sm:w-8', themeColor)} />

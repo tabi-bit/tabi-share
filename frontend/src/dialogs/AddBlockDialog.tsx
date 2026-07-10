@@ -1,5 +1,5 @@
 import { MapPin, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -77,9 +77,14 @@ export const AddBlockDialog = ({
   const [placeDialogOpen, setPlaceDialogOpen] = useState(false);
   const [pendingLocation, setPendingLocation] = useState<LocationUpdate | null>(null);
 
-  // ダイアログが開いたときにフォームを新しい初期値で初期化（送信中はリセットしない）
+  // open が false→true に遷移したタイミングでのみフォームを初期化する。
+  // isSubmitting の変化をトリガーにすると、送信失敗時 (isSubmitting: true→false, open=true) に
+  // ユーザーの入力を消してしまうため使わない。
+  const prevOpenRef = useRef(false);
   useEffect(() => {
-    if (!(open && !isSubmitting)) return;
+    const justOpened = open && !prevOpenRef.current;
+    prevOpenRef.current = open;
+    if (!justOpened) return;
     setBlockType('schedule');
     setTitle('');
     setStartTime(formatTimeInput(initialStartTime));
@@ -91,7 +96,7 @@ export const AddBlockDialog = ({
     setDetail('');
     setTransportationType('car');
     setPendingLocation(null);
-  }, [open, isSubmitting, initialStartTime, initialEndTime]);
+  }, [open, initialStartTime, initialEndTime]);
 
   // 送信中はダイアログを閉じない
   const handleOpenChange = (newOpen: boolean) => {

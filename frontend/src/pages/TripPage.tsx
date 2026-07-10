@@ -170,6 +170,7 @@ const TripPage = () => {
                 <div className='flex h-full flex-col items-center pt-4'>
                   <ViewTripLayout
                     selectedPageId={page.id}
+                    pageDate={page.date ?? null}
                     tripDetail={trip.detail ?? null}
                     isFirstPage={page.id === pages[0].id}
                   />

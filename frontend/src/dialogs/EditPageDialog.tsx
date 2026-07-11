@@ -1,22 +1,12 @@
 import { AlertTriangleIcon } from 'lucide-react';
 import { useEffect, useId, useState } from 'react';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useDeletePage, useUpdatePage } from '@/hooks/usePages';
+import { useConfirm } from '@/lib/confirm';
 import { formatTripRangeYMD, isDateOutsideRange } from '@/lib/date';
 import { PAGE_TITLE_MAX_LENGTH, type Page } from '@/types';
 import type { Trip } from '@/types/trip';
@@ -37,6 +27,8 @@ export const EditPageDialog = ({ open, onOpenChange, page, trip, onDeleted }: Ed
   const [date, setDate] = useState<Date | null>(page.date ?? null);
   const { updatePage } = useUpdatePage(page.tripId);
   const { deletePage } = useDeletePage(page.tripId);
+  const confirm = useConfirm();
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
 
   const isOutsideRange = isDateOutsideRange(date, trip.startDate, trip.endDate);
   const tripRangeText = formatTripRangeYMD(trip.startDate, trip.endDate);
@@ -50,10 +42,23 @@ export const EditPageDialog = ({ open, onOpenChange, page, trip, onDeleted }: Ed
   }, [open, page]);
 
   // 削除処理（楽観更新のためfire-and-forget）
-  const handleDelete = () => {
-    deletePage(page.id);
-    onDeleted?.(page.id);
-    onOpenChange(false);
+  const handleDelete = async () => {
+    if (isConfirmingDelete) return;
+    setIsConfirmingDelete(true);
+    try {
+      const ok = await confirm({
+        title: 'ページを削除しますか?',
+        description: `この操作は取り消せません。ページ「${page.title}」を削除します。`,
+        confirmText: '削除',
+        variant: 'destructive',
+      });
+      if (!ok) return;
+      deletePage(page.id);
+      onDeleted?.(page.id);
+      onOpenChange(false);
+    } finally {
+      setIsConfirmingDelete(false);
+    }
   };
 
   // サブミット処理（楽観更新のためfire-and-forget）
@@ -113,29 +118,9 @@ export const EditPageDialog = ({ open, onOpenChange, page, trip, onDeleted }: Ed
         </DialogBody>
 
         <DialogFooter className='flex justify-between'>
-          {/* 左側: 削除ボタン */}
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant='destructive' className='mr-auto'>
-                削除
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>ページを削除しますか?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  この操作は取り消せません。ページ「{page.title}」を削除します。
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>キャンセル</AlertDialogCancel>
-                <AlertDialogAction variant='destructive' onClick={handleDelete}>
-                  削除
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-
+          <Button variant='destructive' className='mr-auto' onClick={handleDelete} disabled={isConfirmingDelete}>
+            削除
+          </Button>
           <Button variant='outline' onClick={() => onOpenChange(false)}>
             キャンセル
           </Button>

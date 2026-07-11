@@ -1,15 +1,4 @@
 import { useEffect, useId, useState } from 'react';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { DateRangePicker } from '@/components/ui/date-picker';
 import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -18,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { LazyMarkdownEditor } from '@/components/ui/markdown/LazyMarkdownEditor';
 import { useDeleteTrip, useUpdateTrip } from '@/hooks/useTrips';
 import { useVisitedTrips } from '@/hooks/useVisitedTrips';
+import { useConfirm } from '@/lib/confirm';
 import { isValidWalicaUrl } from '@/lib/walica';
 import { TRIP_TITLE_MAX_LENGTH } from '@/types';
 import type { Trip } from '@/types/trip';
@@ -42,6 +32,8 @@ export const EditTripDialog = ({ open, onOpenChange, trip, onDeleted }: EditTrip
   const { updateTrip } = useUpdateTrip();
   const { deleteTrip } = useDeleteTrip();
   const { removeVisitedTrip } = useVisitedTrips();
+  const confirm = useConfirm();
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
 
   // ダイアログが開いたときにフォームを初期化
   useEffect(() => {
@@ -58,11 +50,24 @@ export const EditTripDialog = ({ open, onOpenChange, trip, onDeleted }: EditTrip
   const isWalicaUrlInvalid = trimmedWalicaUrl !== '' && !isValidWalicaUrl(trimmedWalicaUrl);
 
   // 削除処理（楽観更新のためfire-and-forget）
-  const handleDelete = () => {
-    deleteTrip(trip.id);
-    removeVisitedTrip(trip.urlId);
-    onDeleted?.();
-    onOpenChange(false);
+  const handleDelete = async () => {
+    if (isConfirmingDelete) return;
+    setIsConfirmingDelete(true);
+    try {
+      const ok = await confirm({
+        title: '旅程を削除しますか?',
+        description: `この操作は取り消せません。旅程「${trip.title}」とすべてのページ・ブロックが削除されます。`,
+        confirmText: '削除',
+        variant: 'destructive',
+      });
+      if (!ok) return;
+      deleteTrip(trip.id);
+      removeVisitedTrip(trip.urlId);
+      onDeleted?.();
+      onOpenChange(false);
+    } finally {
+      setIsConfirmingDelete(false);
+    }
   };
 
   // サブミット処理（楽観更新のためfire-and-forget）
@@ -154,31 +159,9 @@ export const EditTripDialog = ({ open, onOpenChange, trip, onDeleted }: EditTrip
         </DialogBody>
 
         <DialogFooter className='flex justify-between'>
-          {/* 左側: 削除ボタン */}
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant='destructive' className='mr-auto'>
-                削除
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>旅程を削除しますか?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  この操作は取り消せません。
-                  <br />
-                  旅程「{trip.title}」とすべてのページ・ブロックが削除されます。
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>キャンセル</AlertDialogCancel>
-                <AlertDialogAction variant='destructive' onClick={handleDelete}>
-                  削除
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-
+          <Button variant='destructive' className='mr-auto' onClick={handleDelete} disabled={isConfirmingDelete}>
+            削除
+          </Button>
           <Button variant='outline' onClick={() => onOpenChange(false)}>
             キャンセル
           </Button>

@@ -13,6 +13,7 @@ import { formatTripRangeMD } from '@/lib/date';
 import { cn } from '@/lib/utils';
 import { Logo } from './Logo';
 import { NetworkStatusButton } from './NetworkStatusButton';
+import { NotificationToggleButton } from './NotificationToggleButton';
 import { PageSelector } from './pageSelector';
 import { Button } from './ui/button';
 import { WalicaViewer } from './WalicaViewer';
@@ -191,6 +192,7 @@ function HeaderFull({ className, scrollContainer, isDraggingRef, ...props }: Omi
           ) : (
             <EditModeButton isScrolled={isScrolled} disabled={isOffline} />
           )}
+          <NotificationToggleButton tripId={trip.id} tripHasStartDate={trip.startDate != null} />
           <ShareButton />
           {trip.walicaUrl && <WalicaButton onClick={() => setWalicaViewerOpen(true)} />}
         </div>

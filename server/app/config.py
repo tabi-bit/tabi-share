@@ -49,6 +49,14 @@ class Settings(BaseSettings):
         "https://st.tabishare.net",
     ]
 
+    # 通知機能 (FCM)
+    # Local 開発では False 固定で FCM 送信をスキップ (log 出力のみ)。
+    # Cloud Run では deploy-backend.yml で True を設定する。
+    notifications_enabled: bool = False
+    # Cloud Scheduler → Cloud Run tick エンドポイントの OIDC 検証用
+    notify_tick_allowed_audience: str = ""
+    notify_tick_allowed_sa_email: str = ""
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

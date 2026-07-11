@@ -5,14 +5,18 @@ Add Trip, Page, Block, and Location models with relationships.
 from datetime import date, datetime
 
 from sqlalchemy import (
+    BigInteger,
     CheckConstraint,
     Connection,
     Date,
     DateTime,
     Float,
     ForeignKey,
+    Index,
+    SmallInteger,
     String,
     Text,
+    UniqueConstraint,
     event,
     func,
     text,
@@ -154,6 +158,9 @@ class Block(Base):
             "transportation_type IS NULL OR block_type = 'move'",
             name="ck_blocks_transportation_type_only_for_move",
         ),
+        # 通知 tick スキャンで WHERE start_time > now() AND start_time <= now() + interval
+        # を毎分実行するため
+        Index("idx_blocks_start_time", "start_time"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
@@ -207,6 +214,93 @@ class Block(Base):
         "Location",
         foreign_keys=[destination_location_id],
         lazy="raise",
+    )
+
+
+class DeviceSubscription(Base):
+    """FCM プッシュ通知の端末 × Trip 単位の購読レコード。
+
+    Firebase Auth 未導入のため user_id ではなく fcm_token を主キー相当として扱う。
+    """
+
+    __tablename__ = "device_subscriptions"
+    __table_args__ = (
+        # (fcm_token, trip_id) の順序は fcm_token 単体クエリ (token リフレッシュ /
+        # 失効時に全 trip 分削除) でも B-tree の左端 prefix match が効くよう意図的
+        UniqueConstraint(
+            "fcm_token",
+            "trip_id",
+            name="uq_device_subscriptions_fcm_token_trip_id",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    fcm_token: Mapped[str] = mapped_column(
+        String(500), nullable=False, comment="FCM registration token"
+    )
+    trip_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("trips.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+        comment="購読対象 Trip",
+    )
+    minutes_before: Mapped[int] = mapped_column(
+        SmallInteger,
+        nullable=False,
+        server_default=text("5"),
+        comment="通知先行分",
+    )
+    timezone: Mapped[str] = mapped_column(
+        String(64),
+        nullable=False,
+        comment="IANA TZ (例: 'Asia/Tokyo')。通知本文の時刻整形に使用",
+    )
+    user_agent: Mapped[str | None] = mapped_column(
+        String(500), nullable=True, comment="デバッグ用の User-Agent"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+        comment="購読作成日時",
+    )
+    last_seen_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+        comment="最終アクセス日時 (token リフレッシュ判定用)",
+    )
+
+
+class SentNotification(Base):
+    """送信済み通知記録。
+
+    (block_id, fcm_token, kind) の複合 PK を「送信ロック」として使い、
+    INSERT-first で二重送信を絶対に防ぐ (送信失敗はロスト受容 / MVP 方針)。
+    """
+
+    __tablename__ = "sent_notifications"
+
+    block_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("blocks.id", ondelete="CASCADE"),
+        primary_key=True,
+        comment="送信対象 Block",
+    )
+    fcm_token: Mapped[str] = mapped_column(
+        String(500), primary_key=True, comment="送信先 FCM token"
+    )
+    kind: Mapped[str] = mapped_column(
+        String(30),
+        primary_key=True,
+        comment="通知種別 (現状 'before_5min' 固定、将来拡張余地)",
+    )
+    sent_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+        comment="送信ロックを取得した時刻",
     )
 
 

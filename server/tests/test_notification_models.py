@@ -74,6 +74,30 @@ async def test_device_subscription_unique_token_trip(
 
 
 @pytest.mark.asyncio
+async def test_device_subscription_minutes_before_check_constraint(
+    db_session: AsyncSession, test_create_trip: Trip
+) -> None:
+    """Pydantic 検証を通らない経路 (raw SQL 等) でも DB 側で範囲外を弾く"""
+    from sqlalchemy import text as sql_text
+
+    with pytest.raises(IntegrityError):
+        await db_session.execute(
+            sql_text(
+                "INSERT INTO device_subscriptions "
+                "(fcm_token, trip_id, minutes_before, timezone) "
+                "VALUES (:token, :trip_id, :mb, :tz)"
+            ),
+            {
+                "token": "token-oor",
+                "trip_id": test_create_trip.id,
+                "mb": 0,
+                "tz": "Asia/Tokyo",
+            },
+        )
+        await db_session.commit()
+
+
+@pytest.mark.asyncio
 async def test_device_subscription_cascade_on_trip_delete(
     db_session: AsyncSession, test_create_trip: Trip
 ) -> None:

@@ -232,6 +232,12 @@ class DeviceSubscription(Base):
             "trip_id",
             name="uq_device_subscriptions_fcm_token_trip_id",
         ),
+        # Pydantic 側の範囲検証をバイパスする経路 (raw SQL / 将来のバッチ) から
+        # 不正値が混入するのを防ぐため、DB 側でも保険をかける
+        CheckConstraint(
+            "minutes_before >= 1 AND minutes_before <= 120",
+            name="ck_device_subscriptions_minutes_before_range",
+        ),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)

@@ -83,6 +83,10 @@ def upgrade() -> None:
             "trip_id",
             name="uq_device_subscriptions_fcm_token_trip_id",
         ),
+        sa.CheckConstraint(
+            "minutes_before >= 1 AND minutes_before <= 120",
+            name="ck_device_subscriptions_minutes_before_range",
+        ),
     )
     op.create_index(
         "idx_device_subscriptions_trip",

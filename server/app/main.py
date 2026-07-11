@@ -1,4 +1,6 @@
 import asyncio
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, Query
 from fastapi.exceptions import RequestValidationError
@@ -15,11 +17,24 @@ from app.errors import (
     error_response_exception_handler,
     validation_exception_handler,
 )
+from app.firebase import init_firebase_admin
 from app.observability import setup_observability
 
 from .routers import blocks, pages, trips
 
 settings = get_settings()
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    """アプリケーション起動時と終了時のフック。
+
+    起動時: Firebase Admin SDK を ADC で初期化する。
+    NOTIFICATIONS_ENABLED=false の場合は初期化スキップ (log のみ)。
+    """
+    init_firebase_admin()
+    yield
+
 
 app = FastAPI(
     title="Tabi Share API",
@@ -28,6 +43,7 @@ app = FastAPI(
     docs_url=None,
     redoc_url=None,
     openapi_url=None,
+    lifespan=lifespan,
 )
 
 

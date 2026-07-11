@@ -63,10 +63,10 @@ export type ForegroundNotificationHandler = (payload: {
   body?: string;
 }) => void;
 
-export const subscribeForegroundMessages = async (
-  handler: ForegroundNotificationHandler
-): Promise<() => void> => {
-  if (!(await isSupported())) return () => {};
+const noopUnsubscribe = (): void => undefined;
+
+export const subscribeForegroundMessages = async (handler: ForegroundNotificationHandler): Promise<() => void> => {
+  if (!(await isSupported())) return noopUnsubscribe;
 
   const messaging = getMessaging(getFirebaseApp());
   return onMessage(messaging, message => {

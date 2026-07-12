@@ -59,7 +59,7 @@ export const DesktopPill = ({ onEditPage, onAddPage }: DesktopPillProps) => {
             <ChevronDown className='size-3.5 shrink-0 text-slate-500' />
           </button>
         </PopoverTrigger>
-        <PopoverContent side='bottom' sideOffset={8} align='center' className='w-[min(90vw,360px)] p-0'>
+        <PopoverContent side='bottom' sideOffset={8} align='center' className='w-[min(90vw,360px)] overflow-hidden p-0'>
           <PageSelectorList
             onSelect={id => {
               setSelectedPageId(id);

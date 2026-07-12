@@ -14,6 +14,7 @@ import { useDragAutoScroll } from '@/hooks/useDragAutoScroll';
 import { usePages } from '@/hooks/usePages';
 import { useTripByUrlId } from '@/hooks/useTrips';
 import { useVisitedTrips } from '@/hooks/useVisitedTrips';
+import { cn } from '@/lib/utils';
 import { EditTripLayout } from './TripPage/EditTripLayout';
 import { ViewTripLayout } from './TripPage/ViewTripLayout';
 
@@ -167,7 +168,12 @@ const TripPage = () => {
               onActiveSlideChange={handleScrollContainerChange}
               className='min-h-0 flex-1'
               renderPage={page => (
-                <div className='flex h-full flex-col items-center pt-4'>
+                <div
+                  className={cn(
+                    'flex min-h-full flex-col items-center pt-4',
+                    pages.length > 1 && 'pb-24 sm:pt-16 sm:pb-4'
+                  )}
+                >
                   <ViewTripLayout
                     selectedPageId={page.id}
                     pageDate={page.date ?? null}
@@ -181,7 +187,10 @@ const TripPage = () => {
           {mode === 'edit' && (
             <div
               ref={handleScrollContainerChange}
-              className='flex flex-1 flex-col items-center overflow-auto overscroll-y-none pt-4'
+              className={cn(
+                'flex flex-1 flex-col items-center overflow-auto overscroll-y-none pt-4',
+                pages.length > 1 && 'pb-24 sm:pt-16 sm:pb-4'
+              )}
             >
               {selectedPageId != null && (
                 <EditTripLayout

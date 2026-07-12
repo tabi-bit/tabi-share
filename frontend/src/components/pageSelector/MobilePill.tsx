@@ -74,7 +74,7 @@ export const MobilePill = ({ onEditPage, onAddPage }: MobilePillProps) => {
           <ChevronUp className='size-3.5 shrink-0 text-slate-500' />
         </button>
       </PopoverTrigger>
-      <PopoverContent side='top' sideOffset={8} align='center' className='w-[min(90vw,360px)] p-0'>
+      <PopoverContent side='top' sideOffset={8} align='center' className='w-[min(90vw,360px)] overflow-hidden p-0'>
         <PageSelectorList
           onSelect={id => {
             setSelectedPageId(id);

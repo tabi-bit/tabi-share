@@ -20,7 +20,7 @@ from app.errors import (
 from app.firebase import init_firebase_admin
 from app.observability import setup_observability
 
-from .routers import blocks, pages, trips
+from .routers import blocks, notification, notification_internal, pages, trips
 
 settings = get_settings()
 
@@ -99,6 +99,8 @@ setup_observability(app, engine)
 app.include_router(trips.router)
 app.include_router(pages.router)
 app.include_router(blocks.router)
+app.include_router(notification.router)
+app.include_router(notification_internal.router)
 
 
 app.add_exception_handler(ErrorResponseException, error_response_exception_handler)

@@ -1,7 +1,13 @@
 import { useAtomValue, useSetAtom } from 'jotai';
 import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
-import { selectedPageAtom, selectedPageIdAtom, selectedPageIndexAtom, tripPagesAtom } from '@/atoms/tripPage';
+import {
+  selectedPageAtom,
+  selectedPageIdAtom,
+  selectedPageIndexAtom,
+  tripModeAtom,
+  tripPagesAtom,
+} from '@/atoms/tripPage';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { PageLabel } from './PageLabel';
@@ -16,19 +22,25 @@ type DesktopPillProps = {
 /**
  * デスクトップ向け上部フローティング pill。
  * `[‹ ページ名 ⌄ ›]` の 3 要素構成。ヘッダー直下に絶対配置される想定。
- * - chevron 両側 = 隣接ページ 1 タップ移動
+ * - chevron 両側 = 隣接ページ 1 タップ移動 (先頭/末尾は disabled)
  * - 中央クリック = Popover が下向きに展開
  * - ラベル幅は grid stack で Trip 内最長タイトルに揃え、`max-w-[280px]` で上限クランプ
  *   → 同一 Trip 内では chevron 位置が動かず、押しやすさが安定する
+ *
+ * 表示条件:
+ * - 閲覧モード: 2 ページ以上 (ナビゲート先がある時のみ)
+ * - 編集モード: 1 ページ以上 (Popover の「+ ページを追加」導線を常時提供、chevron は両側 disabled)
  */
 export const DesktopPill = ({ onEditPage, onAddPage }: DesktopPillProps) => {
   const pages = useAtomValue(tripPagesAtom);
   const selectedPage = useAtomValue(selectedPageAtom);
   const activeIndex = useAtomValue(selectedPageIndexAtom);
   const setSelectedPageId = useSetAtom(selectedPageIdAtom);
+  const mode = useAtomValue(tripModeAtom);
   const [open, setOpen] = useState(false);
 
-  if (pages.length <= 1 || !selectedPage) return null;
+  if (!selectedPage) return null;
+  if (mode === 'view' && pages.length <= 1) return null;
 
   const canPrev = activeIndex > 0;
   const canNext = activeIndex < pages.length - 1;

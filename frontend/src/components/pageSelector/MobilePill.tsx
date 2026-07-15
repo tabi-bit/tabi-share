@@ -2,7 +2,13 @@ import { useAtomValue, useSetAtom } from 'jotai';
 import { ChevronUp } from 'lucide-react';
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { selectedPageAtom, selectedPageIdAtom, selectedPageIndexAtom, tripPagesAtom } from '@/atoms/tripPage';
+import {
+  selectedPageAtom,
+  selectedPageIdAtom,
+  selectedPageIndexAtom,
+  tripModeAtom,
+  tripPagesAtom,
+} from '@/atoms/tripPage';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { PageLabel } from './PageLabel';
@@ -21,6 +27,10 @@ const MAX_DOTS = 5;
  * `[ドット群 | ページ名 ⌄]` を 1 行に統合。タップで Popover が上向きに展開。
  * ページ数が MAX_DOTS を超える場合は「2/8」の番号表記に切替。
  *
+ * 表示条件:
+ * - 閲覧モード: 2 ページ以上 (ナビゲート先がある時のみ)
+ * - 編集モード: 1 ページ以上 (Popover の「+ ページを追加」導線を常時提供)
+ *
  * `position: fixed` は Header の backdrop-filter が containing block を作ってしまい
  * viewport 基準にならなくなるため、`document.body` へ Portal してその外に出す。
  */
@@ -29,9 +39,11 @@ export const MobilePill = ({ onEditPage, onAddPage }: MobilePillProps) => {
   const selectedPage = useAtomValue(selectedPageAtom);
   const activeIndex = useAtomValue(selectedPageIndexAtom);
   const setSelectedPageId = useSetAtom(selectedPageIdAtom);
+  const mode = useAtomValue(tripModeAtom);
   const [open, setOpen] = useState(false);
 
-  if (pages.length <= 1 || !selectedPage) return null;
+  if (!selectedPage) return null;
+  if (mode === 'view' && pages.length <= 1) return null;
 
   const showNumberInsteadOfDots = pages.length > MAX_DOTS;
 

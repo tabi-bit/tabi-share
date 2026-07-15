@@ -77,11 +77,13 @@ const TripPage = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  // 初期表示ページの決定: IndexedDB の保存値が現存ページに含まれれば復帰、なければソート済み先頭
+  // 初期選択ページの決定 / 削除等による stale ID の再同期。
+  // 未選択、または現存 pages に存在しない ID を指している場合に、
+  // IndexedDB の保存値 (現存すれば) → ソート済み先頭 の順で再選択する。
   useEffect(() => {
-    if (selectedPageId != null) return;
     if (pages == null || pages.length === 0) return;
     if (!isActivePageInitialized) return;
+    if (selectedPageId != null && pages.some(page => page.id === selectedPageId)) return;
 
     const restoredId =
       storedPageId != null && pages.some(page => page.id === storedPageId) ? storedPageId : pages[0].id;
@@ -199,10 +201,7 @@ const TripPage = () => {
           {pages.length > 0 && mode === 'edit' && (
             <div
               ref={handleScrollContainerChange}
-              className={cn(
-                'flex flex-1 flex-col items-center overflow-auto overscroll-y-none pt-4',
-                pages.length > 1 && 'pb-24 sm:pt-16 sm:pb-4'
-              )}
+              className='flex flex-1 flex-col items-center overflow-auto overscroll-y-none pt-4 pb-24 sm:pt-16 sm:pb-4'
             >
               {selectedPageId != null && (
                 <EditTripLayout

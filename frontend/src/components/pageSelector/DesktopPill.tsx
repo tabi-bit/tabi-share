@@ -18,6 +18,8 @@ type DesktopPillProps = {
  * `[‹ ページ名 ⌄ ›]` の 3 要素構成。ヘッダー直下に絶対配置される想定。
  * - chevron 両側 = 隣接ページ 1 タップ移動
  * - 中央クリック = Popover が下向きに展開
+ * - ラベル幅は grid stack で Trip 内最長タイトルに揃え、`max-w-[280px]` で上限クランプ
+ *   → 同一 Trip 内では chevron 位置が動かず、押しやすさが安定する
  */
 export const DesktopPill = ({ onEditPage, onAddPage }: DesktopPillProps) => {
   const pages = useAtomValue(tripPagesAtom);
@@ -50,12 +52,21 @@ export const DesktopPill = ({ onEditPage, onAddPage }: DesktopPillProps) => {
           <button
             type='button'
             className={cn(
-              'flex max-w-[32vw] items-center gap-2 rounded-full px-3 py-1.5',
+              'flex items-center gap-2 rounded-full px-3 py-1.5',
               'text-14px transition-colors hover:bg-white/60'
             )}
             aria-label='ページ一覧を開く'
           >
-            <PageLabel page={selectedPage} className='max-w-[28vw]' />
+            <span className='grid min-w-0 max-w-[280px] grid-cols-[minmax(0,max-content)] items-center'>
+              {pages.map(p => (
+                <PageLabel
+                  key={p.id}
+                  page={p}
+                  className='pointer-events-none invisible col-start-1 row-start-1 h-0 overflow-hidden'
+                />
+              ))}
+              <PageLabel page={selectedPage} className='col-start-1 row-start-1' />
+            </span>
             <ChevronDown className='size-3.5 shrink-0 text-slate-500' />
           </button>
         </PopoverTrigger>

@@ -1,8 +1,9 @@
-import { useAtomValue, useSetAtom } from 'jotai';
+import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { useState } from 'react';
 import { selectedPageAtom, selectedPageIdAtom, tripAtom, tripPagesAtom } from '@/atoms/tripPage';
 import { AddPageDialog } from '@/dialogs/AddPageDialog';
 import { EditPageDialog } from '@/dialogs/EditPageDialog';
+import { addPageDialogOpenAtom } from './atoms';
 import { DesktopPill } from './DesktopPill';
 import { MobilePill } from './MobilePill';
 import { useAdjacentPageKeys } from './useAdjacentPageKeys';
@@ -25,7 +26,7 @@ export const PageSelector = () => {
   const selectedPage = useAtomValue(selectedPageAtom);
 
   const [editPageDialogOpen, setEditPageDialogOpen] = useState(false);
-  const [addPageDialogOpen, setAddPageDialogOpen] = useState(false);
+  const [addPageDialogOpen, setAddPageDialogOpen] = useAtom(addPageDialogOpenAtom);
 
   useAdjacentPageKeys();
 

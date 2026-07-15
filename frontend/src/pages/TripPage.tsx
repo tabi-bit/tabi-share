@@ -1,4 +1,5 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
+import { Plus } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { isOfflineReadAtom } from '@/atoms/network';
@@ -7,8 +8,10 @@ import { FetchErrorView } from '@/components/FetchErrorView';
 import { Header } from '@/components/Header';
 import { HeaderSkeleton } from '@/components/HeaderSkeleton';
 import { PageSwipeContainer } from '@/components/PageSwipeContainer';
+import { addPageDialogOpenAtom } from '@/components/pageSelector';
 import { Title } from '@/components/Title';
 import { TimelineSkeleton } from '@/components/timeline';
+import { Button } from '@/components/ui/button';
 import { useActivePage } from '@/hooks/useActivePage';
 import { useDragAutoScroll } from '@/hooks/useDragAutoScroll';
 import { usePages } from '@/hooks/usePages';
@@ -31,6 +34,7 @@ const TripPage = () => {
   const [mode, setMode] = useAtom(tripModeAtom);
   const setTripAtom = useSetAtom(tripAtom);
   const setTripPages = useSetAtom(tripPagesAtom);
+  const setAddPageDialogOpen = useSetAtom(addPageDialogOpenAtom);
   const [minLoadingComplete, setMinLoadingComplete] = useState(false);
   const { urlId } = useParams<{ urlId: string }>();
 
@@ -51,8 +55,9 @@ const TripPage = () => {
       setTripPages([]);
       setSelectedPageId(undefined);
       setMode('view');
+      setAddPageDialogOpen(false);
     };
-  }, [setTripAtom, setTripPages, setSelectedPageId, setMode]);
+  }, [setTripAtom, setTripPages, setSelectedPageId, setMode, setAddPageDialogOpen]);
 
   // SWR → atom 同期
   useEffect(() => {
@@ -159,8 +164,15 @@ const TripPage = () => {
           <Title>{trip.title}</Title>
           <Header variant='full' scrollContainer={scrollContainerEl} isDraggingRef={isDraggingRef} />
           {pages.length === 0 && (
-            <div className='flex flex-1 items-center justify-center text-gray-500'>
-              編集モードからページを追加してください
+            <div className='flex flex-1 items-center justify-center px-4'>
+              {mode === 'edit' ? (
+                <Button onClick={() => setAddPageDialogOpen(true)}>
+                  <Plus className='size-4' />
+                  ページを追加
+                </Button>
+              ) : (
+                <p className='text-gray-500'>編集モードからページを追加してください</p>
+              )}
             </div>
           )}
           {pages.length > 0 && mode === 'view' && (
@@ -184,7 +196,7 @@ const TripPage = () => {
               )}
             />
           )}
-          {mode === 'edit' && (
+          {pages.length > 0 && mode === 'edit' && (
             <div
               ref={handleScrollContainerChange}
               className={cn(

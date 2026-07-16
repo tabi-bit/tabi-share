@@ -64,7 +64,7 @@ export const DesktopPill = ({ onEditPage, onAddPage }: DesktopPillProps) => {
           <button
             type='button'
             className={cn(
-              'flex items-center gap-2 rounded-full px-3 py-1.5',
+              'flex cursor-pointer items-center gap-2 rounded-full px-3 py-1.5',
               'text-14px transition-colors hover:bg-white/60'
             )}
             aria-label='ページ一覧を開く'
@@ -125,7 +125,7 @@ const NavArrowButton = ({ direction, disabled, onClick }: NavArrowButtonProps) =
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        'inline-grid size-8 place-items-center rounded-full text-slate-600 transition-colors',
+        'inline-grid size-8 cursor-pointer place-items-center rounded-full text-slate-600 transition-colors',
         'enabled:hover:bg-white/60 enabled:hover:text-teal-700',
         'disabled:cursor-not-allowed disabled:opacity-30'
       )}

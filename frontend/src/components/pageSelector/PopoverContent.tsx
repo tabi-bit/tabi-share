@@ -54,7 +54,7 @@ export const PageSelectorList = ({ onSelect, onEditPage, onAddPage }: PageSelect
                     <button
                       type='button'
                       aria-label={`${page.title} を編集`}
-                      className='inline-grid size-6 shrink-0 place-items-center rounded-md text-muted-foreground opacity-60 transition-opacity hover:bg-muted hover:text-foreground hover:opacity-100'
+                      className='inline-grid size-6 shrink-0 cursor-pointer place-items-center rounded-md text-muted-foreground opacity-60 transition-opacity hover:bg-muted hover:text-foreground hover:opacity-100'
                       onClick={e => {
                         e.stopPropagation();
                         onEditPage(page.id);

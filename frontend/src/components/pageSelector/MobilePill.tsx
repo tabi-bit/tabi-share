@@ -55,7 +55,7 @@ export const MobilePill = ({ onEditPage, onAddPage }: MobilePillProps) => {
           className={cn(
             'sm:hidden',
             '-translate-x-1/2 fixed bottom-2 left-1/2 z-20',
-            'flex max-w-[90vw] items-center gap-2 rounded-full px-2 py-1.5',
+            'flex max-w-[90vw] cursor-pointer items-center gap-2 rounded-full px-2 py-1.5',
             PILL_SURFACE_CLASSES,
             'transition-colors hover:bg-white/85'
           )}

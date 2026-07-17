@@ -36,3 +36,11 @@ export const selectedPageAtom = atom<Page | null>(get => {
   const id = get(selectedPageIdAtom);
   return id != null ? (pages.find(p => p.id === id) ?? null) : (pages[0] ?? null);
 });
+
+/** 選択中のページのインデックス（派生 atom）。見つからない場合は 0。 */
+export const selectedPageIndexAtom = atom<number>(get => {
+  const pages = get(tripPagesAtom);
+  const id = get(selectedPageIdAtom);
+  const idx = pages.findIndex(p => p.id === id);
+  return idx >= 0 ? idx : 0;
+});

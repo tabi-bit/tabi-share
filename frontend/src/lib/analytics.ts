@@ -7,7 +7,7 @@ type GtagArgs =
 
 declare global {
   interface Window {
-    dataLayer?: unknown[][];
+    dataLayer?: IArguments[];
     gtag?: (...args: GtagArgs) => void;
   }
 }
@@ -25,13 +25,17 @@ export const initAnalytics = () => {
   document.head.appendChild(script);
 
   window.dataLayer = window.dataLayer ?? [];
-  const gtag: (...args: GtagArgs) => void = (...args) => {
-    window.dataLayer?.push(args);
-  };
-  window.gtag = gtag;
-  gtag('js', new Date());
+  // GA4/GTM は Arguments オブジェクトかどうかで gtag コマンドを識別するため、
+  // rest parameter で Array を push すると silent failure になる。公式スニペットに揃える。
+  // ref: https://developers.google.com/tag-platform/gtagjs/install
+  function gtag() {
+    // biome-ignore lint/complexity/noArguments: GA4 gtag は Arguments オブジェクトを push する必要がある
+    window.dataLayer?.push(arguments);
+  }
+  window.gtag = gtag as (...args: GtagArgs) => void;
+  window.gtag('js', new Date());
   // send_page_view=false: 初回自動送信を止め、SPA 遷移を手動追跡する
-  gtag('config', GA_ID, { send_page_view: false });
+  window.gtag('config', GA_ID, { send_page_view: false });
 };
 
 export const trackPageview = (path: string) => {

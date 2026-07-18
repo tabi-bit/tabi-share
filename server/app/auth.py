@@ -8,6 +8,8 @@
 
 import secrets
 from datetime import UTC, datetime, timedelta
+from typing import Literal
+from urllib.parse import urlparse
 
 import jwt
 from fastapi import Depends, HTTPException, Request, Response, status
@@ -21,6 +23,7 @@ from app.errors import Forbidden, NotFound
 from app.models import Block, Page
 
 # ---- Basic 認証 ----
+
 
 def require_basic_auth(
     credentials: HTTPBasicCredentials = Depends(HTTPBasic()),
@@ -39,6 +42,7 @@ def require_basic_auth(
             detail="認証に失敗しました",
             headers={"WWW-Authenticate": "Basic"},
         )
+
 
 SESSION_COOKIE_NAME = "tabishare_session"
 
@@ -63,7 +67,26 @@ def get_allowed_trip_ids(request: Request) -> set[int]:
     return {tid for tid in ids if isinstance(tid, int)}
 
 
-def _set_session_cookie(response: Response, trip_ids: set[int]) -> None:
+def _resolve_samesite(request: Request, is_production: bool) -> Literal["lax", "none"]:
+    """リクエスト元 Origin から適切な SameSite 値を選ぶ。
+
+    - `st.tabishare.net` 等 `tabishare.net` 配下からのアクセスは same-site なので `Lax`。
+      Safari の ITP でも first-party 扱いとなり cookie が送信される。
+    - Firebase Hosting プレビュー (`*.web.app`) 等の cross-site origin からは `None` に
+      フォールバックする (`Secure` 前提)。Safari は third-party として扱いブロックするが、
+      Chrome ではプレビュー動作確認が可能になる。
+    """
+    if not is_production:
+        return "lax"
+    origin_host = urlparse(request.headers.get("origin", "")).hostname or ""
+    if origin_host == "tabishare.net" or origin_host.endswith(".tabishare.net"):
+        return "lax"
+    return "none"
+
+
+def _set_session_cookie(
+    request: Request, response: Response, trip_ids: set[int]
+) -> None:
     """trip_ids 集合をまとめた署名付きセッション Cookie を発行する。"""
     settings = get_settings()
     payload = {
@@ -79,14 +102,12 @@ def _set_session_cookie(response: Response, trip_ids: set[int]) -> None:
         max_age=settings.cookie_max_age,
         httponly=True,
         secure=is_production,
-        samesite="none" if is_production else "lax",
+        samesite=_resolve_samesite(request, is_production),
         path="/",
     )
 
 
-def grant_trip_access(
-    request: Request, response: Response, trip_id: int
-) -> None:
+def grant_trip_access(request: Request, response: Response, trip_id: int) -> None:
     """指定 trip_id へのアクセス権を Cookie に追記する。
 
     既存 Cookie の trip_ids を読み、`trip_id` をマージしてから再発行する。
@@ -95,7 +116,7 @@ def grant_trip_access(
     """
     allowed = get_allowed_trip_ids(request)
     allowed.add(trip_id)
-    _set_session_cookie(response, allowed)
+    _set_session_cookie(request, response, allowed)
 
 
 # ---- FastAPI Depends 用の認可関数 ----

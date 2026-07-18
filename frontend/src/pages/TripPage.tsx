@@ -1,4 +1,5 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
+import { Plus } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { isOfflineReadAtom } from '@/atoms/network';
@@ -7,13 +8,16 @@ import { FetchErrorView } from '@/components/FetchErrorView';
 import { Header } from '@/components/Header';
 import { HeaderSkeleton } from '@/components/HeaderSkeleton';
 import { PageSwipeContainer } from '@/components/PageSwipeContainer';
+import { addPageDialogOpenAtom } from '@/components/pageSelector';
 import { Title } from '@/components/Title';
 import { TimelineSkeleton } from '@/components/timeline';
+import { Button } from '@/components/ui/button';
 import { useActivePage } from '@/hooks/useActivePage';
 import { useDragAutoScroll } from '@/hooks/useDragAutoScroll';
 import { usePages } from '@/hooks/usePages';
 import { useTripByUrlId } from '@/hooks/useTrips';
 import { useVisitedTrips } from '@/hooks/useVisitedTrips';
+import { cn } from '@/lib/utils';
 import { EditTripLayout } from './TripPage/EditTripLayout';
 import { ViewTripLayout } from './TripPage/ViewTripLayout';
 
@@ -30,6 +34,7 @@ const TripPage = () => {
   const [mode, setMode] = useAtom(tripModeAtom);
   const setTripAtom = useSetAtom(tripAtom);
   const setTripPages = useSetAtom(tripPagesAtom);
+  const setAddPageDialogOpen = useSetAtom(addPageDialogOpenAtom);
   const [minLoadingComplete, setMinLoadingComplete] = useState(false);
   const { urlId } = useParams<{ urlId: string }>();
 
@@ -50,8 +55,9 @@ const TripPage = () => {
       setTripPages([]);
       setSelectedPageId(undefined);
       setMode('view');
+      setAddPageDialogOpen(false);
     };
-  }, [setTripAtom, setTripPages, setSelectedPageId, setMode]);
+  }, [setTripAtom, setTripPages, setSelectedPageId, setMode, setAddPageDialogOpen]);
 
   // SWR → atom 同期
   useEffect(() => {
@@ -71,11 +77,13 @@ const TripPage = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  // 初期表示ページの決定: IndexedDB の保存値が現存ページに含まれれば復帰、なければソート済み先頭
+  // 初期選択ページの決定 / 削除等による stale ID の再同期。
+  // 未選択、または現存 pages に存在しない ID を指している場合に、
+  // IndexedDB の保存値 (現存すれば) → ソート済み先頭 の順で再選択する。
   useEffect(() => {
-    if (selectedPageId != null) return;
     if (pages == null || pages.length === 0) return;
     if (!isActivePageInitialized) return;
+    if (selectedPageId != null && pages.some(page => page.id === selectedPageId)) return;
 
     const restoredId =
       storedPageId != null && pages.some(page => page.id === storedPageId) ? storedPageId : pages[0].id;
@@ -158,8 +166,15 @@ const TripPage = () => {
           <Title>{trip.title}</Title>
           <Header variant='full' scrollContainer={scrollContainerEl} isDraggingRef={isDraggingRef} />
           {pages.length === 0 && (
-            <div className='flex flex-1 items-center justify-center text-gray-500'>
-              編集モードからページを追加してください
+            <div className='flex flex-1 items-center justify-center px-4'>
+              {mode === 'edit' ? (
+                <Button onClick={() => setAddPageDialogOpen(true)}>
+                  <Plus className='size-4' />
+                  ページを追加
+                </Button>
+              ) : (
+                <p className='text-gray-500'>編集モードからページを追加してください</p>
+              )}
             </div>
           )}
           {pages.length > 0 && mode === 'view' && (
@@ -167,7 +182,12 @@ const TripPage = () => {
               onActiveSlideChange={handleScrollContainerChange}
               className='min-h-0 flex-1'
               renderPage={page => (
-                <div className='flex h-full flex-col items-center pt-4'>
+                <div
+                  className={cn(
+                    'flex min-h-full flex-col items-center pt-4',
+                    pages.length > 1 && 'pb-24 sm:pt-16 sm:pb-4'
+                  )}
+                >
                   <ViewTripLayout
                     selectedPageId={page.id}
                     pageDate={page.date ?? null}
@@ -178,10 +198,10 @@ const TripPage = () => {
               )}
             />
           )}
-          {mode === 'edit' && (
+          {pages.length > 0 && mode === 'edit' && (
             <div
               ref={handleScrollContainerChange}
-              className='flex flex-1 flex-col items-center overflow-auto overscroll-y-none pt-4'
+              className='flex flex-1 flex-col items-center overflow-auto overscroll-y-none pt-4 pb-24 sm:pt-16 sm:pb-4'
             >
               {selectedPageId != null && (
                 <EditTripLayout

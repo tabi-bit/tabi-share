@@ -1,7 +1,7 @@
 import useEmblaCarousel from 'embla-carousel-react';
 import { useAtom, useAtomValue } from 'jotai';
-import { type ReactNode, useCallback, useEffect, useMemo, useRef } from 'react';
-import { selectedPageIdAtom, tripPagesAtom } from '@/atoms/tripPage';
+import { type ReactNode, useCallback, useEffect, useRef } from 'react';
+import { selectedPageIdAtom, selectedPageIndexAtom, tripPagesAtom } from '@/atoms/tripPage';
 import { cn } from '@/lib/utils';
 import type { Page } from '@/types';
 
@@ -15,11 +15,7 @@ type PageSwipeContainerProps = {
 const PageSwipeContainer = ({ renderPage, onActiveSlideChange, className }: PageSwipeContainerProps) => {
   const pages = useAtomValue(tripPagesAtom);
   const [selectedPageId, setSelectedPageId] = useAtom(selectedPageIdAtom);
-  // ドット表示も含めて selectedPageId を単一の真実の源とする
-  const activeSnapIndex = useMemo(() => {
-    const idx = pages.findIndex(p => p.id === selectedPageId);
-    return idx >= 0 ? idx : 0;
-  }, [pages, selectedPageId]);
+  const activeSnapIndex = useAtomValue(selectedPageIndexAtom);
   const slideRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   const [emblaRef, emblaApi] = useEmblaCarousel({
@@ -45,14 +41,13 @@ const PageSwipeContainer = ({ renderPage, onActiveSlideChange, className }: Page
     };
   }, [emblaApi, onSelect]);
 
-  // selectedPageId → embla スライド位置の同期（Header Select から変更された場合）
+  // selectedPageId → embla スライド位置の同期（pill / keyboard 経由の変更時）
   useEffect(() => {
     if (!emblaApi) return;
-    const targetIndex = pages.findIndex(p => p.id === selectedPageId);
-    if (targetIndex >= 0 && targetIndex !== emblaApi.selectedScrollSnap()) {
-      emblaApi.scrollTo(targetIndex);
+    if (activeSnapIndex !== emblaApi.selectedScrollSnap()) {
+      emblaApi.scrollTo(activeSnapIndex);
     }
-  }, [emblaApi, pages, selectedPageId]);
+  }, [emblaApi, activeSnapIndex]);
 
   // アクティブスライドの scroll コンテナを外部に通知
   useEffect(() => {
@@ -78,23 +73,6 @@ const PageSwipeContainer = ({ renderPage, onActiveSlideChange, className }: Page
           ))}
         </div>
       </div>
-      {/* ドットインジケーター */}
-      {pages.length > 1 && (
-        <div className='-translate-x-1/2 fixed bottom-1 left-1/2 flex items-center justify-center gap-1.5 rounded-full bg-white/80 px-1 py-1'>
-          {pages.map((page, index) => (
-            <button
-              key={page.id}
-              type='button'
-              className={cn(
-                'size-2 rounded-full transition-colors',
-                index === activeSnapIndex ? 'bg-teal-600' : 'bg-gray-300'
-              )}
-              onClick={() => setSelectedPageId(page.id)}
-              aria-label={page.title}
-            />
-          ))}
-        </div>
-      )}
     </div>
   );
 };

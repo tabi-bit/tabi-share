@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import { useResizeObserver } from './useResizeObserver';
 
 /**
@@ -16,7 +16,7 @@ import { useResizeObserver } from './useResizeObserver';
 export function useLineClamp() {
   const [lineClamp, setLineClamp] = useState(1);
 
-  const handleResize = useCallback((entry: ResizeObserverEntry) => {
+  const handleResize = (entry: ResizeObserverEntry) => {
     const style = getComputedStyle(entry.target);
     const fontSize = Number.parseFloat(style.fontSize);
     let lineHeight = Number.parseFloat(style.lineHeight);
@@ -26,7 +26,7 @@ export function useLineClamp() {
     }
     const lines = Math.max(1, Math.floor(entry.contentRect.height / lineHeight));
     setLineClamp(lines);
-  }, []);
+  };
 
   const ref = useResizeObserver(handleResize);
 

@@ -1,7 +1,7 @@
 import { useAtom, useAtomValue } from 'jotai';
 import { Pencil, Share2 } from 'lucide-react';
 import type React from 'react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import editScheduleIcon from '@/assets/icons/edit-schedule-white.svg';
@@ -60,11 +60,11 @@ function HeaderFull({ className, scrollContainer, isDraggingRef, ...props }: Omi
   const scrollY = useRef(0);
   const navigate = useNavigate();
 
-  const handleHeaderClick = useCallback((e: React.MouseEvent) => {
+  const handleHeaderClick = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
     if (target.closest('button, a')) return;
     setIsScrolled(false);
-  }, []);
+  };
 
   // 最新の isScrolled / isDraggingRef を ref 越しに参照し、listener の再 attach を避ける
   const isScrolledRef = useRef(false);
@@ -279,7 +279,7 @@ const ViewModeButton = ({ isScrolled }: { isScrolled: boolean }) => {
 };
 
 const ShareButton = () => {
-  const handleShare = useCallback(async () => {
+  const handleShare = async () => {
     const url = window.location.href;
     if (navigator.canShare?.({ url })) {
       await navigator.share({ url });
@@ -287,7 +287,7 @@ const ShareButton = () => {
       await navigator.clipboard.writeText(url);
       toast.success('URLをコピーしました');
     }
-  }, []);
+  };
 
   return (
     <Button variant='default' size='icon' className='size-7 sm:size-9' onClick={handleShare}>

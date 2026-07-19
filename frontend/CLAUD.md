@@ -45,10 +45,11 @@ interface Props {
 export const UserProfile: React.FC<Props> = ({ userId, onUpdate }) => {
   const user = useUser(userId);
 
-  const handleUpdate = useCallback((updatedUser: User) => {
+  // React Compiler が自動でメモ化するため useCallback は不要
+  const handleUpdate = (updatedUser: User) => {
     // キャッシュ更新やサーバー同期はライブラリが管理
     onUpdate?.(updatedUser);
-  }, [onUpdate]);
+  };
 
   return <div>{/* JSX */}</div>;
 };
@@ -99,12 +100,17 @@ export const UserProfile: React.FC<Props> = ({ userId, onUpdate }) => {
 
 ## パフォーマンス最適化
 
+React Compiler が有効化されているため、`React.memo` / `useMemo` / `useCallback` は原則書かない。
+コンパイラが自動でメモ化するため、素直に関数コンポーネントとして書けばよい。
+
 ```typescript
-const TripBlock = React.memo<Props>(({ block, onUpdate }) => {
-  const handleUpdate = useCallback((newData: BlockData) => {
+const TripBlock = ({ block, onUpdate }: Props) => {
+  const handleUpdate = (newData: BlockData) => {
     onUpdate(block.id, newData);
-  }, [block.id, onUpdate]);
+  };
 
   return <div>{/* コンポーネント内容 */}</div>;
-});
+};
 ```
+
+参照同一性が仕様上必須な escape hatch（外部ライブラリが厳格な同一性を要求する等）でのみ手動メモ化を許可する。

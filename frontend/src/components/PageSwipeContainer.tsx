@@ -1,6 +1,6 @@
 import useEmblaCarousel from 'embla-carousel-react';
 import { useAtom, useAtomValue } from 'jotai';
-import { type ReactNode, useCallback, useEffect, useRef } from 'react';
+import { type ReactNode, useEffect, useRef } from 'react';
 import { selectedPageIdAtom, selectedPageIndexAtom, tripPagesAtom } from '@/atoms/tripPage';
 import { cn } from '@/lib/utils';
 import type { Page } from '@/types';
@@ -24,22 +24,20 @@ const PageSwipeContainer = ({ renderPage, onActiveSlideChange, className }: Page
   });
 
   // スワイプ → selectedPageId の同期
-  const onSelect = useCallback(() => {
-    if (!emblaApi) return;
-    const index = emblaApi.selectedScrollSnap();
-    const page = pages[index];
-    if (page && page.id !== selectedPageId) {
-      setSelectedPageId(page.id);
-    }
-  }, [emblaApi, pages, selectedPageId, setSelectedPageId]);
-
   useEffect(() => {
     if (!emblaApi) return;
+    const onSelect = () => {
+      const index = emblaApi.selectedScrollSnap();
+      const page = pages[index];
+      if (page && page.id !== selectedPageId) {
+        setSelectedPageId(page.id);
+      }
+    };
     emblaApi.on('select', onSelect);
     return () => {
       emblaApi.off('select', onSelect);
     };
-  }, [emblaApi, onSelect]);
+  }, [emblaApi, pages, selectedPageId, setSelectedPageId]);
 
   // selectedPageId → embla スライド位置の同期（pill / keyboard 経由の変更時）
   useEffect(() => {

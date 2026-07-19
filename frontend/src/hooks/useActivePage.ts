@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { db } from '@/lib/db';
 import type { Page } from '@/types/page';
 
@@ -52,15 +52,12 @@ export const useActivePage = (tripId: number | null) => {
   }, [tripId]);
 
   // アクティブページ ID を IndexedDB に永続化（fire-and-forget）
-  const saveActivePageId = useCallback(
-    (pageId: Page['id']) => {
-      if (tripId == null) return;
-      saveActivePageIdToDB(tripId, pageId).catch(() => {
-        // fire-and-forget
-      });
-    },
-    [tripId]
-  );
+  const saveActivePageId = (pageId: Page['id']) => {
+    if (tripId == null) return;
+    saveActivePageIdToDB(tripId, pageId).catch(() => {
+      // fire-and-forget
+    });
+  };
 
   return {
     storedPageId,

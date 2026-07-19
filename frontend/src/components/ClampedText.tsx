@@ -1,4 +1,4 @@
-import { type ComponentPropsWithoutRef, type CSSProperties, useMemo } from 'react';
+import type { ComponentPropsWithoutRef, CSSProperties } from 'react';
 import { useLineClamp } from '@/hooks/useLineClamp';
 
 interface ClampedTextProps extends Omit<ComponentPropsWithoutRef<'div'>, 'children'> {
@@ -13,10 +13,11 @@ interface ClampedTextProps extends Omit<ComponentPropsWithoutRef<'div'>, 'childr
  */
 export function ClampedText({ children, ...divProps }: ClampedTextProps) {
   const { ref, lineClamp } = useLineClamp();
-  const clampStyle = useMemo<CSSProperties>(
-    () => ({ display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: lineClamp }),
-    [lineClamp]
-  );
+  const clampStyle: CSSProperties = {
+    display: '-webkit-box',
+    WebkitBoxOrient: 'vertical',
+    WebkitLineClamp: lineClamp,
+  };
 
   return (
     <div ref={ref} {...divProps}>

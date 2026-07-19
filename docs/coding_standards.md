@@ -10,7 +10,7 @@
 - **Template Literals** > 文字列結合
 
 ### 2. パフォーマンス優先
-- **不要な再レンダリング防止**: React.memo、useMemo、useCallback
+- **不要な再レンダリング防止**: React Compiler がコンパイル時に自動でメモ化する。手動の `React.memo` / `useMemo` / `useCallback` は原則書かない（参照同一性を厳格に要求する外部ライブラリ連携などの escape hatch でのみ許可）
 - **効率的なデータ構造**: 適切なコレクション選択
 - **メモリリーク防止**: useEffectのクリーンアップ
 - **最適化**: インデックス、キャッシュ、遅延読み込み

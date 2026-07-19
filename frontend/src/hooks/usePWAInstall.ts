@@ -1,5 +1,4 @@
 import { useAtomValue, useSetAtom } from 'jotai';
-import { useCallback } from 'react';
 import { pwaIsReadyAtom, pwaPromptEventAtom } from '@/atoms/pwa';
 
 export type PWAInstallResult = 'accepted' | 'dismissed' | 'unavailable';
@@ -9,7 +8,7 @@ export const usePWAInstall = () => {
   const promptEvent = useAtomValue(pwaPromptEventAtom);
   const setPromptEvent = useSetAtom(pwaPromptEventAtom);
 
-  const installApp = useCallback(async (): Promise<PWAInstallResult> => {
+  const installApp = async (): Promise<PWAInstallResult> => {
     if (promptEvent === null) return 'unavailable';
 
     await promptEvent.prompt();
@@ -19,7 +18,7 @@ export const usePWAInstall = () => {
     setPromptEvent(null);
 
     return outcome;
-  }, [promptEvent, setPromptEvent]);
+  };
 
   return { isReady, installApp };
 };

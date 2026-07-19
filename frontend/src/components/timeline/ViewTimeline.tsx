@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import { isSameLocalDate } from '@/lib/date';
 import { sortBlocks } from '@/lib/sortBlocks';
 import { cn } from '@/lib/utils';
@@ -204,14 +203,10 @@ export const buildTimelineItems = (groups: OverlapGroup[], now: Date | null = nu
 // --- コンポーネント ---
 
 export function ViewTimeline({ blocks, pageDate, now, className }: ViewTimelineProps) {
-  const effectiveNow = useMemo(() => {
-    if (!(pageDate && now)) return null;
-    return isSameLocalDate(pageDate, now) ? now : null;
-  }, [pageDate, now]);
-
-  // blocks の並び替え・グループ化は now に依存しないので、tick 毎に破棄されないよう分けて memo する
-  const groups = useMemo(() => groupByStartTime(sortBlocks(blocks)), [blocks]);
-  const timelineItems = useMemo(() => buildTimelineItems(groups, effectiveNow), [groups, effectiveNow]);
+  // React Compiler が pageDate/now/blocks 変化時のみ再計算するようメモ化する
+  const effectiveNow = pageDate && now && isSameLocalDate(pageDate, now) ? now : null;
+  const groups = groupByStartTime(sortBlocks(blocks));
+  const timelineItems = buildTimelineItems(groups, effectiveNow);
 
   return (
     <div className={cn('grid w-full grid-cols-[auto_1fr] gap-x-4', className)}>

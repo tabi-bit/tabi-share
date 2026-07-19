@@ -10,6 +10,7 @@ import 'dayjs/locale/ja';
 import dayjs from 'dayjs';
 import { isForcedOfflineAtom, isOfflineAtom } from './atoms/network';
 import { pwaPromptEventAtom } from './atoms/pwa';
+import { initAnalytics } from './lib/analytics';
 import { initEnvBranding } from './lib/envBranding.ts';
 import { loadForcedOffline } from './lib/forcedOffline';
 import { evaluateNetwork } from './lib/networkDetection';
@@ -18,6 +19,7 @@ import { appStore } from './lib/store';
 
 dayjs.locale('ja');
 initEnvBranding();
+initAnalytics();
 
 const jotaiStore = appStore;
 

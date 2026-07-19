@@ -4,7 +4,7 @@ import type { EventResizeDoneArg } from '@fullcalendar/interaction';
 import interactionPlugin from '@fullcalendar/interaction';
 import FullCalendar from '@fullcalendar/react';
 import timeGridPlugin from '@fullcalendar/timegrid';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BlockScheduleEdit } from '@/components/blocks/edit/BlockScheduleEdit';
 import { BlockTransportationEdit } from '@/components/blocks/edit/BlockTransportationEdit';
 import { AddBlockDialog, EditBlockDialog } from '@/dialogs';
@@ -48,7 +48,7 @@ export const EditTripLayout = ({ selectedPageId, onDragStart, onDragEnd, refresh
 
   // --- カレンダーイベント変換 ---
 
-  const createEvent = useCallback((block: Block) => {
+  const createEvent = (block: Block) => {
     return {
       id: block.id.toString(),
       title: block.title,
@@ -61,12 +61,9 @@ export const EditTripLayout = ({ selectedPageId, onDragStart, onDragEnd, refresh
       backgroundColor: 'transparent',
       borderColor: 'transparent',
     };
-  }, []);
+  };
 
-  const events = useMemo(() => {
-    if (!blocks) return [];
-    return blocks.map(block => createEvent(block));
-  }, [blocks, createEvent]);
+  const events = blocks ? blocks.map(block => createEvent(block)) : [];
 
   // --- カレンダー初期化・同期 ---
 
@@ -89,14 +86,10 @@ export const EditTripLayout = ({ selectedPageId, onDragStart, onDragEnd, refresh
     isFirstEventMount.current = false;
   };
 
-  // Date参照の安定化（親re-renderで新しいDateが生成されないようにする）
-  const addDialogTimes = useMemo(
-    () =>
-      addDialogSelectInfo
-        ? { start: new Date(addDialogSelectInfo.startStr), end: new Date(addDialogSelectInfo.endStr) }
-        : null,
-    [addDialogSelectInfo]
-  );
+  // Date参照の安定化（親re-renderで新しいDateが生成されないよう React Compiler が addDialogSelectInfo 変化時のみ再生成）
+  const addDialogTimes = addDialogSelectInfo
+    ? { start: new Date(addDialogSelectInfo.startStr), end: new Date(addDialogSelectInfo.endStr) }
+    : null;
 
   // --- ブロック追加ダイアログ ---
 
@@ -158,39 +151,30 @@ export const EditTripLayout = ({ selectedPageId, onDragStart, onDragEnd, refresh
 
   const SNAP_MINUTES = 15;
 
-  const snapToSlot = useCallback((date: Date): Date => {
+  const snapToSlot = (date: Date): Date => {
     const snapped = new Date(date);
     const minutes = snapped.getMinutes();
     snapped.setMinutes(Math.round(minutes / SNAP_MINUTES) * SNAP_MINUTES, 0, 0);
     return snapped;
-  }, []);
+  };
 
-  const updateBlockTime = useCallback(
-    async (event: EventDropArg['event'] | EventResizeDoneArg['event']) => {
-      const blockData = event.extendedProps.blockData as Block;
-      const startTime = event.start ? snapToSlot(event.start) : blockData.startTime;
-      const endTime = event.end ? snapToSlot(event.end) : blockData.endTime;
-      await updateBlock({
-        id: blockData.id,
-        data: {
-          ...blockData,
-          startTime,
-          endTime,
-        },
-      });
-    },
-    [updateBlock, snapToSlot]
-  );
+  const updateBlockTime = async (event: EventDropArg['event'] | EventResizeDoneArg['event']) => {
+    const blockData = event.extendedProps.blockData as Block;
+    const startTime = event.start ? snapToSlot(event.start) : blockData.startTime;
+    const endTime = event.end ? snapToSlot(event.end) : blockData.endTime;
+    await updateBlock({
+      id: blockData.id,
+      data: {
+        ...blockData,
+        startTime,
+        endTime,
+      },
+    });
+  };
 
-  const handleEventDrop = useCallback(
-    async (dropInfo: EventDropArg) => updateBlockTime(dropInfo.event),
-    [updateBlockTime]
-  );
+  const handleEventDrop = async (dropInfo: EventDropArg) => updateBlockTime(dropInfo.event);
 
-  const handleEventResize = useCallback(
-    async (resizeInfo: EventResizeDoneArg) => updateBlockTime(resizeInfo.event),
-    [updateBlockTime]
-  );
+  const handleEventResize = async (resizeInfo: EventResizeDoneArg) => updateBlockTime(resizeInfo.event);
 
   // --- カレンダーイベント表示 ---
 

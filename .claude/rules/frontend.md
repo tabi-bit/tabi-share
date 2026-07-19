@@ -15,8 +15,11 @@ paths:
 
 ## パフォーマンス
 
-- useMemo/useCallbackで不要な再レンダリングを防止
-- useEffectには必ずクリーンアップ関数を実装
+- **React Compiler が有効化されているため、`useMemo` / `useCallback` は原則書かない**
+  - 参照安定性が仕様上必須な escape hatch（外部ライブラリが厳格な同一性を要求する等）でのみ許可
+  - `React.memo` / `memo()` も同様に不要
+  - コンパイラの動作確認: React DevTools 上でコンポーネントに「Memo ✨」バッジが付く
+- useEffect には必ずクリーンアップ関数を実装
 
 ## 型
 

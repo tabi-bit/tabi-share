@@ -11,7 +11,7 @@ import {
 } from '@vis.gl/react-google-maps';
 import { debounce } from 'lodash-es';
 import { Globe, MapPin, Search } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { PlaceDetailsCompact, type PlaceDetailsCompactElement } from '@/components/google-maps/PlaceDetailsCompact';
 import { Button } from '@/components/ui/button';
@@ -96,38 +96,35 @@ const PlaceSearchContent = ({
   }, []);
 
   // Autocomplete検索（API呼び出しのみ、state更新は呼び出し元で行う）
-  const executeSearch = useCallback(
-    async (value: string) => {
-      if (!placesLib || value.length < 2) {
-        setSuggestions([]);
-        setShowSuggestions(false);
-        return;
-      }
+  const executeSearch = async (value: string) => {
+    if (!placesLib || value.length < 2) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
 
-      if (!sessionTokenRef.current) {
-        sessionTokenRef.current = new placesLib.AutocompleteSessionToken();
-      }
+    if (!sessionTokenRef.current) {
+      sessionTokenRef.current = new placesLib.AutocompleteSessionToken();
+    }
 
-      try {
-        const request: google.maps.places.AutocompleteRequest = {
-          input: value,
-          sessionToken: sessionTokenRef.current,
-          locationBias: map?.getBounds() ?? undefined,
-        };
+    try {
+      const request: google.maps.places.AutocompleteRequest = {
+        input: value,
+        sessionToken: sessionTokenRef.current,
+        locationBias: map?.getBounds() ?? undefined,
+      };
 
-        const { suggestions: results } = await placesLib.AutocompleteSuggestion.fetchAutocompleteSuggestions(request);
-        setSuggestions(results);
-        setShowSuggestions(results.length > 0);
-      } catch {
-        setSuggestions([]);
-        setShowSuggestions(false);
-      }
-    },
-    [placesLib, map]
-  );
+      const { suggestions: results } = await placesLib.AutocompleteSuggestion.fetchAutocompleteSuggestions(request);
+      setSuggestions(results);
+      setShowSuggestions(results.length > 0);
+    } catch {
+      setSuggestions([]);
+      setShowSuggestions(false);
+    }
+  };
 
-  // 500msデバウンスされた検索（連続入力で無駄なAPI呼び出しを防ぐ）
-  const debouncedSearch = useMemo(() => debounce(executeSearch, 500), [executeSearch]);
+  // 500msデバウンスされた検索（連続入力で無駄なAPI呼び出しを防ぐ、React Compiler が executeSearch 変化時のみ再生成）
+  const debouncedSearch = debounce(executeSearch, 500);
 
   // アンマウント・依存更新時にpending呼び出しをキャンセル
   useEffect(() => () => debouncedSearch.cancel(), [debouncedSearch]);
@@ -135,54 +132,51 @@ const PlaceSearchContent = ({
   // 地図クリック
   // - POIクリック: InfoWindowで確認してから取得（誤タップでの課金を防ぐ）
   // - 空地クリック: 即座にピン配置＋場所名入力欄を表示
-  const handleMapClick = useCallback(
-    (event: MapMouseEvent) => {
-      const latLng = event.detail.latLng;
-      if (!latLng) return;
+  const handleMapClick = (event: MapMouseEvent) => {
+    const latLng = event.detail.latLng;
+    if (!latLng) return;
 
-      const placeId = event.detail.placeId;
-      if (placeId) {
-        // POI: デフォルトのGoogleインフォカードを抑制して、自前の確認InfoWindowを表示
-        event.stop();
-        // 既にInfoWindowが開いている状態 → 新POIへ切り替え
-        // 直後に発火するonCloseで状態が初期化されないようフラグを立てる
-        if (pendingPoi) {
-          justSwitchedPoiRef.current = true;
-        }
-        setPendingPoi({ placeId, lat: latLng.lat, lng: latLng.lng });
-        setPoiPlace(null);
-        setShowSuggestions(false);
-        return;
+    const placeId = event.detail.placeId;
+    if (placeId) {
+      // POI: デフォルトのGoogleインフォカードを抑制して、自前の確認InfoWindowを表示
+      event.stop();
+      // 既にInfoWindowが開いている状態 → 新POIへ切り替え
+      // 直後に発火するonCloseで状態が初期化されないようフラグを立てる
+      if (pendingPoi) {
+        justSwitchedPoiRef.current = true;
       }
-
-      // 空地クリック: 既存のpending POIをクリアしてピン配置
-      setPendingPoi(null);
+      setPendingPoi({ placeId, lat: latLng.lat, lng: latLng.lng });
       setPoiPlace(null);
-      setSelectedPlace({
-        // id を外して新規作成扱い（内容変更とみなす）
-        googlePlaceId: null,
-        name: '',
-        address: null,
-        latitude: latLng.lat,
-        longitude: latLng.lng,
-        websiteUri: null,
-      });
       setShowSuggestions(false);
-      sessionTokenRef.current = null;
-    },
-    [pendingPoi]
-  );
+      return;
+    }
+
+    // 空地クリック: 既存のpending POIをクリアしてピン配置
+    setPendingPoi(null);
+    setPoiPlace(null);
+    setSelectedPlace({
+      // id を外して新規作成扱い（内容変更とみなす）
+      googlePlaceId: null,
+      name: '',
+      address: null,
+      latitude: latLng.lat,
+      longitude: latLng.lng,
+      websiteUri: null,
+    });
+    setShowSuggestions(false);
+    sessionTokenRef.current = null;
+  };
 
   // UI Kitのload完了時にPlaceオブジェクトを保存（追加API呼び出しなし）
-  const handlePoiLoad = useCallback((event: Event) => {
+  const handlePoiLoad = (event: Event) => {
     const target = event.target as PlaceDetailsCompactElement | null;
     setPoiPlace(target?.place ?? null);
-  }, []);
+  };
 
   // POIの「この場所を選択」ボタン押下時
   // UI Kitの Place オブジェクトは displayName / formattedAddress を expose しないため、
   // fetchFields で追加取得する（id / location は UI Kit 内で取得済みなのでそのまま利用）
-  const handleSelectPendingPoi = useCallback(async () => {
+  const handleSelectPendingPoi = async () => {
     if (!(pendingPoi && placesLib)) return;
 
     try {
@@ -209,53 +203,50 @@ const PlaceSearchContent = ({
     } catch {
       toast.error('場所情報の取得に失敗しました');
     }
-  }, [pendingPoi, poiPlace, placesLib]);
+  };
 
   // 場所名の編集
-  const handleNameChange = useCallback((value: string) => {
+  const handleNameChange = (value: string) => {
     setSelectedPlace(prev => (prev ? { ...prev, name: value } : prev));
-  }, []);
+  };
 
   // サジェスション選択
-  const handleSelectSuggestion = useCallback(
-    async (suggestion: google.maps.places.AutocompleteSuggestion) => {
-      if (!(placesLib && suggestion.placePrediction)) return;
+  const handleSelectSuggestion = async (suggestion: google.maps.places.AutocompleteSuggestion) => {
+    if (!(placesLib && suggestion.placePrediction)) return;
 
-      setShowSuggestions(false);
-      setSuggestions([]);
+    setShowSuggestions(false);
+    setSuggestions([]);
 
-      try {
-        const place = suggestion.placePrediction.toPlace();
-        await place.fetchFields({
-          fields: ['displayName', 'formattedAddress', 'location', 'id', 'websiteURI'],
-        });
+    try {
+      const place = suggestion.placePrediction.toPlace();
+      await place.fetchFields({
+        fields: ['displayName', 'formattedAddress', 'location', 'id', 'websiteURI'],
+      });
 
-        // 新規選択なので id は付けない
-        const location: LocationUpdate = {
-          googlePlaceId: place.id ?? null,
-          name: place.displayName ?? '',
-          address: place.formattedAddress ?? null,
-          latitude: place.location?.lat() ?? null,
-          longitude: place.location?.lng() ?? null,
-          websiteUri: place.websiteURI ?? null,
-        };
+      // 新規選択なので id は付けない
+      const location: LocationUpdate = {
+        googlePlaceId: place.id ?? null,
+        name: place.displayName ?? '',
+        address: place.formattedAddress ?? null,
+        latitude: place.location?.lat() ?? null,
+        longitude: place.location?.lng() ?? null,
+        websiteUri: place.websiteURI ?? null,
+      };
 
-        setSelectedPlace(location);
-        setQuery(location.name);
+      setSelectedPlace(location);
+      setQuery(location.name);
 
-        if (location.latitude != null && location.longitude != null) {
-          map?.panTo({ lat: location.latitude, lng: location.longitude });
-          map?.setZoom(SELECTED_ZOOM);
-        }
-
-        // セッショントークンをリセット
-        sessionTokenRef.current = null;
-      } catch {
-        toast.error('場所情報の取得に失敗しました');
+      if (location.latitude != null && location.longitude != null) {
+        map?.panTo({ lat: location.latitude, lng: location.longitude });
+        map?.setZoom(SELECTED_ZOOM);
       }
-    },
-    [placesLib, map]
-  );
+
+      // セッショントークンをリセット
+      sessionTokenRef.current = null;
+    } catch {
+      toast.error('場所情報の取得に失敗しました');
+    }
+  };
 
   const handleConfirm = () => {
     if (!selectedPlace) return;

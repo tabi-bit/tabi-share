@@ -25,6 +25,7 @@ const HomePage = () => {
   return (
     <div className='flex h-dvh w-full flex-col overflow-auto bg-teal-50'>
       <Header variant='logoOnly' />
+      <h1 className='sr-only'>たびしぇあ | 旅程を簡単に作成・共有</h1>
 
       <div className='flex flex-1 flex-col items-center p-4'>
         <div className='relative w-full max-w-2xl'>

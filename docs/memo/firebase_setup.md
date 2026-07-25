@@ -48,7 +48,7 @@ Firebase コンソール > プロジェクト設定 > 「マイアプリ」 > We
 全て公開情報なので `.env*` に平文で OK (client bundle に含まれる)。
 
 環境変数命名例:
-```
+```dotenv
 VITE_FIREBASE_API_KEY=...
 VITE_FIREBASE_AUTH_DOMAIN=...
 VITE_FIREBASE_PROJECT_ID=...
@@ -129,7 +129,7 @@ gcloud iam service-accounts create tabi-share-notify-scheduler \
 
 通知機能で追加する環境変数 (deploy-backend.yml の `flags` に追加):
 
-```
+```dotenv
 NOTIFICATIONS_ENABLED=true                                     # 送信有効化フラグ
 NOTIFY_TICK_ALLOWED_AUDIENCE=<Cloud Run サービス URL>           # OIDC audience 検証
 NOTIFY_TICK_ALLOWED_SA_EMAIL=tabi-share-notify-scheduler@tabi-share-8ef6b.iam.gserviceaccount.com

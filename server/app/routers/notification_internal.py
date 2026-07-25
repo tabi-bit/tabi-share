@@ -7,6 +7,7 @@
 """
 
 import logging
+import time
 
 from fastapi import APIRouter, Depends
 from firebase_admin import exceptions as firebase_exceptions
@@ -73,14 +74,27 @@ async def tick(db: AsyncSession = Depends(get_db_session)) -> dict[str, int]:
     """通知候補をスキャンし、送信ロックを取ったものだけ FCM に送信する。
 
     Cloud Scheduler から 1 分ごとに叩かれる想定。
+    処理時間は elapsed_ms として構造化ログに出す。45 秒超で警告 (docs Section 11.2 参照)。
     """
+    started_at = time.monotonic()
     candidates = await notif_cruds.list_notification_candidates(db)
     if not candidates:
+        elapsed_ms = int((time.monotonic() - started_at) * 1000)
+        logger.info(
+            "notification_tick_completed",
+            extra={
+                "event": "notification_tick_completed",
+                "candidates_count": 0,
+                "sent_count": 0,
+                "failed_count": 0,
+                "expired_tokens_removed": 0,
+                "elapsed_ms": elapsed_ms,
+            },
+        )
         return {"scanned": 0, "sent": 0, "expired_tokens_removed": 0}
 
-    logger.info("notification tick: candidates=%d", len(candidates))
-
     sent_count = 0
+    failed_count = 0
     expired_tokens: set[str] = set()
 
     for cand in candidates:
@@ -88,7 +102,6 @@ async def tick(db: AsyncSession = Depends(get_db_session)) -> dict[str, int]:
             db, block_id=cand.block_id, fcm_token=cand.fcm_token
         )
         if not reserved:
-            # 既に送信済み or 他プロセスが送信中
             continue
 
         title = format_title(cand.start_time, cand.timezone)
@@ -116,6 +129,7 @@ async def tick(db: AsyncSession = Depends(get_db_session)) -> dict[str, int]:
             sent_count += 1
         except Exception as exc:
             # FCM 失敗はロスト受容 (次 tick で再送されない: sent_notifications に既に入っているため)
+            failed_count += 1
             logger.warning(
                 "FCM send failed (loss accepted): block_id=%s token_prefix=%s: %s",
                 cand.block_id,
@@ -125,17 +139,27 @@ async def tick(db: AsyncSession = Depends(get_db_session)) -> dict[str, int]:
             if _is_token_expired_error(exc):
                 expired_tokens.add(cand.fcm_token)
 
-    # 失効 token を全 trip 分削除
     removed_total = 0
     for token in expired_tokens:
         removed_total += await notif_cruds.delete_all_subscriptions_by_fcm_token(
             db, fcm_token=token
         )
 
-    logger.info(
-        "notification tick: sent=%d expired_removed=%d",
-        sent_count,
-        len(expired_tokens),
+    elapsed_ms = int((time.monotonic() - started_at) * 1000)
+    # 45 秒超は warning。60 秒に近づくと次 tick と重なるため要注意。
+    log_level = logging.WARNING if elapsed_ms >= 45_000 else logging.INFO
+    logger.log(
+        log_level,
+        "notification_tick_completed",
+        extra={
+            "event": "notification_tick_completed",
+            "candidates_count": len(candidates),
+            "sent_count": sent_count,
+            "failed_count": failed_count,
+            "expired_tokens_removed": len(expired_tokens),
+            "subscriptions_removed": removed_total,
+            "elapsed_ms": elapsed_ms,
+        },
     )
     return {
         "scanned": len(candidates),

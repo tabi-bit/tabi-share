@@ -10,7 +10,7 @@ Issue #148 「PWA における通知の仕組み検討 & 実装」の要件を�
 
 ## 2. 全体アーキテクチャ
 
-```
+```text
 [Cloud Scheduler] --(1分毎 OIDC 付き HTTP)--> [Cloud Run: /internal/notify/tick]
                                                            ↓
                                        blocks × device_subscriptions を scan
@@ -41,7 +41,7 @@ Issue #148 「PWA における通知の仕組み検討 & 実装」の要件を�
 
 ### 3.3 通知内容
 
-```
+```text
 [Schedule (event/stay)]
   Title:  next 12:00
   Body:   昼食 · 湯畑亭 · 草津温泉プロジェクト
@@ -302,7 +302,7 @@ self.addEventListener('notificationclick', (event) => {
 - iOS install 後の疎通確認、「本当に届く？」の不安解消に有用
 - **エンドポイント**: `POST /api/v1/trips/{trip_id}/subscription/test`
 - **通知内容**:
-  ```
+  ```text
   Title: たびしぇあ テスト通知
   Body:  通知が正常に届いています · {trip.name}
   ```
@@ -338,6 +338,99 @@ if (isIOS && !isPWAInstalled) {
 - **`min_instances=1`** で運用済み (既存設定)
 - コールドスタート遅延の心配なし
 - tick 実行は即座に反応
+
+### 11.2 tick 処理時間が 1 分を超える場合の対策
+
+#### 11.2.1 問題
+
+Cloud Scheduler は 1 分ごとに `/internal/notify/tick` を叩く。1 tick の処理時間が 60 秒を超えると:
+
+1. **重複実行**: 前 tick が実行中に次 tick が開始 → Cloud Run が 2 並列で走り、同じ候補を DB でロック競合
+2. **タイムアウト連鎖**: Cloud Scheduler の attempt-deadline に到達→ scheduler がリトライ → さらに重複
+3. **サイレント遅延**: 通知が「5 分前」ではなく「6 分前」「7 分前」…と徐々に遅れる (`sent_notifications` PK で二重送信は防げるが、送信タイミングは狂う)
+
+#### 11.2.2 通常時の処理時間の期待値
+
+- FCM 送信は 1 件あたり 100〜300ms のレスポンス
+- `send_each` バッチ (最大 500 件並列): **500 件 = 1〜3 秒程度**
+- MVP 規模 (数十〜数百 subscription) では 1 tick 数秒以内で完了する想定
+- **警告閾値: 45 秒**、**緊急閾値: 55 秒** (次 tick に食い込むリスク)
+
+#### 11.2.3 防止機構 (実装ずみ or 実装候補)
+
+| 機構 | 目的 | 実装状態 |
+|---|---|---|
+| `sent_notifications` PK + INSERT-first | 二重送信の絶対禁止 (異常時のフォールバック) | ✅ 実装済み |
+| **PostgreSQL Advisory Lock** で tick 全体を排他化 | 前 tick 実行中は次 tick を即 return させる | ⏳ 未実装 (Phase 2 or 必要性が出たら) |
+| **Cloud Run request timeout=60s** | 実行時間の上限を強制、超過分は次 tick に持ち越す | ⏳ deploy-backend.yml で明示設定 |
+| **Cloud Scheduler attempt-deadline=60s** | scheduler 側でも打ち切り、リトライ抑制 | ⏳ ジョブ作成時に指定 |
+| **バッチサイズ制限 (LIMIT N)** | 1 tick で処理する候補数上限、溢れた分は次 tick で拾う | ⏳ Phase 2 (subscription が数百超えたら検討) |
+
+**Advisory Lock 実装イメージ** (Phase 2):
+
+```python
+NOTIFY_TICK_LOCK_KEY = 0x148_1_5min  # tick 種別ごとに一意の 64-bit int
+
+async def tick():
+    async with db.begin():
+        got_lock = (await db.execute(
+            text("SELECT pg_try_advisory_lock(:key)"),
+            {"key": NOTIFY_TICK_LOCK_KEY}
+        )).scalar()
+        if not got_lock:
+            logger.warning("previous tick still running, skip")
+            return {"status": "skipped"}
+    try:
+        # ... 通常処理
+    finally:
+        await db.execute(text("SELECT pg_advisory_unlock(:key)"), {"key": NOTIFY_TICK_LOCK_KEY})
+```
+
+#### 11.2.4 検知手段
+
+**MVP (log ベース)**:
+- tick 完了時に処理時間を `log.info` に含める (`elapsed_ms`)
+- **Cloud Logging のログベースアラート** を設定:
+  - 条件: `jsonPayload.elapsed_ms > 45000` が 3 回連続 (3 分間)
+  - 通知先: メール or Slack Webhook
+- クエリ例:
+  ```text
+  resource.type="cloud_run_revision"
+  resource.labels.service_name="tabi-share-api-prod"
+  jsonPayload.event="notification_tick_completed"
+  jsonPayload.elapsed_ms>=45000
+  ```
+
+**Phase 2 (メトリクス)**:
+- Cloud Monitoring カスタムメトリクス
+  - `notification/tick/duration_seconds` (distribution)
+  - `notification/tick/candidates_count`
+  - `notification/tick/sent_count`
+  - `notification/tick/failed_count`
+- ダッシュボード + SLO (「95 パーセンタイル < 30 秒」を目標)
+
+#### 11.2.5 Runbook (アラート発火時の対応)
+
+1. **状況把握**:
+   - Cloud Logging で最新の `notification_tick_completed` ログを 30 分ぶん参照
+   - `elapsed_ms` の推移、`candidates_count` の急増有無、`failed_count` の増加
+2. **原因切り分け**:
+   - `candidates_count` 急増 → subscription の異常増加 / 集中する時間帯 → 一時的なら経過観察、恒常的なら Phase 2 の対策発動
+   - `failed_count` 急増 → Firebase Status Page 確認、FCM 側障害の可能性
+   - どちらでもない → DB スロークエリ疑い、`pg_stat_activity` で長時間クエリ確認
+3. **緊急対処**:
+   - **一時停止**: Cloud Scheduler ジョブを pause (`gcloud scheduler jobs pause`)
+   - subscription 数が異常な場合、通知対象 Trip を絞る運用対応
+4. **恒久対処**:
+   - Advisory Lock + バッチ LIMIT を有効化
+   - subscription が数千規模なら Cloud Tasks 化やシャーディング検討 (Phase 3)
+
+#### 11.2.6 現時点の実装状態
+
+- ✅ `sent_notifications` PK による二重送信絶対禁止 (最終防衛線)
+- ⏳ **tick エンドポイントに `elapsed_ms` の構造化ログ出力** (未実装、この PR で追加すべき最小改善)
+- ⏳ deploy-backend.yml で Cloud Run timeout の明示 (Phase 1d ジョブ作成時に併せて設定)
+- ⏳ Advisory Lock / バッチ LIMIT / Cloud Monitoring メトリクスは Phase 2 送り
 
 ## 12. 環境分離 (staging / preview / production / local)
 

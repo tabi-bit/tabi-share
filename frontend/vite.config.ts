@@ -35,7 +35,7 @@ export default defineConfig({
         name: 'たびしぇあ',
         short_name: 'たびしぇあ',
         description: '旅程を簡単に作成・共有',
-        theme_color: '#0d9488',
+        theme_color: '#f0fdfa',
         background_color: '#f0fdfa',
         display: 'standalone',
         scope: '/',

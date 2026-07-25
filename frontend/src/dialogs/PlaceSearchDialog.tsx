@@ -11,7 +11,7 @@ import {
 } from '@vis.gl/react-google-maps';
 import { debounce } from 'lodash-es';
 import { Globe, MapPin, Search } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { PlaceDetailsCompact, type PlaceDetailsCompactElement } from '@/components/google-maps/PlaceDetailsCompact';
 import { Button } from '@/components/ui/button';
@@ -123,8 +123,13 @@ const PlaceSearchContent = ({
     }
   };
 
-  // 500msデバウンスされた検索（連続入力で無駄なAPI呼び出しを防ぐ、React Compiler が executeSearch 変化時のみ再生成）
-  const debouncedSearch = debounce(executeSearch, 500);
+  // 500msデバウンスされた検索（連続入力で無駄なAPI呼び出しを防ぐ）。
+  // executeSearch は sessionTokenRef を触るため React Compiler がコンポーネント全体をバイルアウトし、
+  // debounce インスタンスが毎レンダー再生成されて下の useEffect cleanup がタイマーを毎回キャンセルしてしまう。
+  // useMemo で参照を安定化する（escape hatch）。executeSearch の真の依存 = [placesLib, map] を使うため
+  // biome の useExhaustiveDependencies は意図的に抑制。
+  // biome-ignore lint/correctness/useExhaustiveDependencies: executeSearch は毎レンダー新規のため deps に入れると無意味。真の依存 placesLib/map で安定化する。
+  const debouncedSearch = useMemo(() => debounce(executeSearch, 500), [placesLib, map]);
 
   // アンマウント・依存更新時にpending呼び出しをキャンセル
   useEffect(() => () => debouncedSearch.cancel(), [debouncedSearch]);

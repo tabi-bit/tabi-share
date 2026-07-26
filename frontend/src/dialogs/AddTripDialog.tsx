@@ -115,46 +115,48 @@ export const AddTripDialog = ({ open, onOpenChange, onCreated }: AddTripDialogPr
               />
             </div>
 
-            <button
-              type='button'
-              onClick={() => setDetailOpen(prev => !prev)}
-              className='flex w-full items-center gap-1 rounded border border-input px-3 py-2 text-left text-muted-foreground text-sm hover:bg-accent'
-              aria-expanded={detailOpen}
-              aria-controls={detailId}
-            >
-              <ChevronRightIcon className={`size-4 transition-transform ${detailOpen ? 'rotate-90' : ''}`} />
-              <span>詳細を追加（任意）</span>
-            </button>
-            {detailOpen && (
-              <div id={detailId} className='space-y-4'>
-                <div className='space-y-2'>
-                  <LazyMarkdownEditor
-                    className='max-h-72'
-                    id={`${detailId}-editor`}
-                    value={detail}
-                    onChange={setDetail}
-                    placeholder='旅程の詳細や目的など（省略可）'
-                  />
+            <div className='overflow-hidden rounded border border-input'>
+              <button
+                type='button'
+                onClick={() => setDetailOpen(prev => !prev)}
+                className='flex w-full items-center gap-1 px-3 py-2 text-left text-muted-foreground text-sm hover:bg-accent'
+                aria-expanded={detailOpen}
+                aria-controls={detailId}
+              >
+                <ChevronRightIcon className={`size-4 transition-transform ${detailOpen ? 'rotate-90' : ''}`} />
+                <span>詳細を追加（任意）</span>
+              </button>
+              {detailOpen && (
+                <div id={detailId} className='space-y-4 border-input border-t p-3'>
+                  <div className='space-y-2'>
+                    <LazyMarkdownEditor
+                      className='max-h-72'
+                      id={`${detailId}-editor`}
+                      value={detail}
+                      onChange={setDetail}
+                      placeholder='旅程の詳細や目的など（省略可）'
+                    />
+                  </div>
+                  <div className='space-y-2'>
+                    <Label htmlFor={walicaUrlId}>Walica URL</Label>
+                    <Input
+                      id={walicaUrlId}
+                      type='url'
+                      value={walicaUrl}
+                      onChange={e => setWalicaUrl(e.target.value)}
+                      placeholder='https://walica.jp/inv/...'
+                      aria-invalid={isWalicaUrlInvalid}
+                      aria-describedby={isWalicaUrlInvalid ? `${walicaUrlId}-error` : undefined}
+                    />
+                    {isWalicaUrlInvalid && (
+                      <p id={`${walicaUrlId}-error`} className='text-12px text-destructive'>
+                        walica.jp の URL を入力してください
+                      </p>
+                    )}
+                  </div>
                 </div>
-                <div className='space-y-2'>
-                  <Label htmlFor={walicaUrlId}>Walica URL</Label>
-                  <Input
-                    id={walicaUrlId}
-                    type='url'
-                    value={walicaUrl}
-                    onChange={e => setWalicaUrl(e.target.value)}
-                    placeholder='https://walica.jp/inv/...'
-                    aria-invalid={isWalicaUrlInvalid}
-                    aria-describedby={isWalicaUrlInvalid ? `${walicaUrlId}-error` : undefined}
-                  />
-                  {isWalicaUrlInvalid && (
-                    <p id={`${walicaUrlId}-error`} className='text-12px text-destructive'>
-                      walica.jp の URL を入力してください
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </DialogBody>
 

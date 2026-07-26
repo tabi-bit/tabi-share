@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { LazyMarkdownEditor } from '@/components/ui/markdown';
 import { useCreateTrip } from '@/hooks/useTrips';
+import { isValidWalicaUrl } from '@/lib/walica';
 import { type CreateTripFromApi, TRIP_TITLE_MAX_LENGTH } from '@/types/trip';
 
 interface AddTripDialogProps {
@@ -19,10 +20,12 @@ export const AddTripDialog = ({ open, onOpenChange, onCreated }: AddTripDialogPr
   const titleId = useId();
   const dateId = useId();
   const detailId = useId();
+  const walicaUrlId = useId();
   const [title, setTitle] = useState('');
   const [detail, setDetail] = useState('');
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
+  const [walicaUrl, setWalicaUrl] = useState('');
   const [detailOpen, setDetailOpen] = useState(false);
   const { createTrip, isCreating } = useCreateTrip();
 
@@ -33,12 +36,16 @@ export const AddTripDialog = ({ open, onOpenChange, onCreated }: AddTripDialogPr
       setDetail('');
       setStartDate(null);
       setEndDate(null);
+      setWalicaUrl('');
       setDetailOpen(false);
     }
   }, [open, isCreating]);
 
+  const trimmedWalicaUrl = walicaUrl.trim();
+  const isWalicaUrlInvalid = trimmedWalicaUrl !== '' && !isValidWalicaUrl(trimmedWalicaUrl);
+
   const handleSubmit = async () => {
-    if (!title.trim()) {
+    if (!title.trim() || isWalicaUrlInvalid) {
       return;
     }
 
@@ -48,6 +55,7 @@ export const AddTripDialog = ({ open, onOpenChange, onCreated }: AddTripDialogPr
       peopleNum: undefined,
       startDate,
       endDate,
+      walicaUrl: trimmedWalicaUrl || null,
     });
 
     if (newTrip) {
@@ -118,14 +126,33 @@ export const AddTripDialog = ({ open, onOpenChange, onCreated }: AddTripDialogPr
               <span>詳細を追加（任意）</span>
             </button>
             {detailOpen && (
-              <div id={detailId} className='space-y-2'>
-                <LazyMarkdownEditor
-                  className='max-h-72'
-                  id={`${detailId}-editor`}
-                  value={detail}
-                  onChange={setDetail}
-                  placeholder='旅程の詳細や目的など（省略可）'
-                />
+              <div id={detailId} className='space-y-4'>
+                <div className='space-y-2'>
+                  <LazyMarkdownEditor
+                    className='max-h-72'
+                    id={`${detailId}-editor`}
+                    value={detail}
+                    onChange={setDetail}
+                    placeholder='旅程の詳細や目的など（省略可）'
+                  />
+                </div>
+                <div className='space-y-2'>
+                  <Label htmlFor={walicaUrlId}>Walica URL</Label>
+                  <Input
+                    id={walicaUrlId}
+                    type='url'
+                    value={walicaUrl}
+                    onChange={e => setWalicaUrl(e.target.value)}
+                    placeholder='https://walica.jp/inv/...'
+                    aria-invalid={isWalicaUrlInvalid}
+                    aria-describedby={isWalicaUrlInvalid ? `${walicaUrlId}-error` : undefined}
+                  />
+                  {isWalicaUrlInvalid && (
+                    <p id={`${walicaUrlId}-error`} className='text-12px text-destructive'>
+                      walica.jp の URL を入力してください
+                    </p>
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -135,7 +162,7 @@ export const AddTripDialog = ({ open, onOpenChange, onCreated }: AddTripDialogPr
           <Button variant='outline' onClick={() => handleOpenChange(false)}>
             キャンセル
           </Button>
-          <Button onClick={handleSubmit} disabled={!title.trim()} loading={isCreating}>
+          <Button onClick={handleSubmit} disabled={!title.trim() || isWalicaUrlInvalid} loading={isCreating}>
             追加
           </Button>
         </DialogFooter>

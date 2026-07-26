@@ -23,3 +23,5 @@
 - 実装ルール・コーディング規約 → `docs/coding_standards.md` や `.claude/rules/` へ
 - プロジェクト全体の要件定義 (確定版) → `docs/requirements.md` へ
 - コミット済みの API 仕様 → OpenAPI (自動生成) or `docs/` 配下の確定ドキュメントへ
+- **実装後に恒久リファレンスとして参照される機能仕様** → `docs/<feature>.md` へ (例: `docs/notifications.md`)
+  - memo には「決定過程・変遷・Phase 計画・Phase 2 候補」だけを残す

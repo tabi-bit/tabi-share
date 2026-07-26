@@ -1,481 +1,92 @@
 # FCM プッシュ通知 設計メモ
 
-> **注意**: 本ドキュメントは Issue #148 の grill セッションで合意した検討メモであり、実装の一次情報ではありません。実装時は必ずソースコードを正とし、本ドキュメントとの乖離がある場合はソースコードを優先してください。
+> **注意**: 本ドキュメントは Issue #148 の grill セッションで合意した**決定過程の記録**です。
+> 実装の一次情報や機能仕様は [docs/notifications.md](../notifications.md) を参照してください。
 
-## 1. 目的
+## 決定過程 & 受容判断 (歴史的経緯)
 
-Issue #148 「PWA における通知の仕組み検討 & 実装」の要件を満たす。
-- **次の予定が通知からぱっと分かるようにする**
-- 予定開始時刻の N 分前にプッシュ通知を届ける
+以下は「なぜその選択をしたか」の記録。実装の詳細は本ドキュメントではなく `docs/notifications.md` に集約。
 
-## 2. 全体アーキテクチャ
+### なぜ FCM (Web Push) にしたか
 
-```text
-[Cloud Scheduler] --(1分毎 OIDC 付き HTTP)--> [Cloud Run: /internal/notify/tick]
-                                                           ↓
-                                       blocks × device_subscriptions を scan
-                                       (未送信 & 未来 & minutes_before 以内)
-                                                           ↓
-                                       INSERT sent_notifications (ON CONFLICT DO NOTHING)
-                                                           ↓
-                                       Firebase Admin SDK で FCM 送信
-```
+- Issue #148「次の予定が通知からぱっと分かるようにしたい」の解決手段として:
+  - **A: 時刻イベント push (5 分前通知)** ← MVP 採用
+  - B: 常駐通知 (glanceable、通知シェードに現在/次の予定を貼り付け) ← Phase 2 候補
+- iOS PWA では B のような常駐挙動が保証されず、A のほうが投資対効果高いと判断
 
-- **クライアント**: PWA (React + Vite)。Firebase Messaging Web SDK で token 取得、購読 API 呼び出し
-- **サーバ**: FastAPI on Cloud Run。ポーリング型スケジューラで FCM 送信
-- **スケジューラ**: Cloud Scheduler (無料枠 3 ジョブ以内)
-- **Firebase プロジェクト**: 既存 Firebase Hosting プロジェクトを流用
+### なぜ ADC 方式 (SA JSON 発行なし) を選んだか
 
-## 3. 通知の設計
+- 当初案は Firebase Admin SDK 用 Service Account JSON を発行し Secret Manager に登録する方式
+- **ADC (IAM 権限付与) の方が上位解**と判断:
+  - SA JSON がファイルとして存在しない = 漏洩リスクゼロ
+  - ローテーション不要
+  - Secret Manager 経由の保管も不要
+  - IAM 一元管理でシンプル
+- 既存 `tabi-share-api-runtime` SA に `roles/firebasecloudmessaging.admin` を直接付与
 
-### 3.1 発火タイミング
+### なぜ (fcm_token, trip_id) 単位の購読モデルか
 
-- **N 分前通知** のみ (MVP)
-- **デフォルト N = 5 分**
-- Trip × 端末単位で ON/OFF、N 分は DB に列として持つが UI からの変更は当面なし (将来拡張の余地)
+- 選択肢:
+  - (i) FCM registration token (端末×ブラウザ) ← MVP 採用
+  - (ii) 既存 `tabishare_session` Cookie ベース ← ほぼ (i) と同じだが Cookie 消えたら失う
+  - (iii) Firebase Auth ユーザ ID ← Firebase Auth **未実装**のため不可
+- Auth が入っていない現状、FCM token が実質「端末識別子」として機能
+- 将来 Firebase Auth 導入時は `user_id` カラム追加で自然に拡張可能
 
-### 3.2 通知対象
+### なぜ INSERT-first + ロスト受容にしたか
 
-- 全 block_type (`event`, `stay`, `move`) を通知対象
-- `Trip.start_date IS NOT NULL` の Trip に限定 (下書き旅程は除外)
+- **二重送信絶対禁止**が最優先 (「同じ通知が 2 度届く」は UX 最悪)
+- INSERT-first (`sent_notifications` PK 制約) で並列 tick でも 1 プロセスだけが送信権を獲得
+- FCM 送信失敗はロスト受容:
+  - FCM 到達率 99%+ で実質ロスト率無視可能
+  - 1〜2 分遅れの再送より「時刻通り届くか、届かないか」の方が UX 良い
+  - Phase 2 でリトライが必要になったら `sent_notifications.status` 列を追加
 
-### 3.3 通知内容
+### なぜ Cookie 失効時も購読を維持するか (E1 方針)
 
-```text
-[Schedule (event/stay)]
-  Title:  next 12:00
-  Body:   昼食 · 湯畑亭 · 草津温泉プロジェクト
-
-[Move]
-  Title:  next 12:00
-  Body:   →湯畑亭 · 草津温泉プロジェクト
-```
-
-- **Title**: `next HH:MM` 固定フォーマット
-  - popup(4字)で "next" が見えれば「予定リマインダー」と即認識
-  - 通知センター(~10字)で "next 12:00" まで完全表示
-  - move も schedule も同じ Title (区別は Body 冒頭の `→` で判別)
-- **Body**: `{block名 or →目的地} · {場所名} · {trip名}`
-  - 区切りは中黒 `·` で情報密度優先
-  - location が null なら省略
-- **時刻表示**: `HH:MM` (24h)
-- **Icon**: 既存 PWA アイコン (`/icons/icon-192x192.png`) 流用
-- **Badge (Android モノクロバッジ)**: 新規作成が必要
-
-### 3.4 タイムゾーン
-
-- サーバはグローバル対応 (Asia/Tokyo ハードコード禁止)
-- DB は `TIMESTAMPTZ` で UTC 保持 (現行維持)
-- 通知本文の `HH:MM` は**購読端末のタイムゾーンで整形**
-  - `device_subscriptions.timezone` 列にクライアントの `Intl.DateTimeFormat().resolvedOptions().timeZone` を保存
-  - サーバは送信時にその TZ で `HH:MM` を整形
-
-### 3.5 タップ時の挙動
-
-- タップ → `/trip/{urlId}?focusBlock={blockId}` へ遷移
-- 該当 Trip タブが既に開いていれば `focus()` + `postMessage({ type: 'FOCUS_BLOCK', blockId })`
-- TripPage 側で `?focusBlock` を検知して該当ブロックへ `scrollIntoView({ block: 'center' })` + ハイライト
-- **閲覧モードで開く** (編集モードには自動遷移しない)
-- Actions ボタン (`[開く][スヌーズ]` 等) は MVP 見送り
-
-### 3.6 フォアグラウンド挙動
-
-- アプリを開いている時 (`onMessage` 発火時) は **OS 通知ではなくアプリ内トースト**
-- トーストに **`MoveRight` アイコン付きの遷移ボタン** (日本語ラベルより短くて明快)
-- タップで通知タップと同じ deep link 挙動
-
-## 4. 購読モデル
-
-### 4.1 主キー: FCM registration token
-
-- **`(fcm_token, trip_id)` ペア** で購読管理
-- 端末 × Trip 単位。同じ人が iPhone/PC 両方で ON にすると両方鳴る (割り切り)
-- Firebase Auth **未実装** なのでユーザ ID には依存しない
-- 将来 Firebase Auth 導入時は `user_id` カラム追加で拡張
-
-### 4.2 iOS PWA 制約
-
-- iOS 16.4+ から Web Push 対応、ただし **PWA としてホーム画面追加した状態のみ**
-- 通常 Safari タブでは permission リクエスト自体不可
-
-**iOS 未 install 時のフロー:**
-1. ベルアイコンタップ
-2. アラート「アプリとしてインストールする必要があります」
-3. OK → install 手順モーダル (Safari 共有 > ホーム画面に追加)
-4. ユーザ手動で install
-5. ホーム画面から起動
-6. **再度**ベルアイコンタップ → 通知許可ダイアログ (自動再誘導は MVP 見送り)
-
-### 4.3 通知許可のリクエストタイミング
-
-- ページ読み込み時の自動発火は **禁止**
-- ベルアイコン (OFF 状態) タップ後のみ `Notification.requestPermission()`
-- denied 時は「設定から許可してください」ヘルプへの導線
-
-### 4.4 トグル UI
-
-- Trip 閲覧ページヘッダー (`ViewTripLayout.tsx` 周辺) にベルアイコン
-- lucide-react の `Bell` (ON) / `BellOff` (OFF) を使用
-- iOS 未 install 時は OFF 状態表示 + タップで install 誘導モーダル
-
-## 5. データスキーマ
-
-```sql
--- 端末 × Trip の購読関係
-CREATE TABLE device_subscriptions (
-  id             BIGSERIAL PRIMARY KEY,
-  fcm_token      VARCHAR(500) NOT NULL,
-  trip_id        BIGINT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
-  minutes_before SMALLINT NOT NULL DEFAULT 5,       -- 通知先行分 (1〜120 の範囲)
-  timezone       VARCHAR(64) NOT NULL,              -- IANA TZ (例: 'Asia/Tokyo')
-  user_agent     VARCHAR(500),                       -- デバッグ用
-  created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
-  last_seen_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE (fcm_token, trip_id),   -- カラム順は意図的 (下記コメント参照)
-  CONSTRAINT ck_device_subscriptions_minutes_before_range
-    CHECK (minutes_before >= 1 AND minutes_before <= 120)
-);
-CREATE INDEX idx_device_subscriptions_trip ON device_subscriptions(trip_id);
-
--- minutes_before の範囲:
---   最小 1 分、最大 120 分 (2 時間)。DB CheckConstraint と Pydantic (ge=1, le=120) の二重防御。
---   MVP では UI から変更不可 (常に 5 分)、将来 UI 追加時のためカラムは持たせる。
-
--- index 設計メモ:
--- - UNIQUE (fcm_token, trip_id) の順序は「fcm_token 単体クエリ」対応のため。
---   PostgreSQL の B-tree 複合 index は左端カラムから prefix-match で使えるので、
---   fcm_token 単体 WHERE (token リフレッシュ、token 失効時の全 trip 削除) でも
---   この UNIQUE index が有効に働く。追加 index は不要。
--- - idx_device_subscriptions_trip は tick スキャン時の JOIN (trip_id 単体) 用。
-
--- 送信済み記録 (重複阻止)
-CREATE TABLE sent_notifications (
-  block_id   BIGINT NOT NULL REFERENCES blocks(id) ON DELETE CASCADE,
-  fcm_token  VARCHAR(500) NOT NULL,
-  kind       VARCHAR(30) NOT NULL,     -- 'before_5min' 固定 (将来拡張余地)
-  sent_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
-  PRIMARY KEY (block_id, fcm_token, kind)
-);
-```
-
-## 6. tick 処理 (ポーリング & 二重送信阻止)
-
-### 6.0 blocks.start_time の index (追加必要)
-
-現行スキーマの `blocks` テーブルには `start_time` に index がない。tick スキャンで
-`WHERE b.start_time > now() AND b.start_time <= now() + interval` を毎分実行するため、
-以下 index を Alembic で追加する:
-
-```sql
-CREATE INDEX idx_blocks_start_time ON blocks(start_time);
-```
-
-### 6.1 スキャン範囲
-
-「未来 AND minutes_before 以内 AND 未送信」を広めに絞り込む。tick が遅延しても取りこぼしなし。
-
-```sql
-SELECT b.id, b.title, b.start_time, b.block_type, ...,
-       s.fcm_token, s.minutes_before, s.timezone,
-       t.url_id, t.name AS trip_name
-FROM blocks b
-  JOIN pages p ON b.page_id = p.id
-  JOIN trips t ON p.trip_id = t.id
-  JOIN device_subscriptions s ON s.trip_id = t.id
-  LEFT JOIN sent_notifications sn
-    ON sn.block_id = b.id
-   AND sn.fcm_token = s.fcm_token
-   AND sn.kind = 'before_5min'
-WHERE t.start_date IS NOT NULL
-  AND b.start_time > now()
-  AND b.start_time <= now() + make_interval(mins => s.minutes_before)
-  AND sn.block_id IS NULL
-```
-
-### 6.2 INSERT-first 送信 (二重送信阻止)
-
-```python
-for candidate in candidates:
-    result = await db.execute(
-        insert(SentNotification)
-            .values(block_id=..., fcm_token=..., kind='before_5min')
-            .on_conflict_do_nothing()
-    )
-    if result.rowcount == 1:      # INSERT 成功 = 送信権獲得
-        await send_fcm(candidate)
-    # 競合 tick では PK 制約で INSERT 拒否 → スキップ
-```
-
-- **順序: INSERT → send**。「送信ロスト受容、二重送信絶対禁止」の原則
-- FCM 到達率 99%+ のためロスト率は無視可
-- send 失敗時のリトライロジックは MVP 実装なし
-
-### 6.3 token 失効時のハンドリング
-
-- FCM から `Unregistered` / `InvalidRegistration` / `MismatchSenderId` エラー → **`device_subscriptions` から該当 token を全削除** (全 trip 分)
-- 一時エラー (429 rate limit, 5xx) は **MVP ではロスト扱い**。リトライ機構は Phase 2 で必要になったら `sent_notifications.status` 列を追加して対応
-
-### 6.3.1 FCM 送信オプション
-
-- **TTL: 300 秒** (5 分) を必ず指定
-  - デフォルトの 4 週間 TTL のままだと、オフライン端末が復帰した際に古い通知が届く事故が起きる
-  - `messaging.WebpushConfig(headers={"Urgency": "high", "TTL": "300"})`
-- **バッチ送信**: 数百件を送る場合は `messaging.send_each(messages)` で並列化 (最大 500 件/回)
-  - 各 block ごとに Title/Body/link が異なるため、Message を個別に作って `send_each` に渡す
-  - 同一 payload を複数 token に送る場合は `send_each_for_multicast(multicast_message)` を使うが、今回の用途では使わない
-
-### 6.3.2 VAPID 鍵ローテーションの禁止
-
-- VAPID 鍵を変更すると **全端末の既存 token が無効化** され、全ユーザに再購読を強いる
-- 運用上、鍵ローテーションは **基本しない** (漏洩時のみ)
-
-### 6.4 タップ後の deep link (SW `notificationclick`)
-
-```ts
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-  const { urlId, blockId } = event.notification.data;
-  const targetUrl = `/trip/${urlId}?focusBlock=${blockId}`;
-
-  event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true })
-      .then((clients) => {
-        const existing = clients.find(c => c.url.includes(`/trip/${urlId}`));
-        if (existing) {
-          existing.focus();
-          existing.postMessage({ type: 'FOCUS_BLOCK', blockId });
-          return;
-        }
-        return self.clients.openWindow(targetUrl);
-      })
-  );
-});
-```
-
-## 7. Service Worker 統合方針
-
-- `firebase-messaging-sw.js` を **別ファイルとして併存** (VitePWA の SW とは分離)
-- 公式ドキュメントに事例多、iOS PWA との相性実績あり
-- Vite plugin の `includeAssets` に追加
-
-## 8. エッジケースの扱い
-
-| ケース | 挙動 |
-|---|---|
-| Trip.start_date が null | **通知対象外**。トグル ON 時に「日付未設定ページがあります」アラートで警告。ページ追加/編集で null が発生した場合は黄色アテンション表示 |
-| block 開始が過去 | スキャン条件 `start_time > now()` で自然除外 |
-| 直前に作成された block (残り 1 分等) | 通知する (5 分前確約より「届く」ことを優先) |
-| Trip 削除 | CASCADE で `device_subscriptions` 自動削除 |
-| Block 削除 | CASCADE で `sent_notifications` 自動削除 |
-| token リフレッシュ | クライアント起動時 `getToken()` 再取得、新旧 token を API に渡して UPDATE |
-
-## 9. UI 詳細
-
-### 9.1 通知トグル
-
-- 位置: Trip 閲覧ページヘッダー
-- アイコン: `lucide-react` の `Bell` (ON) / `BellOff` (OFF)
-- ON にする際:
-  - Trip.start_date が null なら「日付未設定です」アラート → OK 押下で有効化
-  - ページに date null がある場合、Trip 画面に**黄色アテンション**表示
-
-### 9.2 フォアグラウンドトースト
-
-- 既存 `useNetworkToast` パターン準拠
-- `MoveRight` アイコン付きのアクションボタン (日本語ラベルより明快)
-- 別 Trip の通知でも同様に表示、タップで別 Trip へナビゲート
-
-### 9.3 トグル操作のフィードバック (D1 + トースト)
-
-- **ベルアイコン即応**: ワンタップで `requestPermission()` → `getToken()` → 購読 API まで実行
-- **成功トースト**: 「通知を有効にしました」 / 「通知を無効にしました」
-- **エラートースト**:
-  - permission denied: 「通知が拒否されました。OS 設定から許可してください」+ ヘルプへのリンク
-  - iOS 未 install: 「アプリとしてインストールする必要があります」アラート → install 手順モーダル (D1 の流れは iOS では 2 段階になる)
-  - 購読 API 失敗: 「通知の有効化に失敗しました。時間を置いて再度お試しください」
-- 既存 shadcn/ui の `Sonner` / `toast` パターン準拠
-
-### 9.4 テスト送信機能 (B1 補完)
-
-- 通知トグルの近くに「テスト送信」ボタン (ON 時のみ表示)
-- タップで即座に自端末にテスト通知が届く
-- iOS install 後の疎通確認、「本当に届く？」の不安解消に有用
-- **エンドポイント**: `POST /api/v1/trips/{trip_id}/subscription/test`
-- **通知内容**:
-  ```text
-  Title: たびしぇあ テスト通知
-  Body:  通知が正常に届いています · {trip.name}
-  ```
-- **レート制限**: 同 fcm_token につき **5 秒に 1 回まで** (連打防止)
-- **`sent_notifications` には記録しない** (block_id が NULL 不可のため構造上入らない、テストなので記録も不要)
-
-## 10. プラットフォーム別 install 要否
-
-| Platform | 通知購読 | PWA install 要否 |
-|---|---|---|
-| iOS Safari (16.4+) | ✅ | **必須** (共有 > ホーム画面に追加) |
-| iOS 16.3 以前 | ❌ | (Web Push 非対応) |
-| Android Chrome | ✅ | 不要 (install するとより安定) |
-| Desktop Chrome/Edge/Firefox | ✅ | 不要 |
-
-判定コード:
-```ts
-const isPWAInstalled = window.matchMedia('(display-mode: standalone)').matches;
-const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-if (isIOS && !isPWAInstalled) {
-  // install 誘導モーダルを出す
-}
-```
-
-## 11. 運用: 通知機能の一時停止
-
-- **Cloud Scheduler ジョブを停止**するだけで通知は止まる
-- 購読 API は生きたままなので、既存 subscription は保持される
-- ジョブ再開で自然復旧
-
-### 11.1 Cloud Run min_instances
-
-- **`min_instances=1`** で運用済み (既存設定)
-- コールドスタート遅延の心配なし
-- tick 実行は即座に反応
-
-### 11.2 tick 処理時間が 1 分を超える場合の対策
-
-#### 11.2.1 問題
-
-Cloud Scheduler は 1 分ごとに `/internal/notify/tick` を叩く。1 tick の処理時間が 60 秒を超えると:
-
-1. **重複実行**: 前 tick が実行中に次 tick が開始 → Cloud Run が 2 並列で走り、同じ候補を DB でロック競合
-2. **タイムアウト連鎖**: Cloud Scheduler の attempt-deadline に到達→ scheduler がリトライ → さらに重複
-3. **サイレント遅延**: 通知が「5 分前」ではなく「6 分前」「7 分前」…と徐々に遅れる (`sent_notifications` PK で二重送信は防げるが、送信タイミングは狂う)
-
-#### 11.2.2 通常時の処理時間の期待値
-
-- FCM 送信は 1 件あたり 100〜300ms のレスポンス
-- `send_each` バッチ (最大 500 件並列): **500 件 = 1〜3 秒程度**
-- MVP 規模 (数十〜数百 subscription) では 1 tick 数秒以内で完了する想定
-- **警告閾値: 45 秒**、**緊急閾値: 55 秒** (次 tick に食い込むリスク)
-
-#### 11.2.3 防止機構 (実装ずみ or 実装候補)
-
-| 機構 | 目的 | 実装状態 |
-|---|---|---|
-| `sent_notifications` PK + INSERT-first | 二重送信の絶対禁止 (異常時のフォールバック) | ✅ 実装済み |
-| **PostgreSQL Advisory Lock** で tick 全体を排他化 | 前 tick 実行中は次 tick を即 return させる | ⏳ 未実装 (Phase 2 or 必要性が出たら) |
-| **Cloud Run request timeout=60s** | 実行時間の上限を強制、超過分は次 tick に持ち越す | ⏳ deploy-backend.yml で明示設定 |
-| **Cloud Scheduler attempt-deadline=60s** | scheduler 側でも打ち切り、リトライ抑制 | ⏳ ジョブ作成時に指定 |
-| **バッチサイズ制限 (LIMIT N)** | 1 tick で処理する候補数上限、溢れた分は次 tick で拾う | ⏳ Phase 2 (subscription が数百超えたら検討) |
-
-**Advisory Lock 実装イメージ** (Phase 2):
-
-```python
-NOTIFY_TICK_LOCK_KEY = 0x148_1_5min  # tick 種別ごとに一意の 64-bit int
-
-async def tick():
-    async with db.begin():
-        got_lock = (await db.execute(
-            text("SELECT pg_try_advisory_lock(:key)"),
-            {"key": NOTIFY_TICK_LOCK_KEY}
-        )).scalar()
-        if not got_lock:
-            logger.warning("previous tick still running, skip")
-            return {"status": "skipped"}
-    try:
-        # ... 通常処理
-    finally:
-        await db.execute(text("SELECT pg_advisory_unlock(:key)"), {"key": NOTIFY_TICK_LOCK_KEY})
-```
-
-#### 11.2.4 検知手段
-
-**MVP (log ベース)**:
-- tick 完了時に処理時間を `log.info` に含める (`elapsed_ms`)
-- **Cloud Logging のログベースアラート** を設定:
-  - 条件: `jsonPayload.elapsed_ms > 45000` が 3 回連続 (3 分間)
-  - 通知先: メール or Slack Webhook
-- クエリ例:
-  ```text
-  resource.type="cloud_run_revision"
-  resource.labels.service_name="tabi-share-api-prod"
-  jsonPayload.event="notification_tick_completed"
-  jsonPayload.elapsed_ms>=45000
-  ```
-
-**Phase 2 (メトリクス)**:
-- Cloud Monitoring カスタムメトリクス
-  - `notification/tick/duration_seconds` (distribution)
-  - `notification/tick/candidates_count`
-  - `notification/tick/sent_count`
-  - `notification/tick/failed_count`
-- ダッシュボード + SLO (「95 パーセンタイル < 30 秒」を目標)
-
-#### 11.2.5 Runbook (アラート発火時の対応)
-
-1. **状況把握**:
-   - Cloud Logging で最新の `notification_tick_completed` ログを 30 分ぶん参照
-   - `elapsed_ms` の推移、`candidates_count` の急増有無、`failed_count` の増加
-2. **原因切り分け**:
-   - `candidates_count` 急増 → subscription の異常増加 / 集中する時間帯 → 一時的なら経過観察、恒常的なら Phase 2 の対策発動
-   - `failed_count` 急増 → Firebase Status Page 確認、FCM 側障害の可能性
-   - どちらでもない → DB スロークエリ疑い、`pg_stat_activity` で長時間クエリ確認
-3. **緊急対処**:
-   - **一時停止**: Cloud Scheduler ジョブを pause (`gcloud scheduler jobs pause`)
-   - subscription 数が異常な場合、通知対象 Trip を絞る運用対応
-4. **恒久対処**:
-   - Advisory Lock + バッチ LIMIT を有効化
-   - subscription が数千規模なら Cloud Tasks 化やシャーディング検討 (Phase 3)
-
-#### 11.2.6 現時点の実装状態
-
-- ✅ `sent_notifications` PK による二重送信絶対禁止 (最終防衛線)
-- ⏳ **tick エンドポイントに `elapsed_ms` の構造化ログ出力** (未実装、この PR で追加すべき最小改善)
-- ⏳ deploy-backend.yml で Cloud Run timeout の明示 (Phase 1d ジョブ作成時に併せて設定)
-- ⏳ Advisory Lock / バッチ LIMIT / Cloud Monitoring メトリクスは Phase 2 送り
-
-## 12. 環境分離 (staging / preview / production / local)
-
-Firebase / Cloud Run / DB を含む 4 環境の分離状況:
-
-| 層 | 共有/分離 |
-|---|---|
-| Firebase プロジェクト (`tabi-share-8ef6b`) | **1 つ共用** (Hosting / FCM / Analytics すべて) |
-| Firebase Hosting target | **3 分離**: staging (`tabishare-st`) / production (`tabishare`) / preview (`tabi-share-8ef6b`) |
-| Cloud Run サービス | **stg / prod 分離**: `tabi-share-api-staging` / `tabi-share-api-prod` |
-| DB (PostgreSQL) | **完全分離** (stg / prod で別インスタンス) |
-| `.env` ファイル | **3 分離**: `.env` (local + preview 兼用) / `.env.stg` (staging) / `.env.prod` (production) |
-
-**Preview 環境の位置付け** (`firebase-hosting-pull-request.yml`):
-- PR 作成/更新時に **`pnpm run build:stg`** でビルドされる (`.env.stg` を使用)
-- 生成物は Firebase Hosting Preview Channel にデプロイされる
-- **API は stg backend (`https://api.st.tabishare.net`) を参照**
-- → **preview サイトから購読すると stg DB に入り、stg Cloud Scheduler が拾って通知配信**
-- **追加インフラ不要で preview から通知動作確認が可能**
-
-**FCM token は origin 単位で独立発行**:
-- 同じ端末で staging URL / production URL / preview URL に個別購読すると 3 つの token が発行される
-- stg で誤って prod ユーザに通知を送るリスクは構造的にゼロ (DB が分離されているため)
-
-## 13. Cookie 失効と通知購読の関係 (E1 方針)
-
-- `tabishare_session` Cookie が失効しても、`fcm_token` ベースの購読は独立して有効
+- `tabishare_session` Cookie が失効しても `fcm_token` ベースの購読は独立して有効
 - Trip URL 共有モデル的に「URL 知ってれば OK」なので、通知購読が独立するのは矛盾しない
 - Trip 削除 (CASCADE) or FCM token 失効 (Unregistered エラー) でのみ解除
-- 「Trip URL を共有した相手が通知 ON にした後、URL を削除しても相手には通知届き続ける」ケースが存在するが、MVP は受容
+- 「URL 共有した相手が通知 ON にした後、URL を削除しても相手に通知届き続ける」ケースが存在するが、MVP は受容
 
-## 14. プライバシー方針 (MVP)
+### なぜ Title を "next 12:00" にしたか
+
+- 候補:
+  - A: `next 12:00` ← 採用 (popup 4 字で "next" が意味を伝える)
+  - B: `次の予定 12:00` (popup 4 字で "次の予定" だが時刻が見えない)
+- popup 通知の先頭 4 文字で「時刻系リマインダー」だと即認識できる情報密度が最優先
+- Body で場所 / trip 名を補完
+
+### プライバシー方針 (MVP)
 
 - 通知内容 (block 名、場所) はロック画面に表示される
 - 「内容をぼかす」オプションは MVP 見送り (Phase 2 候補)
 - ユーザが自分で通知 ON にする以上、受容可
 
-## 15. Phase 2 候補 (未着手)
+### tick > 60 秒対策を Phase 2 送りにした理由
 
-- **常駐通知案 (glanceable notification)**: 「現在: 温泉 / 次: 昼食 13:30〜」を通知シェードに常時表示。SW 側で管理、FCM 不要。grill 開始時に検討したが MVP は「時刻イベント push」1 本に絞ったため後回し
-- 通知疲労対策 (連続開始ブロックの集約通知) — MVP は受容
-- 送信失敗リトライ (`sent_notifications.status` 列追加、`sent_at` を nullable にして状態管理)
-- 観測メトリクス (Cloud Monitoring カスタムメトリクス、送信数 / 失敗率 / SLO) — MVP は `log.info` のみ
-- 通知内容のぼかしオプション (ロック画面プライバシー)
-- ブロック単位の通知 ON/OFF (現行は Trip 単位のみ)
-- minutes_before の UI 設定 (5/10/30 分プリセット、DB 列は用意済み)
-- Cookie 失効時の購読自動解除 (現行は独立管理・E1 方針)
-- `sent_notifications` の古いレコード掃除 cron (Issue #173)
+- 現状の subscription 規模 (~数十件) では通常の tick が数秒で完了
+- PostgreSQL Advisory Lock / Cloud Run request timeout / バッチ LIMIT 等の防御機構は、
+  subscription が数百件を超えて問題が顕在化してから実装する
+- MVP としては `sent_notifications` PK の二重送信絶対禁止だけあれば事故は防げる
+- 最小改善として `elapsed_ms` 構造化ログは実装済み
+
+## Phase 2 候補 (未着手)
+
+- **常駐通知案 (glanceable)**: 「現在: 温泉 / 次: 昼食 13:30〜」を通知シェードに常時表示 (FCM 不要、SW 側で管理)
+- **通知疲労対策**: 連続開始ブロックの集約通知
+- **送信失敗リトライ**: `sent_notifications.status` 列追加
+- **観測メトリクス**: Cloud Monitoring カスタムメトリクス (送信数 / 失敗率 / SLO)
+- **通知内容ぼかしオプション**: ロック画面プライバシー
+- **ブロック単位通知 ON/OFF**: 現行 Trip 単位のみ
+- **minutes_before の UI 設定**: 5/10/30 分プリセット (DB カラムは用意済み)
+- **PostgreSQL Advisory Lock**: tick 排他化
+- **tick バッチ LIMIT**: subscription 数増加時の対策
+- **Cookie 失効時の購読自動解除**: 現行 E1 (独立管理) 方針
+- **`sent_notifications` 掃除 cron**: Issue #173
+- **macOS Safari (Sonoma+) の PWA install サポート**
+
+## 参考: 実装内容の一次情報
+
+- 実装仕様・アーキテクチャ・データスキーマ: [docs/notifications.md](../notifications.md)
+- Phase 分けと実装順序: [docs/memo/notification_roadmap.md](./notification_roadmap.md)

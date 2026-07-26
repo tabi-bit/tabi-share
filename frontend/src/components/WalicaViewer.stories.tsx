@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { WalicaViewer } from './WalicaViewer';
 
-type Variant = 'auto' | 'dialog' | 'drawer';
+type Variant = 'auto' | 'bottom' | 'right';
 
 const WalicaViewerHarness = ({
   walicaUrl,
@@ -33,7 +33,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Walica iframe を表示するビューア。既定は viewport (sm 未満) に応じて Drawer / Dialog を自動選択。variant prop で明示切替可能。',
+          'Walica iframe を表示するビューア。モバイル(<640px)は下から, デスクトップは右から Sheet をスライドさせる。variant prop で明示切替可能。',
       },
     },
   },
@@ -45,7 +45,7 @@ const meta = {
   argTypes: {
     variant: {
       control: { type: 'radio' },
-      options: ['auto', 'dialog', 'drawer'],
+      options: ['auto', 'bottom', 'right'],
     },
   },
   tags: ['autodocs'],
@@ -54,24 +54,24 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof WalicaViewerHarness>;
 
-export const DialogVariant: Story = {
-  args: { variant: 'dialog' },
+export const RightSide: Story = {
+  args: { variant: 'right' },
   parameters: {
     docs: {
       description: {
-        story: 'Dialog 強制。デスクトップ想定のレイアウト確認用。',
+        story: '右からシート強制。デスクトップ想定のレイアウト。',
       },
     },
   },
 };
 
-export const DrawerVariant: Story = {
-  args: { variant: 'drawer' },
+export const BottomSide: Story = {
+  args: { variant: 'bottom' },
   parameters: {
     viewport: { value: 'mobile1', isRotated: false },
     docs: {
       description: {
-        story: 'Drawer 強制。下からスライドで立ち上がるモバイル用レイアウト。',
+        story: '下からシート強制。モバイル用レイアウト。',
       },
     },
   },
@@ -82,7 +82,8 @@ export const AutoResponsive: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'viewport で自動選択。Storybook viewport addon で mobile1 を選ぶと Drawer に切り替わる。',
+        story:
+          'viewport で自動選択。Storybook viewport addon で mobile1 を選ぶと下からシート / それ以外は右からシート。',
       },
     },
   },

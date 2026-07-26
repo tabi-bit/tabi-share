@@ -19,6 +19,7 @@ from app.errors import (
     validation_exception_handler,
 )
 from app.firebase import init_firebase_admin
+from app.middleware.legacy_cookie_migration import LegacyCookieMigrationMiddleware
 from app.observability import setup_observability
 
 from .routers import blocks, notification, notification_internal, pages, trips
@@ -85,6 +86,12 @@ async def openapi_schema(
         get_openapi(title=app.title, version=app.version, routes=app.routes)
     )
 
+
+# issue #194 の移行期間限定のミドルウェア。旧形式 (trip_ids 配列) の Cookie を
+# 検出したら透過的に新形式 (session_id) へ移行する。CORS より内側 (inner) に
+# 置くことで preflight (Cookie 無) はスルーされる。
+# 削除タイミング: リリース 2-3 ヶ月後を目安に、この 1 行とファイル一式を削除する。
+app.add_middleware(LegacyCookieMigrationMiddleware)
 
 app.add_middleware(
     CORSMiddleware,

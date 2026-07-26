@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.pool import NullPool
 
+from app import db_connection
 from app.auth import SESSION_COOKIE_NAME, generate_session_id
 from app.config import get_settings
 from app.cruds import blocks as blocks_cruds
@@ -57,6 +58,10 @@ async def override_get_db_session():
 
 
 app.dependency_overrides[get_db_session] = override_get_db_session
+
+# LegacyCookieMigrationMiddleware は Depends を経由せず db_connection.AsyncSessionLocal を
+# 属性 lookup で参照している。テスト用エンジンで動かすため、ここで factory を差し替える。
+db_connection.AsyncSessionLocal = TestingAsyncSessionLocal
 
 
 @pytest_asyncio.fixture(scope="function", autouse=True)

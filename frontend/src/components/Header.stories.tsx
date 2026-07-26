@@ -47,6 +47,17 @@ const demoTripLongTitle: Trip = {
   lastEditedAt: DEMO_TS,
 };
 
+const demoTripWithWalica: Trip = {
+  id: 1,
+  title: '北海道旅行',
+  urlId: 'trip1',
+  startDate: new Date(2026, 4, 24),
+  endDate: new Date(2026, 4, 26),
+  walicaUrl: 'https://walica.jp/group/01K342T6BB8JRYD9VKXTB041FY',
+  createdAt: DEMO_TS,
+  lastEditedAt: DEMO_TS,
+};
+
 const demoPages: Page[] = [
   { id: 1, title: '1日目', tripId: 1 },
   { id: 2, title: '2日目', tripId: 1 },
@@ -248,6 +259,31 @@ export const LongTripTitle: Story = {
     docs: {
       description: {
         story: '長い Trip タイトルの折り返しと編集ペンの表示を確認する。',
+      },
+    },
+  },
+};
+
+export const WalicaEnabled: Story = {
+  args: {
+    variant: 'full',
+  },
+  decorators: [
+    Story => {
+      const store = createStore();
+      return (
+        <Provider store={store}>
+          <AtomHydrator trip={demoTripWithWalica} pages={demoPages} selectedPageId={1} mode='view'>
+            <Story />
+          </AtomHydrator>
+        </Provider>
+      );
+    },
+  ],
+  parameters: {
+    docs: {
+      description: {
+        story: 'Walica URL 設定済みの Trip。共有ボタンの右に「Walica」ボタンが表示される。未設定 Trip では非表示。',
       },
     },
   },

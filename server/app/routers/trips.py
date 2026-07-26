@@ -36,7 +36,7 @@ async def create_trip(
     """
     url_id: str = generate(size=URL_ID_SIZE)
     trip_id: int = await trips_cruds.create_trip(db=db, trip=trip_in, url_id=url_id)
-    grant_trip_access(request, response, trip_id)
+    await grant_trip_access(request, response, trip_id, db)
 
     return TripCreateOut(id=trip_id, url_id=url_id)
 
@@ -103,7 +103,7 @@ async def get_trip_by_url_id(
     db_trip = await trips_cruds.get_trip_by_url_id(db, url_id=url_id)
     if db_trip is None:
         raise NotFound(message="Trip not found")
-    grant_trip_access(request, response, db_trip.id)
+    await grant_trip_access(request, response, db_trip.id, db)
 
     return db_trip
 

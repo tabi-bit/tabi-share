@@ -1,9 +1,10 @@
 """
-認証・認可モジュール
+認証・認可モジュール（セッションキー方式）
 
 - Basic 認証: APIドキュメントや管理系エンドポイントの保護
-- Cookie 認可: urlId 付き Trip ページへのアクセスを起点として署名付き Cookie (JWT) を発行し、
-  以降のリクエストで Cookie 内の許可済み trip_id リストを検証して認可を行う。
+- セッション認可: 不透明トークン session_id を JWT に載せた HttpOnly Cookie を発行し、
+  DB の user_trip_access テーブルで認可判定する。並列付与の race は
+  (user_id, trip_id) 複合 PK と ON CONFLICT DO NOTHING で idempotent に解消される。
 """
 
 import secrets
@@ -14,13 +15,14 @@ from urllib.parse import urlparse
 import jwt
 from fastapi import Depends, HTTPException, Request, Response, status
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
-from sqlalchemy import select
+from sqlalchemy import exists, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.db_connection import get_db_session
 from app.errors import Forbidden, NotFound
-from app.models import Block, Page
+from app.models import Block, Page, User, UserSession, UserTripAccess
 
 # ---- Basic 認証 ----
 
@@ -45,26 +47,27 @@ def require_basic_auth(
 
 
 SESSION_COOKIE_NAME = "tabishare_session"
+# secrets.token_urlsafe(24) は 32 文字。DB カラム String(32) と一致。
+_SESSION_ID_BYTES = 24
 
 
-def get_allowed_trip_ids(request: Request) -> set[int]:
-    """Cookie から許可済み trip_id のセットを取得する。
+def decode_session_id(request: Request) -> str | None:
+    """Cookie の JWT から session_id を取り出す。Cookie 無・不正・期限切れなら None。
 
-    `tabishare_session` Cookie の JWT payload に含まれる `trip_ids` 配列をデコードして返す。
-    Cookie が無い・JWT が不正・期限切れの場合は空 set。
+    移行ミドルウェアからも参照できるよう public。旧形式 (payload に trip_ids
+    フィールドがある) の JWT はここで None 扱いになるため、ミドルウェア側で
+    別途 payload を検査して移行する必要がある。
     """
     raw = request.cookies.get(SESSION_COOKIE_NAME)
     if not raw:
-        return set()
+        return None
     settings = get_settings()
     try:
         payload = jwt.decode(raw, settings.cookie_secret_key, algorithms=["HS256"])
     except (jwt.InvalidTokenError, jwt.ExpiredSignatureError):
-        return set()
-    ids = payload.get("trip_ids")
-    if not isinstance(ids, list):
-        return set()
-    return {tid for tid in ids if isinstance(tid, int)}
+        return None
+    sid = payload.get("session_id")
+    return sid if isinstance(sid, str) else None
 
 
 def _resolve_samesite(request: Request, is_production: bool) -> Literal["lax", "none"]:
@@ -84,16 +87,24 @@ def _resolve_samesite(request: Request, is_production: bool) -> Literal["lax", "
     return "none"
 
 
-def _set_session_cookie(
-    request: Request, response: Response, trip_ids: set[int]
-) -> None:
-    """trip_ids 集合をまとめた署名付きセッション Cookie を発行する。"""
+def encode_session_jwt(session_id: str) -> str:
+    """session_id を含む新形式 JWT を生成する。移行ミドルウェアと共用するため public。"""
     settings = get_settings()
     payload = {
-        "trip_ids": sorted(trip_ids),
+        "session_id": session_id,
         "exp": datetime.now(UTC) + timedelta(seconds=settings.cookie_max_age),
     }
-    token = jwt.encode(payload, settings.cookie_secret_key, algorithm="HS256")
+    return jwt.encode(payload, settings.cookie_secret_key, algorithm="HS256")
+
+
+def set_session_cookie(request: Request, response: Response, session_id: str) -> None:
+    """session_id を JWT に載せた HttpOnly Cookie を発行する。
+
+    既存 session に対して呼び直すことで Max-Age がリセットされ、Cookie の
+    30 日ローリング更新として機能する (認可済みリクエストでこれを呼ぶ)。
+    """
+    settings = get_settings()
+    token = encode_session_jwt(session_id)
 
     is_production = settings.environment != "development"
     response.set_cookie(
@@ -107,25 +118,88 @@ def _set_session_cookie(
     )
 
 
-def grant_trip_access(request: Request, response: Response, trip_id: int) -> None:
-    """指定 trip_id へのアクセス権を Cookie に追記する。
+def generate_session_id() -> str:
+    """新規 session_id (URL-safe な 32 文字トークン) を生成する。"""
+    return secrets.token_urlsafe(_SESSION_ID_BYTES)
 
-    既存 Cookie の trip_ids を読み、`trip_id` をマージしてから再発行する。
-    平行で複数 grant が走ると後勝ちで一部 trip_id が失われ得るが、apiClient 側の
-    403 自動 retry で次回アクセス時に再付与され、最終的に収束する。
+
+async def ensure_session(
+    request: Request, response: Response, db: AsyncSession
+) -> UserSession:
+    """現在の session を取得または新規発行する。
+
+    - 有効な Cookie がある場合: 既存 session を返しつつ Cookie を再発行 (30 日ローリング)
+      し、`last_seen_at` を更新する
+    - Cookie 未発行 / 無効 / DB に session が存在しない場合: 匿名 user と session を新規発行
+
+    `routers/auth.py` の `POST /auth/link` からも参照するため public。
     """
-    allowed = get_allowed_trip_ids(request)
-    allowed.add(trip_id)
-    _set_session_cookie(request, response, allowed)
+    session_id = decode_session_id(request)
+    if session_id is not None:
+        existing = await db.get(UserSession, session_id)
+        if existing is not None:
+            existing.last_seen_at = datetime.now(UTC)
+            set_session_cookie(request, response, existing.id)
+            return existing
+    # Cookie 無 or DB に存在しない → 匿名 user + session を新規発行
+    user = User()
+    db.add(user)
+    await db.flush()
+    session = UserSession(id=generate_session_id(), user_id=user.id)
+    db.add(session)
+    await db.flush()
+    set_session_cookie(request, response, session.id)
+    return session
+
+
+async def grant_trip_access(
+    request: Request,
+    response: Response,
+    trip_id: int,
+    db: AsyncSession,
+) -> None:
+    """指定 trip_id へのアクセス権を現在の user に付与する。
+
+    Cookie が無ければ匿名 user と session を先に発行する。並列付与の race は
+    (user_id, trip_id) の UNIQUE 制約と ON CONFLICT DO NOTHING で idempotent に解消される。
+    プロジェクトの CRUD 慣習に合わせ、変更完了時に commit する。
+    """
+    session = await ensure_session(request, response, db)
+    await db.execute(
+        pg_insert(UserTripAccess)
+        .values(user_id=session.user_id, trip_id=trip_id)
+        .on_conflict_do_nothing(index_elements=["user_id", "trip_id"])
+    )
+    await db.commit()
+
+
+async def _has_trip_access(
+    db: AsyncSession, session_id: str | None, trip_id: int
+) -> bool:
+    """session_id が指す user が trip_id にアクセスできるかを判定する。"""
+    if session_id is None:
+        return False
+    stmt = select(
+        exists().where(
+            UserSession.id == session_id,
+            UserTripAccess.user_id == UserSession.user_id,
+            UserTripAccess.trip_id == trip_id,
+        )
+    )
+    result = await db.execute(stmt)
+    return bool(result.scalar())
 
 
 # ---- FastAPI Depends 用の認可関数 ----
 
 
-def require_trip_access(trip_id: int, request: Request) -> int:
-    """パスパラメータの trip_id へのアクセス権を Cookie で検証する。"""
-    allowed = get_allowed_trip_ids(request)
-    if trip_id not in allowed:
+async def require_trip_access(
+    trip_id: int,
+    request: Request,
+    db: AsyncSession = Depends(get_db_session),
+) -> int:
+    """パスパラメータの trip_id へのアクセス権を検証する。"""
+    if not await _has_trip_access(db, decode_session_id(request), trip_id):
         raise Forbidden()
     return trip_id
 
@@ -141,8 +215,7 @@ async def require_page_access(
     if trip_id is None:
         raise NotFound(message="Page not found")
 
-    allowed = get_allowed_trip_ids(request)
-    if trip_id not in allowed:
+    if not await _has_trip_access(db, decode_session_id(request), trip_id):
         raise Forbidden()
     return trip_id
 
@@ -162,7 +235,6 @@ async def require_block_access(
     if trip_id is None:
         raise NotFound(message="Block not found")
 
-    allowed = get_allowed_trip_ids(request)
-    if trip_id not in allowed:
+    if not await _has_trip_access(db, decode_session_id(request), trip_id):
         raise Forbidden()
     return trip_id

@@ -164,8 +164,11 @@ async def test_delete_trip(client: AsyncClient, db_session: AsyncSession):
     assert response.status_code == 204
 
     # --- 削除されたことを確認 ---
+    # 新方式では trip 削除で user_trip_access も CASCADE 削除されるため、
+    # 認可チェックが先に落ちて 403 を返す（trip 存在チェックには到達しない）。
+    # UX 上「削除後にアクセスできない」という意図は満たされる。
     response = await client.get(f"/trips/{trip_id}")
-    assert response.status_code == 404
+    assert response.status_code == 403
 
 
 # ---- Cookie 発行テスト ----
@@ -174,7 +177,7 @@ async def test_delete_trip(client: AsyncClient, db_session: AsyncSession):
 async def test_create_trip_sets_access_cookie(
     client: AsyncClient, db_session: AsyncSession
 ):
-    """POST /trips のレスポンスに認可Cookieが含まれることを検証"""
+    """POST /trips のレスポンスに session_id を持つ認可 Cookie が発行されることを検証"""
     response = await client.post("/trips", json={"title": "cookie test", "detail": "d"})
     assert response.status_code == 200
     trip_id = response.json()["id"]
@@ -183,18 +186,22 @@ async def test_create_trip_sets_access_cookie(
     matching = [h for h in set_cookie_headers if SESSION_COOKIE_NAME in h]
     assert len(matching) == 1
 
-    # Cookie値がデコード可能で trip_ids に作成した trip_id が含まれる
+    # 新形式 payload は session_id のみを持ち、trip_ids は載らない
     settings = get_settings()
     token = client.cookies.get(SESSION_COOKIE_NAME)
     payload = pyjwt.decode(token, settings.cookie_secret_key, algorithms=["HS256"])
-    assert trip_id in payload["trip_ids"]
+    assert isinstance(payload.get("session_id"), str)
+    assert "trip_ids" not in payload
+
+    # 発行された Cookie で当該 trip にアクセスできる (認可が動く)
+    read = await client.get(f"/trips/{trip_id}")
+    assert read.status_code == 200
 
 
 async def test_get_trip_by_url_id_sets_access_cookie(
     client: AsyncClient, db_session: AsyncSession
 ):
-    """GET /trips/url/{url_id} のレスポンスに認可Cookieが含まれることを検証"""
-    # まずtripを作成
+    """GET /trips/url/{url_id} のレスポンスに認可 Cookie が発行されることを検証"""
     response = await client.post(
         "/trips", json={"title": "url id cookie test", "detail": "d"}
     )
@@ -210,29 +217,34 @@ async def test_get_trip_by_url_id_sets_access_cookie(
     matching = [h for h in set_cookie_headers if SESSION_COOKIE_NAME in h]
     assert len(matching) == 1
 
-    # 発行された Cookie の trip_ids に当該 trip_id が含まれる
     settings = get_settings()
     token = client.cookies.get(SESSION_COOKIE_NAME)
     payload = pyjwt.decode(token, settings.cookie_secret_key, algorithms=["HS256"])
-    assert trip_id in payload["trip_ids"]
+    assert isinstance(payload.get("session_id"), str)
+
+    # 発行された Cookie で当該 trip にアクセスできる
+    read = await client.get(f"/trips/{trip_id}")
+    assert read.status_code == 200
 
 
-async def test_grant_trip_access_merges_existing_ids(
+async def test_grant_trip_access_accumulates_multiple_trips(
     client: AsyncClient, db_session: AsyncSession
 ):
-    """既存 Cookie の trip_ids に新しい trip_id が追記されることを検証"""
-    # 1 個目を作成 → cookie に trip_id1 のみ
+    """同一 session で複数 trip を作成した後、両方にアクセスできることを検証。
+
+    旧方式の "trip_ids 配列にマージ" と違い、新方式では session 側は 1 個の session_id
+    しか持たず、user_trip_access に (user, trip) 行が積み上がる。ここでは統合テストの
+    観点として "複数 trip の認可が両方通る" ことだけを検証する。
+    """
     r1 = await client.post("/trips", json={"title": "first", "detail": "d"})
     trip_id1 = r1.json()["id"]
 
-    # 2 個目を作成 → 1 個目の trip_id を保持したまま 2 個目が追記される
     r2 = await client.post("/trips", json={"title": "second", "detail": "d"})
     trip_id2 = r2.json()["id"]
 
-    settings = get_settings()
-    token = client.cookies.get(SESSION_COOKIE_NAME)
-    payload = pyjwt.decode(token, settings.cookie_secret_key, algorithms=["HS256"])
-    assert set(payload["trip_ids"]) >= {trip_id1, trip_id2}
+    # 同一 session (httpx client が Cookie を保持) で両方の trip にアクセス可能
+    assert (await client.get(f"/trips/{trip_id1}")).status_code == 200
+    assert (await client.get(f"/trips/{trip_id2}")).status_code == 200
 
 
 # ---- 未認可アクセス 403 テスト ----

@@ -15,6 +15,7 @@ import { Logo } from './Logo';
 import { NetworkStatusButton } from './NetworkStatusButton';
 import { PageSelector } from './pageSelector';
 import { Button } from './ui/button';
+import { WalicaViewer } from './WalicaViewer';
 
 type HeaderBaseProps = React.ComponentProps<'div'>;
 
@@ -56,6 +57,7 @@ function HeaderFull({ className, scrollContainer, isDraggingRef, ...props }: Omi
   const tripRangeText = formatTripRangeMD(trip?.startDate, trip?.endDate);
 
   const [editTripDialogOpen, setEditTripDialogOpen] = useState(false);
+  const [walicaViewerOpen, setWalicaViewerOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const scrollY = useRef(0);
   const navigate = useNavigate();
@@ -190,6 +192,7 @@ function HeaderFull({ className, scrollContainer, isDraggingRef, ...props }: Omi
             <EditModeButton isScrolled={isScrolled} disabled={isOffline} />
           )}
           <ShareButton />
+          {trip.walicaUrl && <WalicaButton onClick={() => setWalicaViewerOpen(true)} />}
         </div>
       </div>
 
@@ -203,6 +206,11 @@ function HeaderFull({ className, scrollContainer, isDraggingRef, ...props }: Omi
         trip={trip}
         onDeleted={() => navigate('/')}
       />
+
+      {/* Walica iframe ビューア */}
+      {trip.walicaUrl && (
+        <WalicaViewer open={walicaViewerOpen} onOpenChange={setWalicaViewerOpen} walicaUrl={trip.walicaUrl} />
+      )}
     </header>
   );
 }
@@ -292,6 +300,18 @@ const ShareButton = () => {
   return (
     <Button variant='default' size='icon' className='size-7 sm:size-9' onClick={handleShare}>
       <Share2 className='size-4 sm:size-5' />
+    </Button>
+  );
+};
+
+const WalicaButton = ({ onClick }: { onClick: () => void }) => {
+  return (
+    <Button
+      variant='default'
+      className='h-7 bg-[#EE7B67] px-3 text-12px text-white hover:bg-[#D96B58] sm:h-9 sm:text-14px'
+      onClick={onClick}
+    >
+      Walica
     </Button>
   );
 };

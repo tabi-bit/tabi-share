@@ -90,6 +90,9 @@ class Trip(Base):
     end_date: Mapped[date | None] = mapped_column(
         Date, nullable=True, comment="旅程終了日"
     )
+    walica_url: Mapped[str | None] = mapped_column(
+        String(2048), nullable=True, comment="Walica URL for bill splitting"
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

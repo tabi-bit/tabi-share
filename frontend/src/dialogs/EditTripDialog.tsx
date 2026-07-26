@@ -18,6 +18,7 @@ import { Label } from '@/components/ui/label';
 import { LazyMarkdownEditor } from '@/components/ui/markdown/LazyMarkdownEditor';
 import { useDeleteTrip, useUpdateTrip } from '@/hooks/useTrips';
 import { useVisitedTrips } from '@/hooks/useVisitedTrips';
+import { isValidWalicaUrl } from '@/lib/walica';
 import { TRIP_TITLE_MAX_LENGTH } from '@/types';
 import type { Trip } from '@/types/trip';
 
@@ -32,10 +33,12 @@ export const EditTripDialog = ({ open, onOpenChange, trip, onDeleted }: EditTrip
   const titleId = useId();
   const dateId = useId();
   const detailId = useId();
+  const walicaUrlId = useId();
   const [tripTitle, setTripTitle] = useState(trip.title);
   const [tripDetail, setTripDetail] = useState(trip.detail ?? '');
   const [startDate, setStartDate] = useState<Date | null>(trip.startDate ?? null);
   const [endDate, setEndDate] = useState<Date | null>(trip.endDate ?? null);
+  const [walicaUrl, setWalicaUrl] = useState(trip.walicaUrl ?? '');
   const { updateTrip } = useUpdateTrip();
   const { deleteTrip } = useDeleteTrip();
   const { removeVisitedTrip } = useVisitedTrips();
@@ -47,8 +50,12 @@ export const EditTripDialog = ({ open, onOpenChange, trip, onDeleted }: EditTrip
       setTripDetail(trip.detail ?? '');
       setStartDate(trip.startDate ?? null);
       setEndDate(trip.endDate ?? null);
+      setWalicaUrl(trip.walicaUrl ?? '');
     }
   }, [open, trip]);
+
+  const trimmedWalicaUrl = walicaUrl.trim();
+  const isWalicaUrlInvalid = trimmedWalicaUrl !== '' && !isValidWalicaUrl(trimmedWalicaUrl);
 
   // 削除処理（楽観更新のためfire-and-forget）
   const handleDelete = () => {
@@ -63,7 +70,7 @@ export const EditTripDialog = ({ open, onOpenChange, trip, onDeleted }: EditTrip
     const trimmedTitle = tripTitle.trim();
     const trimmedDetail = tripDetail.trim();
 
-    if (!trimmedTitle) {
+    if (!trimmedTitle || isWalicaUrlInvalid) {
       return;
     }
 
@@ -75,6 +82,7 @@ export const EditTripDialog = ({ open, onOpenChange, trip, onDeleted }: EditTrip
         peopleNum: trip.peopleNum,
         startDate,
         endDate,
+        walicaUrl: trimmedWalicaUrl || null,
       },
     });
 
@@ -125,6 +133,23 @@ export const EditTripDialog = ({ open, onOpenChange, trip, onDeleted }: EditTrip
                 placeholder='旅程の詳細や目的など（任意）'
               />
             </div>
+            <div className='space-y-2'>
+              <Label htmlFor={walicaUrlId}>WalicaのURL</Label>
+              <Input
+                id={walicaUrlId}
+                type='url'
+                value={walicaUrl}
+                onChange={e => setWalicaUrl(e.target.value)}
+                placeholder='https://walica.jp/...'
+                aria-invalid={isWalicaUrlInvalid}
+                aria-describedby={isWalicaUrlInvalid ? `${walicaUrlId}-error` : undefined}
+              />
+              {isWalicaUrlInvalid && (
+                <p id={`${walicaUrlId}-error`} className='text-12px text-destructive'>
+                  walica.jp の URL を入力してください
+                </p>
+              )}
+            </div>
           </div>
         </DialogBody>
 
@@ -157,7 +182,9 @@ export const EditTripDialog = ({ open, onOpenChange, trip, onDeleted }: EditTrip
           <Button variant='outline' onClick={() => onOpenChange(false)}>
             キャンセル
           </Button>
-          <Button onClick={handleSubmit}>更新</Button>
+          <Button onClick={handleSubmit} disabled={isWalicaUrlInvalid}>
+            更新
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

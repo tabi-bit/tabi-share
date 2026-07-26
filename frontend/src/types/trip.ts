@@ -6,6 +6,8 @@ import { formatDateOnly, parseDateOnly } from '@/lib/date';
 /**
  * アプリケーション内で利用するTripのスキーマ
  */
+export const TRIP_WALICA_URL_MAX_LENGTH = 2048;
+
 export const TripSchema = z.object({
   id: z.number(),
   title: z.string(),
@@ -14,6 +16,7 @@ export const TripSchema = z.object({
   urlId: z.string(),
   startDate: z.date().nullish(),
   endDate: z.date().nullish(),
+  walicaUrl: z.string().max(TRIP_WALICA_URL_MAX_LENGTH).nullish(),
   createdAt: z.date(),
   lastEditedAt: z.date(),
 });
@@ -38,6 +41,7 @@ const ApiTripSchema = z.object({
   url_id: z.string().max(100),
   start_date: z.string().date().nullish(),
   end_date: z.string().date().nullish(),
+  walica_url: z.string().nullish(),
   created_at: z.string().datetime({ offset: true }),
   last_edited_at: z.string().datetime({ offset: true }),
 });
@@ -58,6 +62,7 @@ export const tripFromApi = ApiTripSchema.transform(
     urlId: apiData.url_id,
     startDate: apiData.start_date ? parseDateOnly(apiData.start_date) : null,
     endDate: apiData.end_date ? parseDateOnly(apiData.end_date) : null,
+    walicaUrl: apiData.walica_url,
     createdAt: new Date(apiData.created_at),
     lastEditedAt: new Date(apiData.last_edited_at),
   })
@@ -100,5 +105,6 @@ export const tripMutationToApi = TripMutationSchema.transform(
     people_num: appData.peopleNum,
     start_date: appData.startDate ? formatDateOnly(appData.startDate) : null,
     end_date: appData.endDate ? formatDateOnly(appData.endDate) : null,
+    walica_url: appData.walicaUrl ?? null,
   })
 );

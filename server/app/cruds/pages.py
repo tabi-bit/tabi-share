@@ -1,16 +1,17 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import joinedload
 
 from app.models import Block, Page
 from app.schemas.page import PageCreate, PageUpdate
 
 
 def _page_with_relations():
+    # joinedload で 1 クエリにまとめ、DB との往復回数を減らす（cruds/trips.py と同方針）
     return select(Page).options(
-        selectinload(Page.blocks).options(
-            selectinload(Block.location),
-            selectinload(Block.destination_location),
+        joinedload(Page.blocks).options(
+            joinedload(Block.location),
+            joinedload(Block.destination_location),
         )
     )
 
@@ -44,10 +45,11 @@ async def find_pages(db: AsyncSession, trip_id: int) -> list[Page]:
     Returns:
         list[Page]: ページリスト
     """
+    # joinedload では返却順が JOIN 結果に依存し不定になるため、明示的に並び順を保証する
     result = await db.execute(
-        _page_with_relations().where(Page.trip_id == trip_id)
+        _page_with_relations().where(Page.trip_id == trip_id).order_by(Page.id)
     )
-    return list(result.scalars().all())
+    return list(result.unique().scalars().all())
 
 
 async def get_page(db: AsyncSession, page_id: int) -> Page | None:
@@ -62,7 +64,7 @@ async def get_page(db: AsyncSession, page_id: int) -> Page | None:
         Page | None: 特定のページ、見つからない場合はNone
     """
     result = await db.execute(_page_with_relations().where(Page.id == page_id))
-    return result.scalar_one_or_none()
+    return result.unique().scalar_one_or_none()
 
 
 async def update_page(db: AsyncSession, page_id: int, page: PageUpdate) -> Page | None:

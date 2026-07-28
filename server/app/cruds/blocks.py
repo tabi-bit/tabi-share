@@ -1,6 +1,6 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import joinedload
 
 from app.cruds import locations as locations_cruds
 from app.models import Block
@@ -9,9 +9,10 @@ from app.schemas.location import LocationCreate, LocationUpdate
 
 
 def _block_with_relations():
+    # joinedload で 1 クエリにまとめ、DB との往復回数を減らす（cruds/trips.py と同方針）
     return select(Block).options(
-        selectinload(Block.location),
-        selectinload(Block.destination_location),
+        joinedload(Block.location),
+        joinedload(Block.destination_location),
     )
 
 
@@ -59,15 +60,9 @@ async def create_block(db: AsyncSession, block: BlockCreate, page_id: int) -> Bl
 
     # レスポンス生成時の lazy='raise' エラーを回避するため、
     # location等のリレーションを事前取得(Eager Load)して返し直す
-    stmt = (
-        select(Block)
-        .options(
-            selectinload(Block.location),
-            selectinload(Block.destination_location)
-        )
-        .where(Block.id == db_block.id)
+    result = await db.execute(
+        _block_with_relations().where(Block.id == db_block.id)
     )
-    result = await db.execute(stmt)
 
     return result.scalar_one()
 

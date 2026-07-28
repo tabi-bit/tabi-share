@@ -18,7 +18,7 @@ from app.config import get_settings
 from app.cruds import blocks as blocks_cruds
 from app.cruds import pages as pages_cruds
 from app.cruds import trips as trips_cruds
-from app.db_connection import Base, get_db_session
+from app.db_connection import Base, get_db_session, get_read_db_session
 from app.main import app
 from app.observability import setup_sqlalchemy_instrumentation
 from app.schemas.block import Block as BlockSchema
@@ -48,6 +48,15 @@ TestingAsyncSessionLocal = async_sessionmaker(
     autocommit=False,
 )
 
+# 本番と同様に読み取り専用（AUTOCOMMIT）セッションもテスト用に用意する
+TestingReadAsyncSessionLocal = async_sessionmaker(
+    test_engine.execution_options(isolation_level="AUTOCOMMIT"),
+    class_=AsyncSession,
+    expire_on_commit=False,
+    autoflush=False,
+    autocommit=False,
+)
+
 
 async def override_get_db_session():
     """テスト用の非同期DBセッションを生成する関数"""
@@ -55,7 +64,14 @@ async def override_get_db_session():
         yield session
 
 
+async def override_get_read_db_session():
+    """テスト用の読み取り専用非同期DBセッションを生成する関数"""
+    async with TestingReadAsyncSessionLocal() as session:
+        yield session
+
+
 app.dependency_overrides[get_db_session] = override_get_db_session
+app.dependency_overrides[get_read_db_session] = override_get_read_db_session
 
 
 @pytest_asyncio.fixture(scope="function", autouse=True)

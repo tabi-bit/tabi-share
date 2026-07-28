@@ -1,16 +1,18 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import joinedload
 
 from app.models import Block, Page, Trip
 from app.schemas.trip import TripCreateIn, TripUpdate
 
 
 def _trip_with_relations():
+    # joinedload で 1 クエリにまとめる: selectinload だとリレーション階層ごとに
+    # SELECT が逐次発行され、DB との RTT × クエリ数がそのままレイテンシーになる
     return select(Trip).options(
-        selectinload(Trip.pages).selectinload(Page.blocks).options(
-            selectinload(Block.location),
-            selectinload(Block.destination_location),
+        joinedload(Trip.pages).joinedload(Page.blocks).options(
+            joinedload(Block.location),
+            joinedload(Block.destination_location),
         )
     )
 
@@ -43,8 +45,9 @@ async def find_trips(db: AsyncSession) -> list[Trip]:
     Returns:
         list[Trip]: すべての旅行プラン
     """
-    result = await db.execute(_trip_with_relations())
-    return list(result.scalars().all())
+    # joinedload では返却順が JOIN 結果に依存し不定になるため、明示的に並び順を保証する
+    result = await db.execute(_trip_with_relations().order_by(Trip.id))
+    return list(result.unique().scalars().all())
 
 
 async def get_trip(db: AsyncSession, trip_id: int) -> Trip | None:
@@ -59,7 +62,7 @@ async def get_trip(db: AsyncSession, trip_id: int) -> Trip | None:
         Trip | None: 特定の旅行プラン、見つからない場合はNone
     """
     result = await db.execute(_trip_with_relations().where(Trip.id == trip_id))
-    return result.scalar_one_or_none()
+    return result.unique().scalar_one_or_none()
 
 
 async def get_trip_by_url_id(db: AsyncSession, url_id: str) -> Trip | None:
@@ -74,7 +77,7 @@ async def get_trip_by_url_id(db: AsyncSession, url_id: str) -> Trip | None:
         Trip | None: 特定の旅行プラン、見つからない場合はNone
     """
     result = await db.execute(_trip_with_relations().where(Trip.url_id == url_id))
-    return result.scalar_one_or_none()
+    return result.unique().scalar_one_or_none()
 
 
 async def update_trip(db: AsyncSession, trip_id: int, trip: TripUpdate) -> Trip | None:

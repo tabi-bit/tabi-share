@@ -17,6 +17,22 @@ from app.config import get_settings
 logger = logging.getLogger(__name__)
 
 
+def _webpush_notification(
+    icon_url: str | None,
+    badge_url: str | None,
+) -> messaging.WebpushNotification | None:
+    """通知の見た目属性を組み立てる。
+
+    - icon: 通知本体の大アイコン (192px、フルカラー)
+    - badge: Android status bar 等の小モノクロアイコン (96px、透過 PNG のシルエット、OS 側で
+      アクセントカラーへリカラーされる)。icon と同じ URL を渡すと Android で四角い塗りになるため分離する。
+    どちらも None なら Chrome デフォルト。
+    """
+    if not icon_url and not badge_url:
+        return None
+    return messaging.WebpushNotification(icon=icon_url, badge=badge_url)
+
+
 def init_firebase_admin() -> None:
     """Firebase Admin SDK を初期化する。既に初期化済みなら no-op。"""
     settings = get_settings()
@@ -39,6 +55,8 @@ def send_fcm(
     body: str,
     data: dict[str, str] | None = None,
     link: str | None = None,
+    icon_url: str | None = None,
+    badge_url: str | None = None,
 ) -> str | None:
     """FCM に単発送信する。
 
@@ -60,6 +78,7 @@ def send_fcm(
         data=data or {},
         webpush=messaging.WebpushConfig(
             headers={"Urgency": "high", "TTL": "300"},
+            notification=_webpush_notification(icon_url, badge_url),
             fcm_options=messaging.WebpushFCMOptions(link=link) if link else None,
         ),
     )
@@ -74,6 +93,8 @@ def _build_message(
     body: str,
     data: dict[str, str] | None,
     link: str | None,
+    icon_url: str | None = None,
+    badge_url: str | None = None,
 ) -> messaging.Message:
     return messaging.Message(
         token=token,
@@ -81,6 +102,7 @@ def _build_message(
         data=data or {},
         webpush=messaging.WebpushConfig(
             headers={"Urgency": "high", "TTL": "300"},
+            notification=_webpush_notification(icon_url, badge_url),
             fcm_options=messaging.WebpushFCMOptions(link=link) if link else None,
         ),
     )

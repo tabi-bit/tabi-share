@@ -50,18 +50,38 @@ def _is_token_expired_error(exc: Exception) -> bool:
     return False
 
 
-def _build_link(url_id: str, block_id: int) -> str:
-    """通知タップで開く deep link。
-
-    フロントの base URL は環境で切り替え。厳密には環境変数で明示すべきだが、MVP は environment を見て判定。
-    """
+def _frontend_base() -> str:
+    """フロントの base URL を環境で切り替え。厳密には環境変数で明示すべきだが、MVP は environment を見て判定。"""
     settings = get_settings()
-    frontend_base = (
-        "https://tabishare.net"
-        if settings.environment == "production"
-        else "https://st.tabishare.net"
-    )
-    return f"{frontend_base}/trip/{url_id}?focusBlock={block_id}"
+    return "https://tabishare.net" if settings.environment == "production" else "https://st.tabishare.net"
+
+
+def _build_link(url_id: str, block_id: int) -> str:
+    """通知タップで開く deep link。"""
+    return f"{_frontend_base()}/trip/{url_id}?focusBlock={block_id}"
+
+
+_TRANSPORTATION_ICONS = {"car", "train", "shinkansen", "bus", "walk", "bicycle", "ship", "flight"}
+
+
+def _icon_name(block_type: str, transportation_type: str | None) -> str:
+    """block_type / transportation_type から `frontend/public/icons/notify/<name>.png` の basename を返す。
+
+    - move + 既知の transportation_type → 該当交通アイコン
+    - それ以外 (event/stay や未知の交通手段) → schedule (地図ピン)
+    """
+    if block_type == "move" and transportation_type in _TRANSPORTATION_ICONS:
+        return transportation_type
+    return "schedule"
+
+
+def _build_icon_url(block_type: str, transportation_type: str | None) -> str:
+    return f"{_frontend_base()}/icons/notify/{_icon_name(block_type, transportation_type)}.png"
+
+
+def _build_badge_url() -> str:
+    """Android status bar 用のモノクロ小アイコン (紙飛行機シルエット)。全通知で共通。"""
+    return f"{_frontend_base()}/icons/notify/badge.png"
 
 
 @router.post(
@@ -113,6 +133,8 @@ async def tick(db: AsyncSession = Depends(get_db_session)) -> dict[str, int]:
             trip_title=cand.trip_title,
         )
         link = _build_link(cand.trip_url_id, cand.block_id)
+        icon_url = _build_icon_url(cand.block_type, cand.transportation_type)
+        badge_url = _build_badge_url()
 
         try:
             send_fcm(
@@ -125,6 +147,8 @@ async def tick(db: AsyncSession = Depends(get_db_session)) -> dict[str, int]:
                     "kind": "before_5min",
                 },
                 link=link,
+                icon_url=icon_url,
+                badge_url=badge_url,
             )
             sent_count += 1
         except Exception as exc:

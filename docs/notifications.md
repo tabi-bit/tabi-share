@@ -174,7 +174,13 @@ tick が 60 秒を超えると次 tick と重なる。閾値と対処:
 - **Title**: `next HH:MM` 固定 (popup 4 字で "next" が見える、通知センター 10 字で完全表示)
 - **Body**: `{block名 or →目的地} · {場所名} · {trip名}` — location が null なら省略
 - **時刻**: 購読端末の `timezone` (IANA TZ) で整形。サーバはグローバル対応
-- **Icon**: 既存 PWA アイコン `/icons/icon-192x192.png` 流用
+- **Icon** (通知本体の大アイコン、192px、フルカラー): block_type / transportation_type 別 (`frontend/public/icons/notify/*.png`)
+  - `move` + transportation → `car` / `train` / `shinkansen` / `bus` / `walk` / `bicycle` / `ship` / `flight` の 8 種
+  - それ以外 (`event` / `stay`) → `schedule` (地図ピン)
+  - テスト送信 → `test` (紙飛行機)
+  - 素材: FA (frontend/src/assets/icons) + Lucide MapPin。オレンジバッジ (`#f4a261`) + 白抜き
+- **Badge** (Android status bar 等の小モノクロアイコン、96px、透過 PNG): `badge.png` を全通知で共通使用。紙飛行機シルエット (favicon 由来)、OS 側でアクセントカラーへリカラーされる。icon と別 URL にしないと Android で四角い塗りになる
+- 生成スクリプト: `scripts/gen_notification_icons.py`
 - **Deep link**: `/trip/{urlId}?focusBlock={blockId}` (該当ブロックにスクロール、Phase 2 で完全実装)
 
 ## 6. プラットフォーム対応

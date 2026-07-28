@@ -176,6 +176,7 @@ class NotificationCandidate:
     block_id: int
     block_title: str
     block_type: str
+    transportation_type: str | None
     start_time: datetime
     location_name: str | None
     destination_name: str | None
@@ -233,6 +234,7 @@ async def list_notification_candidates(db: AsyncSession) -> list[NotificationCan
             Block.id.label("block_id"),
             Block.title.label("block_title"),
             Block.block_type.label("block_type"),
+            Block.transportation_type.label("transportation_type"),
             Block.start_time.label("start_time"),
             Block.location_id,
             Block.destination_location_id,
@@ -302,6 +304,7 @@ async def list_notification_candidates(db: AsyncSession) -> list[NotificationCan
             block_id=r["block_id"],
             block_title=r["block_title"],
             block_type=r["block_type"],
+            transportation_type=r["transportation_type"],
             start_time=r["absolute_start"],
             location_name=(
                 location_name_map.get(r["location_id"]) if r["location_id"] else None

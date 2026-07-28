@@ -15,6 +15,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import require_trip_access
+from app.config import get_settings
 from app.cruds import notification as notif_cruds
 from app.cruds import trips as trips_cruds
 from app.db_connection import get_db_session
@@ -124,12 +125,16 @@ async def send_test_notification(
     if trip is None:
         raise NotFound(message="Trip not found")
 
+    settings = get_settings()
+    frontend_base = "https://tabishare.net" if settings.environment == "production" else "https://st.tabishare.net"
     try:
         send_fcm(
             token=fcm_token,
             title="たびしぇあ テスト通知",
             body=f"通知が正常に届いています · {trip.title}",
             data={"kind": "test", "tripId": str(trip_id), "urlId": trip.url_id},
+            icon_url=f"{frontend_base}/icons/notify/test.png",
+            badge_url=f"{frontend_base}/icons/notify/badge.png",
         )
     except Exception:
         logger.exception("Test FCM send failed", extra={"trip_id": trip_id})

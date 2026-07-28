@@ -21,10 +21,18 @@ settings = get_settings()
 # 非同期エンジンの作成
 engine: AsyncEngine = create_async_engine(
     settings.get_database_url(),
-    echo=False,  # 本番環境では False
-    pool_pre_ping=True,  # 接続の健全性チェック
-    pool_size=5,  # 接続プールサイズ
-    max_overflow=10,  # 最大オーバーフロー接続数
+    echo=False,
+    # Neon Free は 5 分アイドルで compute がサスペンドされ、復帰時に
+    # アプリ側のプール内コネクションが dead 化することがある。checkout 時の
+    # SELECT 1 (Pessimistic Disconnect Handling) で死活確認するのが安全。
+    # 1 RTT 分のコストが発生するが、クエリ最適化で減らせる RTT 数より接続
+    # 失敗による 500 のほうがコスト高なので有効のままにする。
+    pool_pre_ping=True,
+    pool_size=5,
+    max_overflow=10,
+    # 30 分超過した接続は次回 checkout 時にリサイクル。pool_pre_ping と
+    # 二重防御。短すぎると無駄な再確立が増え、長すぎると古い接続を掴むリスク。
+    pool_recycle=1800,
     connect_args={"ssl": True} if settings.ssl_required else {},
 )
 

@@ -1,6 +1,6 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import joinedload
 
 from app.cruds import locations as locations_cruds
 from app.models import Block
@@ -9,9 +9,25 @@ from app.schemas.location import LocationCreate, LocationUpdate
 
 
 def _block_with_relations():
+    """Block を location / destination_location と一緒に 1 クエリで取る。
+
+    どちらも 1-to-1 なので joinedload で重複が増えない。
+    """
     return select(Block).options(
-        selectinload(Block.location),
-        selectinload(Block.destination_location),
+        joinedload(Block.location),
+        joinedload(Block.destination_location),
+    )
+
+
+def _block_with_page_and_relations():
+    """Block + Page (trip_id 取得用) + location / destination_location を 1 クエリで取る。
+
+    認可 (Page.trip_id が必要) と本体取得を 1 ラウンドトリップに統合するため。
+    """
+    return select(Block).options(
+        joinedload(Block.page),
+        joinedload(Block.location),
+        joinedload(Block.destination_location),
     )
 
 
@@ -62,8 +78,8 @@ async def create_block(db: AsyncSession, block: BlockCreate, page_id: int) -> Bl
     stmt = (
         select(Block)
         .options(
-            selectinload(Block.location),
-            selectinload(Block.destination_location)
+            joinedload(Block.location),
+            joinedload(Block.destination_location),
         )
         .where(Block.id == db_block.id)
     )
@@ -84,7 +100,7 @@ async def find_blocks(db: AsyncSession, page_id: int) -> list[Block]:
         list[Block]: ブロックリスト
     """
     result = await db.execute(
-        _block_with_relations().where(Block.page_id == page_id)
+        _block_with_relations().where(Block.page_id == page_id).order_by(Block.id)
     )
     return list(result.scalars().all())
 
@@ -101,6 +117,17 @@ async def get_block(db: AsyncSession, block_id: int) -> Block | None:
         Block | None: 特定のブロック、見つからない場合はNone
     """
     result = await db.execute(_block_with_relations().where(Block.id == block_id))
+    return result.scalar_one_or_none()
+
+
+async def get_block_with_page(db: AsyncSession, block_id: int) -> Block | None:
+    """ブロックを Page (trip_id 用) ごと 1 クエリで取得する。
+
+    ルーターで認可 + 本体取得を 1 ラウンドトリップで済ませるためのヘルパー。
+    """
+    result = await db.execute(
+        _block_with_page_and_relations().where(Block.id == block_id)
+    )
     return result.scalar_one_or_none()
 
 

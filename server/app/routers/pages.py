@@ -1,10 +1,14 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import require_trip_access, require_page_access
+from app.auth import (
+    get_allowed_trip_ids,
+    require_page_access,
+    require_trip_access,
+)
 from app.cruds import pages as pages_cruds
 from app.db_connection import get_db_session
-from app.errors import NotFound
+from app.errors import Forbidden, NotFound
 from app.schemas.page import Page, PageCreate, PageCreateResponse, PageUpdate
 
 # /trips/{trip_id}/pages で作成と一覧取得
@@ -59,18 +63,21 @@ async def get_pages(
 )
 async def get_page(
     page_id: int,
-    _: int = Depends(require_page_access),
+    request: Request,
     db: AsyncSession = Depends(get_db_session),
 ) -> Page:
     """
     説明:
 
     - IDで指定された単一のページを取得する
+    - 認可と本体取得を 1 クエリで済ませるため、Page を blocks / locations 込みで
+      取得し、その page.trip_id を Cookie で検証する
     """
     db_page = await pages_cruds.get_page(db, page_id=page_id)
     if db_page is None:
         raise NotFound(message="Page not found")
-
+    if db_page.trip_id not in get_allowed_trip_ids(request):
+        raise Forbidden()
     return db_page
 
 

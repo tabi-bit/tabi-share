@@ -126,7 +126,6 @@ async def tick(db: AsyncSession = Depends(get_db_session)) -> dict[str, int]:
 
         title = format_title(cand.start_time, cand.timezone)
         body = format_body(
-            block_type=cand.block_type,
             block_title=cand.block_title,
             location_name=cand.location_name,
             destination_name=cand.destination_name,

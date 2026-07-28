@@ -162,17 +162,32 @@ tick が 60 秒を超えると次 tick と重なる。閾値と対処:
 ## 5. 通知内容フォーマット
 
 ```text
-[Schedule (event/stay)]
+[Schedule (event/stay) — location あり]
   Title:  next 12:00
-  Body:   昼食 · 湯畑亭 · 草津温泉プロジェクト
+  Body:   昼食
+          場所: 湯畑亭
+          草津温泉プロジェクト
 
-[Move]
-  Title:  next 12:00
-  Body:   →湯畑亭 · 草津温泉プロジェクト
+[Move — location のみ (現状 UI では destination 未実装)]
+  Title:  next 14:30
+  Body:   駐車場まで移動
+          場所: 湯畑亭
+          草津温泉プロジェクト
+
+[Move — destination も実装された将来形]
+  Title:  next 09:12
+  Body:   新宿から草津へ
+          東京駅 → 新宿駅
+          草津温泉プロジェクト
 ```
 
 - **Title**: `next HH:MM` 固定 (popup 4 字で "next" が見える、通知センター 10 字で完全表示)
-- **Body**: `{block名 or →目的地} · {場所名} · {trip名}` — location が null なら省略
+- **Body**: 改行区切りで **block 名 → 場所行 → trip 名**。省略表示でも block 名が最上部に残る
+- **場所行のルール** (`_format_location_line`):
+  - `location` + `destination` 両方あり → `{location} → {destination}`
+  - `destination` のみ → `→ {destination}`
+  - `location` のみ → `場所: {location}`
+  - どちらも無し → 行ごと省略
 - **時刻**: 購読端末の `timezone` (IANA TZ) で整形。サーバはグローバル対応
 - **Icon** (通知本体の大アイコン、192px、フルカラー): block_type / transportation_type 別 (`frontend/public/icons/notify/*.png`)
   - `move` + transportation → `car` / `train` / `shinkansen` / `bus` / `walk` / `bicycle` / `ship` / `flight` の 8 種

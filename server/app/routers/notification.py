@@ -131,7 +131,7 @@ async def send_test_notification(
         send_fcm(
             token=fcm_token,
             title="たびしぇあ テスト通知",
-            body=f"通知が正常に届いています · {trip.title}",
+            body=f"通知が正常に届いています\n{trip.title}",
             data={"kind": "test", "tripId": str(trip_id), "urlId": trip.url_id},
             icon_url=f"{frontend_base}/icons/notify/test.png",
             badge_url=f"{frontend_base}/icons/notify/badge.png",

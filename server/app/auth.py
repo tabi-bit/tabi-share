@@ -209,15 +209,28 @@ async def require_page_access(
     page_id: int,
     request: Request,
 ) -> int:
-    """page_id から trip_id を解決し、アクセス権を検証する。"""
-    result = await db.execute(select(Page.trip_id).where(Page.id == page_id))
-    trip_id = result.scalar_one_or_none()
-    if trip_id is None:
-        raise NotFound(message="Page not found")
+    """page_id から trip_id を解決し、アクセス権を検証する。
 
-    if not await _has_trip_access(db, decode_session_id(request), trip_id):
+    trip_id 解決と権限判定を JOIN 1 発で行う (ページ・ブロック CRUD は最頻出
+    エンドポイントのため、認可の DB 往復数を最小化する)。
+    """
+    session_id = decode_session_id(request)
+    stmt = select(
+        Page.trip_id,
+        exists()
+        .where(
+            UserSession.id == session_id,
+            UserTripAccess.user_id == UserSession.user_id,
+            UserTripAccess.trip_id == Page.trip_id,
+        )
+        .label("has_access"),
+    ).where(Page.id == page_id)
+    row = (await db.execute(stmt)).one_or_none()
+    if row is None:
+        raise NotFound(message="Page not found")
+    if not row.has_access:
         raise Forbidden()
-    return trip_id
+    return row.trip_id
 
 
 async def require_block_access(
@@ -225,16 +238,25 @@ async def require_block_access(
     block_id: int,
     request: Request,
 ) -> int:
-    """block_id から trip_id を解決し、アクセス権を検証する。"""
-    result = await db.execute(
-        select(Page.trip_id)
+    """block_id から trip_id を解決し、アクセス権を検証する。JOIN 1 発。"""
+    session_id = decode_session_id(request)
+    stmt = (
+        select(
+            Page.trip_id,
+            exists()
+            .where(
+                UserSession.id == session_id,
+                UserTripAccess.user_id == UserSession.user_id,
+                UserTripAccess.trip_id == Page.trip_id,
+            )
+            .label("has_access"),
+        )
         .join(Block, Block.page_id == Page.id)
         .where(Block.id == block_id)
     )
-    trip_id = result.scalar_one_or_none()
-    if trip_id is None:
+    row = (await db.execute(stmt)).one_or_none()
+    if row is None:
         raise NotFound(message="Block not found")
-
-    if not await _has_trip_access(db, decode_session_id(request), trip_id):
+    if not row.has_access:
         raise Forbidden()
-    return trip_id
+    return row.trip_id

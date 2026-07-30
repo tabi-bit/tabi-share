@@ -3,6 +3,7 @@ import { Route, Routes } from 'react-router-dom';
 import { isOfflineReadAtom } from './atoms/network';
 import { NoIndex } from './components/NoIndex';
 import { Title } from './components/Title';
+import { useFcmNavigationListener } from './hooks/useFcmNavigationListener';
 import { useForegroundNotificationToast } from './hooks/useForegroundNotificationToast';
 import { useNetworkToast } from './hooks/useNetworkToast';
 import { usePageTracking } from './hooks/usePageTracking';
@@ -19,6 +20,7 @@ const App = () => {
   useNetworkToast();
   usePageTracking();
   useForegroundNotificationToast();
+  useFcmNavigationListener();
 
   return (
     <>

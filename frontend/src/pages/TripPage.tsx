@@ -14,6 +14,7 @@ import { TimelineSkeleton } from '@/components/timeline';
 import { Button } from '@/components/ui/button';
 import { useActivePage } from '@/hooks/useActivePage';
 import { useDragAutoScroll } from '@/hooks/useDragAutoScroll';
+import { useFocusBlockOnMount } from '@/hooks/useFocusBlockOnMount';
 import { usePages } from '@/hooks/usePages';
 import { useTripByUrlId } from '@/hooks/useTrips';
 import { useVisitedTrips } from '@/hooks/useVisitedTrips';
@@ -44,6 +45,7 @@ const TripPage = () => {
   const { pages, error: pagesError, isLoading: isPagesLoading } = usePages(trip?.id ?? null, { refreshInterval });
   const { addVisitedTrip } = useVisitedTrips();
   const { storedPageId, isActivePageInitialized, saveActivePageId } = useActivePage(trip?.id ?? null);
+  useFocusBlockOnMount();
 
   const isLoading = isTripLoading || isPagesLoading || !minLoadingComplete;
   const isError = tripError || pagesError;

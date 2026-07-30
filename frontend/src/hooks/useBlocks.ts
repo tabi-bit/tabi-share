@@ -14,11 +14,22 @@ const BLOCKS_BASE_PATH = '/blocks';
  * pageId に紐づく Block をすべて取得するフック
  */
 export const useBlocks = (pageId: number | null, options?: Pick<SWRConfiguration, 'refreshInterval'>) => {
+  const { mutate: globalMutate, cache } = useSWRConfig();
   const { data, error, isLoading } = useSWR<Block[]>(
     pageId ? `${PAGES_BASE_PATH}/${pageId}/blocks` : null,
     async (url: string) => {
       const res = await fetcher(url);
-      return z.array(blockFromApi).parse(res);
+      const parsed = z.array(blockFromApi).parse(res);
+      // list fetch で得た block を個別 key にも撒いて useBlock(id) の重複 fetch を避ける
+      // (通知タップの deep link 解決経路で効く)。ただし既存値は上書きしない:
+      // 楽観更新中の値を list revalidation の古いサーバ値で巻き戻すのを防ぐため。
+      for (const block of parsed) {
+        const individualKey = `${BLOCKS_BASE_PATH}/${block.id}`;
+        if (cache.get(individualKey)?.data === undefined) {
+          globalMutate(individualKey, block, { revalidate: false });
+        }
+      }
+      return parsed;
     },
     options
   );

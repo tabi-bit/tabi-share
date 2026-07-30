@@ -45,6 +45,7 @@ export function BlockTransportationView({ block, isNow, className }: BlockTransp
   return (
     <div
       ref={resizeRef}
+      data-block-id={block.id}
       className={cn(
         'relative flex w-full flex-col gap-2 rounded-lg bg-gradient-to-r from-sky-50 px-2 py-2 sm:px-4',
         isHovered ? 'to-sky-50' : 'to-sky-100',

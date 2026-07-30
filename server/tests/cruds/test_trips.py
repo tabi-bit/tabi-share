@@ -204,6 +204,42 @@ def test_trip_schema_rejects_inverted_date_range():
         )
 
 
+def test_trip_schema_accepts_valid_walica_url():
+    """
+    TripCreateIn/正常系/walica.jp の http(s) URL は受理される
+    """
+    trip = TripCreateIn(title="ok", walica_url="https://walica.jp/group/xxx")
+    assert trip.walica_url == "https://walica.jp/group/xxx"
+
+    trip_http = TripCreateIn(title="ok", walica_url="http://walica.jp/inv/xxx")
+    assert trip_http.walica_url == "http://walica.jp/inv/xxx"
+
+    trip_none = TripCreateIn(title="ok", walica_url=None)
+    assert trip_none.walica_url is None
+
+    trip_empty = TripCreateIn(title="ok", walica_url="")
+    assert trip_empty.walica_url == ""
+
+
+@pytest.mark.parametrize(
+    "invalid_url",
+    [
+        "https://example.com/group/xxx",
+        "https://sub.walica.jp/group/xxx",
+        "https://walica.jp.example.com/",
+        "ftp://walica.jp/",
+        "javascript:alert(1)",
+        "walica.jp/group/xxx",
+    ],
+)
+def test_trip_schema_rejects_non_walica_urls(invalid_url: str):
+    """
+    TripCreateIn/異常系/walica.jp 以外や非 http(s) URL は ValidationError
+    """
+    with pytest.raises(ValidationError):
+        TripCreateIn(title="invalid", walica_url=invalid_url)
+
+
 @pytest.mark.asyncio
 async def test_update_trip_dates_overwrite(db_session: AsyncSession):
     """

@@ -6,6 +6,7 @@ import { Toaster } from 'sonner';
 import './index.css';
 import { App } from './App.tsx';
 import { SWRProvider } from './components/SWRProvider.tsx';
+import { ConfirmProvider } from './lib/confirm.tsx';
 import 'dayjs/locale/ja';
 import dayjs from 'dayjs';
 import { isForcedOfflineAtom, isOfflineAtom } from './atoms/network';
@@ -65,8 +66,10 @@ if (rootElement) {
       <JotaiProvider store={jotaiStore}>
         <BrowserRouter>
           <SWRProvider>
-            <App />
-            <Toaster position='bottom-center' richColors />
+            <ConfirmProvider>
+              <App />
+              <Toaster position='bottom-center' richColors />
+            </ConfirmProvider>
           </SWRProvider>
         </BrowserRouter>
       </JotaiProvider>

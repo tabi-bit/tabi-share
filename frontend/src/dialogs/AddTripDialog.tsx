@@ -1,3 +1,4 @@
+import * as AccordionPrimitive from '@radix-ui/react-accordion';
 import { ChevronRightIcon } from 'lucide-react';
 import { useEffect, useId, useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -7,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { LazyMarkdownEditor } from '@/components/ui/markdown';
 import { useCreateTrip } from '@/hooks/useTrips';
+import { isValidWalicaUrl } from '@/lib/walica';
 import { type CreateTripFromApi, TRIP_TITLE_MAX_LENGTH } from '@/types/trip';
 
 interface AddTripDialogProps {
@@ -19,10 +21,12 @@ export const AddTripDialog = ({ open, onOpenChange, onCreated }: AddTripDialogPr
   const titleId = useId();
   const dateId = useId();
   const detailId = useId();
+  const walicaUrlId = useId();
   const [title, setTitle] = useState('');
   const [detail, setDetail] = useState('');
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
+  const [walicaUrl, setWalicaUrl] = useState('');
   const [detailOpen, setDetailOpen] = useState(false);
   const { createTrip, isCreating } = useCreateTrip();
 
@@ -33,12 +37,16 @@ export const AddTripDialog = ({ open, onOpenChange, onCreated }: AddTripDialogPr
       setDetail('');
       setStartDate(null);
       setEndDate(null);
+      setWalicaUrl('');
       setDetailOpen(false);
     }
   }, [open, isCreating]);
 
+  const trimmedWalicaUrl = walicaUrl.trim();
+  const isWalicaUrlInvalid = trimmedWalicaUrl !== '' && !isValidWalicaUrl(trimmedWalicaUrl);
+
   const handleSubmit = async () => {
-    if (!title.trim()) {
+    if (!title.trim() || isWalicaUrlInvalid) {
       return;
     }
 
@@ -48,6 +56,7 @@ export const AddTripDialog = ({ open, onOpenChange, onCreated }: AddTripDialogPr
       peopleNum: undefined,
       startDate,
       endDate,
+      walicaUrl: trimmedWalicaUrl || null,
     });
 
     if (newTrip) {
@@ -107,27 +116,54 @@ export const AddTripDialog = ({ open, onOpenChange, onCreated }: AddTripDialogPr
               />
             </div>
 
-            <button
-              type='button'
-              onClick={() => setDetailOpen(prev => !prev)}
-              className='flex w-full items-center gap-1 rounded border border-input px-3 py-2 text-left text-muted-foreground text-sm hover:bg-accent'
-              aria-expanded={detailOpen}
-              aria-controls={detailId}
+            <AccordionPrimitive.Root
+              type='single'
+              collapsible
+              value={detailOpen ? 'detail' : ''}
+              onValueChange={v => setDetailOpen(v === 'detail')}
             >
-              <ChevronRightIcon className={`size-4 transition-transform ${detailOpen ? 'rotate-90' : ''}`} />
-              <span>詳細を追加（任意）</span>
-            </button>
-            {detailOpen && (
-              <div id={detailId} className='space-y-2'>
-                <LazyMarkdownEditor
-                  className='max-h-72'
-                  id={`${detailId}-editor`}
-                  value={detail}
-                  onChange={setDetail}
-                  placeholder='旅程の詳細や目的など（省略可）'
-                />
-              </div>
-            )}
+              <AccordionPrimitive.Item value='detail' className='overflow-hidden rounded border border-input'>
+                <AccordionPrimitive.Header className='flex'>
+                  <AccordionPrimitive.Trigger
+                    id={detailId}
+                    className='flex w-full items-center gap-1 px-3 py-2 text-left text-muted-foreground text-sm hover:bg-accent [&[data-state=open]>svg]:rotate-90'
+                  >
+                    <ChevronRightIcon className='size-4 transition-transform' />
+                    <span>詳細を追加（任意）</span>
+                  </AccordionPrimitive.Trigger>
+                </AccordionPrimitive.Header>
+                <AccordionPrimitive.Content className='overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down'>
+                  <div className='space-y-4 border-input border-t p-3'>
+                    <div className='space-y-2'>
+                      <LazyMarkdownEditor
+                        className='max-h-72'
+                        id={`${detailId}-editor`}
+                        value={detail}
+                        onChange={setDetail}
+                        placeholder='旅程の詳細や目的など（省略可）'
+                      />
+                    </div>
+                    <div className='space-y-2'>
+                      <Label htmlFor={walicaUrlId}>WalicaのURL</Label>
+                      <Input
+                        id={walicaUrlId}
+                        type='url'
+                        value={walicaUrl}
+                        onChange={e => setWalicaUrl(e.target.value)}
+                        placeholder='https://walica.jp/...'
+                        aria-invalid={isWalicaUrlInvalid}
+                        aria-describedby={isWalicaUrlInvalid ? `${walicaUrlId}-error` : undefined}
+                      />
+                      {isWalicaUrlInvalid && (
+                        <p id={`${walicaUrlId}-error`} className='text-12px text-destructive'>
+                          walica.jp の URL を入力してください
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </AccordionPrimitive.Content>
+              </AccordionPrimitive.Item>
+            </AccordionPrimitive.Root>
           </div>
         </DialogBody>
 
@@ -135,7 +171,7 @@ export const AddTripDialog = ({ open, onOpenChange, onCreated }: AddTripDialogPr
           <Button variant='outline' onClick={() => handleOpenChange(false)}>
             キャンセル
           </Button>
-          <Button onClick={handleSubmit} disabled={!title.trim()} loading={isCreating}>
+          <Button onClick={handleSubmit} disabled={!title.trim() || isWalicaUrlInvalid} loading={isCreating}>
             追加
           </Button>
         </DialogFooter>

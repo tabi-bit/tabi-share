@@ -1,16 +1,5 @@
 import { MapPin, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -18,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { LazyMarkdownEditor } from '@/components/ui/markdown';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useConfirm } from '@/lib/confirm';
 import { calculateEndTimeStr } from '@/lib/utils';
 import type { Block, TransportationBlock, TransportationType } from '@/types/block';
 import { BLOCK_TITLE_MAX_LENGTH, TRANSPORTATION_OPTIONS } from '@/types/block';
@@ -84,6 +74,8 @@ export const EditBlockDialog = ({ open, onOpenChange, block, onSubmit, onDelete 
   // 毎回 block.location に埋め込んで PUT するので dirty フラグは不要。
   const [placeDialogOpen, setPlaceDialogOpen] = useState(false);
   const [pendingLocation, setPendingLocation] = useState<LocationUpdate | null>(block.location);
+  const confirm = useConfirm();
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
 
   // ダイアログが開いたときにフォームを初期化
   useEffect(() => {
@@ -109,9 +101,22 @@ export const EditBlockDialog = ({ open, onOpenChange, block, onSubmit, onDelete 
   }, [open, block]);
 
   // 削除処理（楽観更新のためfire-and-forget）
-  const handleDelete = () => {
-    onDelete(block.id);
-    onOpenChange(false);
+  const handleDelete = async () => {
+    if (isConfirmingDelete) return;
+    setIsConfirmingDelete(true);
+    try {
+      const ok = await confirm({
+        title: 'ブロックを削除しますか？',
+        description: `この操作は取り消せません。ブロック「${block.title}」を削除します。`,
+        confirmText: '削除',
+        variant: 'destructive',
+      });
+      if (!ok) return;
+      onDelete(block.id);
+      onOpenChange(false);
+    } finally {
+      setIsConfirmingDelete(false);
+    }
   };
 
   // サブミット処理（楽観更新のためfire-and-forget）
@@ -292,28 +297,9 @@ export const EditBlockDialog = ({ open, onOpenChange, block, onSubmit, onDelete 
         </DialogBody>
 
         <DialogFooter className='flex justify-between'>
-          {/* 左側: 削除ボタン */}
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant='destructive' className='mr-auto'>
-                削除
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>ブロックを削除しますか？</AlertDialogTitle>
-                <AlertDialogDescription>
-                  この操作は取り消せません。ブロック「{block.title}」を削除します。
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>キャンセル</AlertDialogCancel>
-                <AlertDialogAction variant='destructive' onClick={handleDelete}>
-                  削除
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          <Button variant='destructive' className='mr-auto' onClick={handleDelete} disabled={isConfirmingDelete}>
+            削除
+          </Button>
 
           {/* 右側: キャンセル・更新ボタン */}
           <Button variant='outline' onClick={() => onOpenChange(false)}>

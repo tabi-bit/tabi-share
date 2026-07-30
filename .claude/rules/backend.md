@@ -183,6 +183,15 @@ async def get_user_endpoint(user_id: int, db: Session = Depends(get_db)):
 - 機密情報の環境変数管理
 - ログに機密情報を出力しない
 
+### Cloud Run 環境変数の管理方針
+
+| 種類 | 手段 | 対象 |
+|---|---|---|
+| 機密 | `--set-secrets` (Secret Manager) | DB パスワード、API キー、Cookie secret 等、漏洩したら被害があるもの |
+| 非機密 | `--set-env-vars` (平文) | Cloud Run URL、SA email、bool フラグ、`ENVIRONMENT` 等の公開情報 or 構成値 |
+
+判断基準: 「`gcloud describe` や IAM 参照権限を持つメンバーに見られて困るか」。困るなら Secret Manager、困らないなら env vars。
+
 ## AI開発サポート情報
 
 ### よく使用するコマンド

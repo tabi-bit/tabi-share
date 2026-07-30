@@ -2,6 +2,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.cruds import notification as notification_cruds
 from app.models import Block, Page
 from app.schemas.page import PageCreate, PageUpdate
 
@@ -79,8 +80,14 @@ async def update_page(db: AsyncSession, page_id: int, page: PageUpdate) -> Page 
     """
     db_page = await get_page(db, page_id)
     if db_page:
+        # Page.date が変わると配下 block の絶対日時が全て動くため、既送信予約を削除して再通知させる
+        date_changed = db_page.date != page.date
         for key, value in page.model_dump().items():
             setattr(db_page, key, value)
+        if date_changed:
+            await notification_cruds.delete_sent_notifications_for_page(
+                db, page_id=page_id
+            )
         await db.commit()
 
     return db_page

@@ -69,6 +69,35 @@ jobs:
           fi
 
       # ------------------------------------------------------------------
+      # 2b. .env.<env> の非-VITE_ 変数を抽出 (Cloud Run env vars として流し込む)
+      # ------------------------------------------------------------------
+      - name: Extract server env from dotenv
+        id: envextract
+        env:
+          DOTENV_PRIVATE_KEY_STG: ${{ secrets.DOTENV_PRIVATE_KEY_STG }}
+          DOTENV_PRIVATE_KEY_PROD: ${{ secrets.DOTENV_PRIVATE_KEY_PROD }}
+        run: |
+          set -euo pipefail
+          ENV_FILE=".env.$([ "${{ steps.target.outputs.env }}" = "production" ] && echo prod || echo stg)"
+
+          npm install -g @dotenvx/dotenvx@1.59.1
+
+          # KEY=VALUE 行のうち VITE_ / DOTENV_ を除外
+          KEYS=$(awk -F= '/^[A-Z][A-Z0-9_]*=/ {print $1}' "$ENV_FILE" | grep -Ev '^(VITE_|DOTENV_)' || true)
+
+          PAIRS=""
+          while IFS= read -r KEY; do
+            [ -z "$KEY" ] && continue
+            VALUE=$(dotenvx get "$KEY" -f "$ENV_FILE")
+            # Cloud Run --set-env-vars は KEY=VALUE をカンマ区切りで受け取る。値にカンマがある場合は要対応 (現状の変数群では無し)
+            if [ -n "$PAIRS" ]; then PAIRS="${PAIRS},"; fi
+            PAIRS="${PAIRS}${KEY}=${VALUE}"
+          done <<< "$KEYS"
+
+          echo "server_env=$PAIRS" >> "$GITHUB_OUTPUT"
+          echo "抽出: $(echo "$KEYS" | tr '\n' ' ')"
+
+      # ------------------------------------------------------------------
       # 3. GCP 認証 (Workload Identity Federation)
       # ------------------------------------------------------------------
       - name: Authenticate to Google Cloud
@@ -149,7 +178,7 @@ jobs:
             --set-secrets=API_DOCS_PASSWORD=${{ steps.target.outputs.api_docs_password }}:latest
             --set-secrets=COOKIE_SECRET_KEY=${{ steps.target.outputs.cookie_secret_key }}:latest
             --set-secrets=GOOGLE_MAPS_API_KEY=${{ steps.target.outputs.google_maps_api_key }}:latest
-            --set-env-vars=ENVIRONMENT=${{ steps.target.outputs.env }}
+            --set-env-vars=ENVIRONMENT=${{ steps.target.outputs.env }},${{ steps.envextract.outputs.server_env }}
 
       # ------------------------------------------------------------------
       # 7. GitHub Release 作成 (production のみ)

@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.cruds import locations as locations_cruds
+from app.cruds import notification as notification_cruds
 from app.models import Block
 from app.schemas.block import BlockCreate, BlockUpdate
 from app.schemas.location import LocationCreate, LocationUpdate
@@ -175,6 +176,9 @@ async def update_block(
     if db_block is None:
         return None
 
+    # start_time の年月日部分は無意味 (docs/notifications.md §3)、時刻部分だけで判定する
+    start_time_changed = db_block.start_time.time() != block.start_time.time()
+
     scalar_data = block.model_dump(exclude={"location", "destination_location"})
     for key, value in scalar_data.items():
         setattr(db_block, key, value)
@@ -183,6 +187,12 @@ async def update_block(
     await _replace_block_location(
         db, db_block, "destination_location_id", block.destination_location
     )
+
+    # start_time 変更時は既送信の通知予約を削除して次 tick で再送されるようにする
+    if start_time_changed:
+        await notification_cruds.delete_sent_notifications_for_block(
+            db, block_id=block_id
+        )
 
     await db.commit()
     return db_block

@@ -9,6 +9,7 @@ dependencies = [
     "asyncpg>=0.31.0",
     "bcrypt>=4.3.0",
     "fastapi>=0.116.1",
+    "firebase-admin>=7.5.0",
     "gunicorn>=24.1.1",
     "nanoid>=2.0.0",
     "passlib>=1.7.4",

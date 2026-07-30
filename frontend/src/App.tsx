@@ -3,6 +3,7 @@ import { Route, Routes } from 'react-router-dom';
 import { isOfflineReadAtom } from './atoms/network';
 import { NoIndex } from './components/NoIndex';
 import { Title } from './components/Title';
+import { useForegroundNotificationToast } from './hooks/useForegroundNotificationToast';
 import { useNetworkToast } from './hooks/useNetworkToast';
 import { usePageTracking } from './hooks/usePageTracking';
 import { detectEnv } from './lib/envBranding';
@@ -17,6 +18,7 @@ const App = () => {
   const isOffline = useAtomValue(isOfflineReadAtom);
   useNetworkToast();
   usePageTracking();
+  useForegroundNotificationToast();
 
   return (
     <>

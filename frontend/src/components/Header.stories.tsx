@@ -95,7 +95,8 @@ const meta = {
     docs: {
       description: {
         component:
-          'アプリケーションのヘッダー。旅行タイトル・期間・モード切替・共有を担当。ページ選択UI (pill) は子コンポーネント PageSelector に委譲。',
+          'アプリケーションのヘッダー。旅行タイトル・期間・モード切替・通知トグル・共有を担当。ページ選択UI (pill) は子コンポーネント PageSelector に委譲。' +
+          '通知トグル (NotificationToggleButton) は useTripSubscription フックに接続されており、Storybook では未購読 (OFF) 状態で描画される。個別の state バリエーションは Components/NotificationToggleButton の story を参照。',
       },
     },
   },

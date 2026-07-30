@@ -161,8 +161,9 @@ class Block(Base):
             "transportation_type IS NULL OR block_type = 'move'",
             name="ck_blocks_transportation_type_only_for_move",
         ),
-        # 通知 tick スキャンで WHERE start_time > now() AND start_time <= now() + interval
-        # を毎分実行するため
+        # NOTE: Block.start_time の年月日部分は無意味で time-of-day のみ真 (docs/notifications.md §3)
+        # のため、この index は絶対日時での範囲検索には使えない。時刻部分のみを扱う将来の
+        # クエリ (Phase 2 の day-of-time バッチ等) 用に保持している。
         Index("idx_blocks_start_time", "start_time"),
     )
 

@@ -53,9 +53,9 @@ graph LR
 - [x] Deep link URL 埋め込み (`?focusBlock={block_id}` を FCM `data.link` に付与)
 - [x] フォアグラウンド OS 通知 (`useForegroundNotificationToast` → `registration.showNotification`)
 
-### Phase 6b-9: 未実装 (別 PR / Follow-up)
+### Phase 6b-9
 
-- [ ] SW `notificationclick` ハンドラ (tap 時に `focusBlock` を消費してブロックまでスクロール)
+- [x] SW `notificationclick` ハンドラ (#207): tap で既存 client に postMessage → SPA navigate、無ければ openWindow。client 側は `useFocusBlockOnMount` で block まで scroll
 - [ ] Phase 7: stg 環境 E2E テスト (iOS/Android/Desktop 実機)
 - [ ] Phase 8: prod リリース + Cloud Scheduler ジョブ作成
 - [ ] Phase 9 (#173): `sent_notifications` 掃除 cron

@@ -14,7 +14,7 @@ from pathlib import Path
 
 import cairosvg
 
-ROOT = Path("/workspaces/issue148_notification")
+ROOT = Path(__file__).resolve().parents[1]
 SRC_DIR = ROOT / "frontend/src/assets/icons"
 OUT_DIR = ROOT / "frontend/public/icons/notify"
 OUT_DIR.mkdir(parents=True, exist_ok=True)

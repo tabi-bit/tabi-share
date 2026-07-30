@@ -72,12 +72,12 @@ export const NotificationToggleButton = ({ tripId, tripHasStartDate, className }
   const confirm = useConfirm();
 
   const handleTestSend = useCallback(async () => {
-    const fcmToken = await fetchFcmToken();
-    if (fcmToken == null) {
-      toast.error('通知トークンの取得に失敗しました');
-      return;
-    }
     try {
+      const fcmToken = await fetchFcmToken();
+      if (fcmToken == null) {
+        toast.error('通知トークンの取得に失敗しました');
+        return;
+      }
       await sendTest({ fcmToken });
       toast.success('テスト通知を送信しました');
     } catch {

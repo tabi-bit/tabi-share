@@ -53,7 +53,11 @@ def _is_token_expired_error(exc: Exception) -> bool:
 def _frontend_base() -> str:
     """フロントの base URL を環境で切り替え。厳密には環境変数で明示すべきだが、MVP は environment を見て判定。"""
     settings = get_settings()
-    return "https://tabishare.net" if settings.environment == "production" else "https://st.tabishare.net"
+    return (
+        "https://tabishare.net"
+        if settings.environment == "production"
+        else "https://st.tabishare.net"
+    )
 
 
 def _build_link(url_id: str, block_id: int) -> str:
@@ -61,7 +65,16 @@ def _build_link(url_id: str, block_id: int) -> str:
     return f"{_frontend_base()}/trip/{url_id}?focusBlock={block_id}"
 
 
-_TRANSPORTATION_ICONS = {"car", "train", "shinkansen", "bus", "walk", "bicycle", "ship", "flight"}
+_TRANSPORTATION_ICONS = {
+    "car",
+    "train",
+    "shinkansen",
+    "bus",
+    "walk",
+    "bicycle",
+    "ship",
+    "flight",
+}
 
 
 def _icon_name(block_type: str, transportation_type: str | None) -> str:
@@ -95,8 +108,23 @@ async def tick(db: AsyncSession = Depends(get_db_session)) -> dict[str, int]:
 
     Cloud Scheduler から 1 分ごとに叩かれる想定。
     処理時間は elapsed_ms として構造化ログに出す。45 秒超で警告 (docs Section 11.2 参照)。
+
+    NOTIFICATIONS_ENABLED=false のときは candidates を触らず即返す。
+    send_fcm 側でスキップするだけだと try_reserve_send_slot が sent_notifications に
+    レコードを残し、後から有効化しても該当 (block_id, fcm_token) の通知が永久に配信されなくなるため。
     """
     started_at = time.monotonic()
+    settings = get_settings()
+    if not settings.notifications_enabled:
+        logger.info(
+            "notification_tick_skipped",
+            extra={
+                "event": "notification_tick_skipped",
+                "reason": "notifications_disabled",
+            },
+        )
+        return {"scanned": 0, "sent": 0, "expired_tokens_removed": 0}
+
     candidates = await notif_cruds.list_notification_candidates(db)
     if not candidates:
         elapsed_ms = int((time.monotonic() - started_at) * 1000)

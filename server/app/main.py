@@ -22,7 +22,14 @@ from app.firebase import init_firebase_admin
 from app.middleware.legacy_cookie_migration import LegacyCookieMigrationMiddleware
 from app.observability import setup_observability
 
-from .routers import blocks, notification, notification_internal, pages, trips
+from .routers import (
+    auth as auth_router,
+    blocks,
+    notification,
+    notification_internal,
+    pages,
+    trips,
+)
 
 settings = get_settings()
 
@@ -107,6 +114,7 @@ setup_observability(app, engine)
 app.include_router(trips.router)
 app.include_router(pages.router)
 app.include_router(blocks.router)
+app.include_router(auth_router.router)
 app.include_router(notification.router)
 app.include_router(notification_internal.router)
 

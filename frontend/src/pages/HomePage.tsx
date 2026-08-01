@@ -6,6 +6,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { isOfflineReadAtom } from '@/atoms/network';
 import { Header } from '@/components/Header';
 import { PwaInstallBanner } from '@/components/PwaInstallBanner';
+import { SyncSection } from '@/components/SyncSection';
 import { Button } from '@/components/ui/button';
 import { AddTripDialog } from '@/dialogs/AddTripDialog';
 import { useVisitedTrips } from '@/hooks/useVisitedTrips';
@@ -36,6 +37,9 @@ const HomePage = () => {
               + 新しく旅に出る
             </Button>
           </div>
+
+          {/* 未認証時のみ表示される "同期" セクション (issue #194) */}
+          <SyncSection />
 
           {!(isLoading || hasTrips) && (
             <div className='relative flex flex-col items-center px-24 sm:px-0'>

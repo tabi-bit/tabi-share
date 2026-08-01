@@ -15,7 +15,9 @@ def format_title(start_time: datetime, subscriber_timezone: str) -> str:
     return f"next {local.strftime('%H:%M')}"
 
 
-def _format_location_line(location_name: str | None, destination_name: str | None) -> str | None:
+def _format_location_line(
+    location_name: str | None, destination_name: str | None
+) -> str | None:
     """場所行 (body の 2 行目) を組み立て。両方 null なら None を返して省略する。
 
     現状 UI では destination_name は常に null (destination_location を設定する UI 未実装) だが、

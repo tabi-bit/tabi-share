@@ -10,12 +10,16 @@ WEBSITE_URI_MAX_LENGTH = 2048
 
 
 class LocationBase(BaseModel):
-    google_place_id: str | None = Field(default=None, max_length=GOOGLE_PLACE_ID_MAX_LENGTH)
+    google_place_id: str | None = Field(
+        default=None, max_length=GOOGLE_PLACE_ID_MAX_LENGTH
+    )
     name: str = Field(min_length=1, max_length=LOCATION_MAX_NAME_LENGTH)
     address: str | None = None
     latitude: float | None = None
     longitude: float | None = None
-    website_uri: AnyHttpUrl | None = Field(default=None, max_length=WEBSITE_URI_MAX_LENGTH)
+    website_uri: AnyHttpUrl | None = Field(
+        default=None, max_length=WEBSITE_URI_MAX_LENGTH
+    )
 
     @field_serializer("website_uri")
     def _serialize_website_uri(self, v: AnyHttpUrl | None) -> str | None:

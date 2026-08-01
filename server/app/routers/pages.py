@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
@@ -44,7 +45,7 @@ async def get_pages(
     _: Annotated[int, Depends(require_trip_access)],
     db: Annotated[AsyncSession, Depends(get_db_session)],
     trip_id: int,
-) -> list[Page]:
+) -> Sequence[Page]:
     """
     説明:
 

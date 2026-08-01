@@ -26,9 +26,7 @@ class TripBase(BaseModel):
             return value
         parsed = urlparse(value)
         if parsed.scheme not in ("http", "https") or parsed.hostname != WALICA_HOSTNAME:
-            raise ValueError(
-                "walica_url must be an http(s) URL on walica.jp"
-            )
+            raise ValueError("walica_url must be an http(s) URL on walica.jp")
         return value
 
     @model_validator(mode="after")

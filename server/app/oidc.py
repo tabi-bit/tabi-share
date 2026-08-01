@@ -35,7 +35,10 @@ def verify_cloud_scheduler_oidc(request: Request) -> None:
     settings = get_settings()
 
     if settings.notify_tick_dev_bypass_oidc and settings.environment == "development":
-        logger.warning("OIDC verification bypassed (dev flag): environment=%s", settings.environment)
+        logger.warning(
+            "OIDC verification bypassed (dev flag): environment=%s",
+            settings.environment,
+        )
         return
 
     if (

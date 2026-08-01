@@ -62,10 +62,7 @@ async def create_block(db: AsyncSession, block: BlockCreate, page_id: int) -> Bl
     # location等のリレーションを事前取得(Eager Load)して返し直す
     stmt = (
         select(Block)
-        .options(
-            selectinload(Block.location),
-            selectinload(Block.destination_location)
-        )
+        .options(selectinload(Block.location), selectinload(Block.destination_location))
         .where(Block.id == db_block.id)
     )
     result = await db.execute(stmt)
@@ -84,9 +81,7 @@ async def find_blocks(db: AsyncSession, page_id: int) -> list[Block]:
     Returns:
         list[Block]: ブロックリスト
     """
-    result = await db.execute(
-        _block_with_relations().where(Block.page_id == page_id)
-    )
+    result = await db.execute(_block_with_relations().where(Block.page_id == page_id))
     return list(result.scalars().all())
 
 

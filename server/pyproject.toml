@@ -28,6 +28,7 @@ dev = [
     "pytest>=8.4.1",
     "pytest-asyncio>=1.1.0",
     "ruff>=0.12.7",
+    "types-nanoid>=2.0.0.20260508",
     "types-passlib>=1.7.7.20250602",
 ]
 [tool.pytest.ini_options]
@@ -36,3 +37,15 @@ asyncio_default_fixture_loop_scope = "function"
 
 [tool.ruff]
 exclude = ["migrations/versions"]
+
+[tool.ruff.lint]
+# 既定 (E, F) に加え、FastAPI の依存/パラメータを Annotated 形式で書くことを強制する。
+# FAST002: `x: T = Depends(...)` / `x: T = Query(...)` を禁止し `x: Annotated[T, ...]` を必須化。
+# ※ FAST001 (冗長な response_model) / FAST003 は既存コードに多数該当するため今は有効化しない。
+extend-select = ["FAST002"]
+
+[tool.mypy]
+# firebase-admin は型スタブ・py.typed マーカーを配布していないため import-untyped を無視する。
+[[tool.mypy.overrides]]
+module = "firebase_admin.*"
+ignore_missing_imports = true

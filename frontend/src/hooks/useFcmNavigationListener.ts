@@ -128,6 +128,25 @@ export const useFcmNavigationListener = () => {
       currentUrl: window.location.href,
       clientVersion: DEBUG_LOG_VERSION,
     });
+    // 全 SW registration の state を吐き出す。root scope (VitePWA) と
+    // /firebase-cloud-messaging-push-scope (FCM) の new/waiting/active を可視化して、
+    // 古い FCM SW が waiting のまま残ってないか確認する。
+    void (async () => {
+      if (!sw) return;
+      try {
+        const regs = await sw.getRegistrations();
+        void debugLog('CL', 'registrations', {
+          registrations: regs.map(r => ({
+            scope: r.scope,
+            active: r.active?.scriptURL ?? null,
+            waiting: r.waiting?.scriptURL ?? null,
+            installing: r.installing?.scriptURL ?? null,
+          })),
+        });
+      } catch (err) {
+        void debugLog('CL', 'getRegistrations fail', { err: String(err) });
+      }
+    })();
     void applyIntent();
 
     return () => {

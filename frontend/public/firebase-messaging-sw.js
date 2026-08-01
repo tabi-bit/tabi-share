@@ -6,6 +6,50 @@
 // することがあり、後付けで addEventListener すると invocation されないケースがある。
 // (`firebase-js-sdk/packages/messaging/src/listeners/sw-listeners.ts` の実装参照)
 
+// --- 診断ロガー (client 側 lib/debugLogger.ts と同じ DB / store) ---
+// Android PWA から console を取れない環境向け。SW から IndexedDB に書いて client 側で
+// 読み出す。運用機能ではないので消しても実装挙動には影響しない。
+const DEBUG_DB = 'fcm-debug-log';
+const DEBUG_STORE = 'entries';
+const DEBUG_MAX = 500;
+const openDebugDb = () =>
+  new Promise((resolve, reject) => {
+    const req = indexedDB.open(DEBUG_DB, 1);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(DEBUG_STORE)) {
+        db.createObjectStore(DEBUG_STORE, { autoIncrement: true });
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+const debugLog = async (tag, message, data) => {
+  try {
+    const db = await openDebugDb();
+    const tx = db.transaction(DEBUG_STORE, 'readwrite');
+    const store = tx.objectStore(DEBUG_STORE);
+    const safeData = data === undefined ? null : JSON.parse(JSON.stringify(data));
+    store.add({ ts: Date.now(), tag, message, data: safeData });
+    const countReq = store.count();
+    countReq.onsuccess = () => {
+      const excess = countReq.result - DEBUG_MAX;
+      if (excess <= 0) return;
+      const cursorReq = store.openCursor();
+      let remaining = excess;
+      cursorReq.onsuccess = e => {
+        const cursor = e.target.result;
+        if (!cursor || remaining <= 0) return;
+        cursor.delete();
+        remaining -= 1;
+        cursor.continue();
+      };
+    };
+  } catch (_) {
+    // logger must not throw
+  }
+};
+
 // Firebase Admin SDK の WebpushFCMOptions.link は data.FCM_MSG.fcmOptions.link に入る。
 // フォアグラウンド通知 (useForegroundNotificationToast) の自前 showNotification 経由は data.link。
 const extractDeepLink = notification => {
@@ -41,39 +85,55 @@ const storePendingIntent = async url => {
 
 self.addEventListener('notificationclick', event => {
   event.notification.close();
+  void debugLog('SW', 'notificationclick', { data: event.notification.data });
 
   const link = extractDeepLink(event.notification);
+  void debugLog('SW', 'link extracted', { link });
   if (!link) return;
 
   // payload 経路経由の open-redirect を防ぐ (別 origin URL は捨てる)。
   let targetUrl;
   try {
     targetUrl = new URL(link, self.location.origin);
-  } catch {
+  } catch (err) {
+    void debugLog('SW', 'URL parse fail', { err: String(err) });
     return;
   }
-  if (targetUrl.origin !== self.location.origin) return;
+  if (targetUrl.origin !== self.location.origin) {
+    void debugLog('SW', 'origin mismatch', { target: targetUrl.origin, self: self.location.origin });
+    return;
+  }
 
   event.waitUntil(
     (async () => {
       // storage 完了を focus/openWindow より前に保証。client 側の visibilitychange で確実に拾える。
       await storePendingIntent(targetUrl.href);
+      void debugLog('SW', 'intent stored', { url: targetUrl.href });
 
       const clientsList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      void debugLog('SW', 'matchAll', {
+        n: clientsList.length,
+        clients: clientsList.map(c => ({ url: c.url, focused: c.focused, vis: c.visibilityState })),
+      });
       const target = pickTargetClient(clientsList);
+      void debugLog('SW', 'target picked', { url: target ? target.url : null });
 
       if (target) {
         // WindowClient.navigate() を使うとフルリロードで atom / SWR / scroll 位置が飛ぶので、
         // 代わりに client 側で React Router の navigate を呼んでもらう。
         target.postMessage({ type: 'FCM_NAVIGATE', url: targetUrl.href });
+        void debugLog('SW', 'postMessage sent', { url: targetUrl.href });
         try {
           await target.focus();
-        } catch {
+          void debugLog('SW', 'focus ok');
+        } catch (err) {
           // focus はユーザ操作起源でないと reject されるが、postMessage は届いてるので許容
+          void debugLog('SW', 'focus fail', { err: String(err) });
         }
         return;
       }
 
+      void debugLog('SW', 'openWindow fallback', { url: targetUrl.href });
       await self.clients.openWindow(targetUrl.href);
     })()
   );

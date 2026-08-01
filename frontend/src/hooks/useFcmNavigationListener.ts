@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { debugLog } from '@/lib/debugLogger';
 
 /**
  * firebase-messaging-sw.js の notificationclick が伝えてくる遷移先 URL を受けて
@@ -74,20 +75,28 @@ export const useFcmNavigationListener = () => {
   useEffect(() => {
     let cancelled = false;
 
-    const navigateOnce = (target: string) => {
+    const navigateOnce = (target: string, source: string) => {
       const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
-      if (target === current) return;
-      if (lastNavigatedRef.current === target) return;
+      if (target === current) {
+        void debugLog('CL', 'navigateOnce skip (== current)', { target, source });
+        return;
+      }
+      if (lastNavigatedRef.current === target) {
+        void debugLog('CL', 'navigateOnce skip (== last)', { target, source });
+        return;
+      }
       lastNavigatedRef.current = target;
+      void debugLog('CL', 'navigate() called', { target, source });
       navigate(target);
     };
 
     const applyIntent = async () => {
       const url = await readAndClearPendingIntent();
+      void debugLog('CL', 'applyIntent', { url });
       if (cancelled || !url) return;
       const target = parseSameOriginPath(url);
       if (!target) return;
-      navigateOnce(target);
+      navigateOnce(target, 'intent');
     };
 
     // 参照を effect スコープに固定: cleanup 時に navigator.serviceWorker が消えていても
@@ -95,6 +104,7 @@ export const useFcmNavigationListener = () => {
     const sw = typeof navigator !== 'undefined' ? navigator.serviceWorker : undefined;
 
     const handler = (event: MessageEvent) => {
+      void debugLog('CL', 'sw message', { data: event.data });
       if (event.data?.type !== 'FCM_NAVIGATE') return;
       const rawUrl = event.data.url;
       if (typeof rawUrl !== 'string') return;
@@ -102,15 +112,17 @@ export const useFcmNavigationListener = () => {
       if (!target) return;
       // message 経由で消化するので safety net の Cache は掃除する (二重 navigate 防止)
       void clearPendingIntent();
-      navigateOnce(target);
+      navigateOnce(target, 'message');
     };
 
     const onVisibility = () => {
+      void debugLog('CL', 'visibilitychange', { state: document.visibilityState });
       if (document.visibilityState === 'visible') void applyIntent();
     };
 
     sw?.addEventListener('message', handler);
     document.addEventListener('visibilitychange', onVisibility);
+    void debugLog('CL', 'listener mounted', { hasSw: !!sw });
     void applyIntent();
 
     return () => {

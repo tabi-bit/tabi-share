@@ -1,6 +1,7 @@
 import { useAtomValue } from 'jotai';
 import { Route, Routes } from 'react-router-dom';
 import { isOfflineReadAtom } from './atoms/network';
+import { DebugLogPanel } from './components/DebugLogPanel';
 import { NoIndex } from './components/NoIndex';
 import { Title } from './components/Title';
 import { useFcmNavigationListener } from './hooks/useFcmNavigationListener';
@@ -54,6 +55,7 @@ const App = () => {
           }
         />
       </Routes>
+      <DebugLogPanel />
     </>
   );
 };

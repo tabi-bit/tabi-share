@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { selectedPageIdAtom } from '@/atoms/tripPage';
 import { useBlock } from '@/hooks/useBlocks';
+import { debugLog } from '@/lib/debugLogger';
 
 /**
  * `?focusBlock={id}` を消費して該当 block まで scroll する。
@@ -75,6 +76,13 @@ export const useFocusBlockOnMount = () => {
   const consumedKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
+    void debugLog('FB', 'effect', {
+      rawFocusBlock,
+      focusBlockId,
+      hasBlock: !!block,
+      hasError: !!error,
+      consumed: consumedKeyRef.current,
+    });
     if (rawFocusBlock === null) {
       consumedKeyRef.current = null;
       return;
@@ -109,6 +117,7 @@ export const useFocusBlockOnMount = () => {
     let cancelled = false;
     (async () => {
       const el = await waitForBlockElement(focusBlockId, SCROLL_WAIT_MAX_MS, () => cancelled);
+      void debugLog('FB', 'wait done', { found: !!el, cancelled });
       if (cancelled) return;
       if (el) scrollIntoViewOnNextFrame(el);
       clearParam();

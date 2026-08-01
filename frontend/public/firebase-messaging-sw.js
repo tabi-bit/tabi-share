@@ -12,7 +12,7 @@
 // DEBUG_LOG_VERSION は診断コード修正のたびに手動で bump する。client 側 debugLogger.ts の
 // DEBUG_LOG_VERSION と対で更新。ログ各行に埋め込まれるので、実機で古い SW が動いているのか
 // 新しい SW が動いているのかを共有ログから判別できる (SW 更新は非同期でユーザ操作依存なため)。
-const DEBUG_LOG_VERSION = 'v05-sw-2026-08-01';
+const DEBUG_LOG_VERSION = 'v06-sw-2026-08-01';
 const DEBUG_DB = 'fcm-debug-log';
 const DEBUG_STORE = 'entries';
 const DEBUG_MAX = 500;
@@ -67,6 +67,15 @@ self.addEventListener('install', event => {
 self.addEventListener('activate', event => {
   void debugLog('SW', 'activate (clients.claim)');
   event.waitUntil(self.clients.claim());
+});
+// client 側 (useFcmNavigationListener) が既に waiting 状態の SW を叩き起こすためのハンドラ。
+// 未来の SW が仮に install で skipWaiting を呼ばない実装になっても、client 側からこの経路で
+// 強制 activate に持ち込めるよう保険を挟む。
+self.addEventListener('message', event => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    void debugLog('SW', 'SKIP_WAITING received');
+    void self.skipWaiting();
+  }
 });
 
 // FCM payload に載る deep link の位置は複数の可能性がある:

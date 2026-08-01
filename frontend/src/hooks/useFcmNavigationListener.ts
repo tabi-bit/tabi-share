@@ -128,6 +128,44 @@ export const useFcmNavigationListener = () => {
       currentUrl: window.location.href,
       clientVersion: DEBUG_LOG_VERSION,
     });
+
+    // FCM SW は root scope に居ないので navigation では update check されず、
+    // register() は起動時 1 回のみ (lib/messaging.ts の promise cache のため)。
+    // 明示的に update() を叩いて Chrome に新 SW の byte-diff check を促し、
+    // waiting になった SW があれば SKIP_WAITING message で即 activate に持ち込む。
+    void (async () => {
+      if (!sw) return;
+      try {
+        const reg = await sw.getRegistration('/firebase-cloud-messaging-push-scope');
+        if (!reg) {
+          void debugLog('CL', 'fcm registration not found');
+          return;
+        }
+        reg.addEventListener('updatefound', () => {
+          const newSw = reg.installing;
+          void debugLog('CL', 'fcm updatefound', { installingUrl: newSw?.scriptURL ?? null });
+          newSw?.addEventListener('statechange', () => {
+            void debugLog('CL', 'fcm new sw statechange', { state: newSw.state });
+            if (newSw.state === 'installed' && reg.waiting) {
+              reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+              void debugLog('CL', 'sent SKIP_WAITING (post-install)');
+            }
+          });
+        });
+        await reg.update();
+        void debugLog('CL', 'fcm update() done', {
+          activeUrl: reg.active?.scriptURL ?? null,
+          waitingUrl: reg.waiting?.scriptURL ?? null,
+          installingUrl: reg.installing?.scriptURL ?? null,
+        });
+        if (reg.waiting) {
+          reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+          void debugLog('CL', 'sent SKIP_WAITING (existing waiting)');
+        }
+      } catch (err) {
+        void debugLog('CL', 'fcm update fail', { err: String(err) });
+      }
+    })();
     // 全 SW registration の state を吐き出す。root scope (VitePWA) と
     // /firebase-cloud-messaging-push-scope (FCM) の new/waiting/active を可視化して、
     // 古い FCM SW が waiting のまま残ってないか確認する。

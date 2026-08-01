@@ -281,4 +281,44 @@ describe('useFocusBlockOnMount', () => {
       expect(searchRef.current).toBe('');
     });
   });
+
+  it('block DOM 出現前に unmount された場合は scroll しない (AbortSignal で observer/timer/rAF が解放される)', async () => {
+    server.use(http.get('*/blocks/42', () => HttpResponse.json(scheduleBlockJson(42, 7))));
+
+    // data-block-id を持たない host。waitForBlockElement が MutationObserver で待機し続ける状態を作る。
+    const HookHostWithoutTarget = () => {
+      useFocusBlockOnMount();
+      return null;
+    };
+
+    const Wrapper = ({ children }: { children: ReactNode }) => (
+      <JotaiProvider store={appStore}>
+        <MemoryRouter initialEntries={['/trip/abc?focusBlock=42']}>
+          <Routes>
+            <Route path='*' element={children} />
+          </Routes>
+        </MemoryRouter>
+      </JotaiProvider>
+    );
+
+    const { unmount } = render(<HookHostWithoutTarget />, { wrapper: Wrapper });
+
+    // block 取得 → selectedPageId 切替までは進むが、DOM に data-block-id が無く scroll 待機のまま
+    await waitFor(() => {
+      expect(appStore.get(selectedPageIdAtom)).toBe(7);
+    });
+    expect(scrollIntoViewMock).not.toHaveBeenCalled();
+
+    // 待機中に unmount。以降 element を追加しても scroll は発火しないはず。
+    unmount();
+    const el = document.createElement('div');
+    el.setAttribute('data-block-id', '42');
+    document.body.appendChild(el);
+
+    // MutationObserver が abort で解放されていることを検証するため少し待つ。
+    await new Promise(resolve => setTimeout(resolve, 50));
+    expect(scrollIntoViewMock).not.toHaveBeenCalled();
+
+    document.body.removeChild(el);
+  });
 });

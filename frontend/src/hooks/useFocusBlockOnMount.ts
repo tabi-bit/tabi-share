@@ -19,9 +19,12 @@ const FOCUS_BLOCK_PARAM = 'focusBlock';
 // rAF ポーリングだと 1 フレーム単位で無駄回転するので MutationObserver で DOM 変化を待つ。
 const SCROLL_WAIT_MAX_MS = 8000;
 
-const waitForBlockElement = (blockId: number, maxMs: number, isCancelled: () => boolean): Promise<HTMLElement | null> =>
+// AbortSignal で observer / timer / rAF をまとめて解放できるようにする。cleanup の taskkill 経路が
+// unmount / focusBlock 変更 / StrictMode double-fire で確実に停止する。
+const waitForBlockElement = (blockId: number, maxMs: number, signal: AbortSignal): Promise<HTMLElement | null> =>
   new Promise(resolve => {
     const selector = `[data-block-id="${blockId}"]`;
+    if (signal.aborted) return resolve(null);
 
     const found = document.querySelector<HTMLElement>(selector);
     if (found) return resolve(found);
@@ -30,20 +33,24 @@ const waitForBlockElement = (blockId: number, maxMs: number, isCancelled: () => 
     const finish = (el: HTMLElement | null) => {
       observer.disconnect();
       if (timeoutId !== null) clearTimeout(timeoutId);
+      signal.removeEventListener('abort', onAbort);
       resolve(el);
     };
+    const onAbort = () => finish(null);
 
     const observer = new MutationObserver(() => {
-      if (isCancelled()) return finish(null);
       const el = document.querySelector<HTMLElement>(selector);
       if (el) finish(el);
     });
     observer.observe(document.body, { childList: true, subtree: true });
     timeoutId = setTimeout(() => finish(null), maxMs);
+    signal.addEventListener('abort', onAbort);
   });
 
-// layout flush を 1 フレーム待ってから scroll する。Timeline が差し替わった直後は要素の
-// 位置計算がまだ確定していないことがあり、そのタイミングで scrollIntoView すると外れる。
+// layout flush を 1 フレーム待ってから scroll する。Timeline 差し替え直後は要素の位置計算が
+// まだ確定していないことがあり、そのタイミングで scrollIntoView すると外れる。
+// rAF は clearParam() 直後の cleanup と間に合わない race を避けるため cancel しない
+// (detached element への scrollIntoView は no-op なので害はない)。
 const scrollIntoViewOnNextFrame = (el: HTMLElement) => {
   requestAnimationFrame(() => {
     el.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -106,17 +113,17 @@ export const useFocusBlockOnMount = () => {
 
     setSelectedPageId(block.pageId);
 
-    let cancelled = false;
+    const controller = new AbortController();
     (async () => {
-      const el = await waitForBlockElement(focusBlockId, SCROLL_WAIT_MAX_MS, () => cancelled);
-      if (cancelled) return;
+      const el = await waitForBlockElement(focusBlockId, SCROLL_WAIT_MAX_MS, controller.signal);
+      if (controller.signal.aborted) return;
       if (el) scrollIntoViewOnNextFrame(el);
       clearParam();
       consumedKeyRef.current = rawFocusBlock;
     })();
 
     return () => {
-      cancelled = true;
+      controller.abort();
     };
   }, [rawFocusBlock, focusBlockId, hasInvalidParam, block, error, setSelectedPageId, setSearchParams]);
 };

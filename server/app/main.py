@@ -1,6 +1,7 @@
 import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from typing import Annotated
 
 from fastapi import Depends, FastAPI, Query
 from fastapi.exceptions import RequestValidationError
@@ -49,7 +50,7 @@ app = FastAPI(
 
 @app.get("/docs", include_in_schema=False)
 async def swagger_ui(
-    _: None = Depends(require_basic_auth),
+    _: Annotated[None, Depends(require_basic_auth)],
 ) -> HTMLResponse:
     """
     説明:
@@ -61,7 +62,7 @@ async def swagger_ui(
 
 @app.get("/redoc", include_in_schema=False)
 async def redoc(
-    _: None = Depends(require_basic_auth),
+    _: Annotated[None, Depends(require_basic_auth)],
 ) -> HTMLResponse:
     """
     説明:
@@ -73,7 +74,7 @@ async def redoc(
 
 @app.get("/openapi.json", include_in_schema=False)
 async def openapi_schema(
-    _: None = Depends(require_basic_auth),
+    _: Annotated[None, Depends(require_basic_auth)],
 ) -> JSONResponse:
     """
     説明:
@@ -109,7 +110,9 @@ app.add_exception_handler(RequestValidationError, validation_exception_handler)
 
 @app.get("/health", tags=["Health"])
 async def health_check(
-    delay: float = Query(0, ge=0, le=30, description="デバッグ用: レスポンス遅延(秒)"),
+    delay: Annotated[
+        float, Query(ge=0, le=30, description="デバッグ用: レスポンス遅延(秒)")
+    ] = 0,
 ):
     """Renderのヘルスチェック用エンドポイント"""
     if delay > 0:

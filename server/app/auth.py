@@ -8,7 +8,7 @@
 
 import secrets
 from datetime import UTC, datetime, timedelta
-from typing import Literal
+from typing import Annotated, Literal
 from urllib.parse import urlparse
 
 import jwt
@@ -26,7 +26,7 @@ from app.models import Block, Page
 
 
 def require_basic_auth(
-    credentials: HTTPBasicCredentials = Depends(HTTPBasic()),
+    credentials: Annotated[HTTPBasicCredentials, Depends(HTTPBasic())],
 ) -> None:
     """Basic 認証で保護する。APIドキュメントや管理系エンドポイントで使用。"""
     settings = get_settings()
@@ -131,9 +131,9 @@ def require_trip_access(trip_id: int, request: Request) -> int:
 
 
 async def require_page_access(
+    db: Annotated[AsyncSession, Depends(get_db_session)],
     page_id: int,
     request: Request,
-    db: AsyncSession = Depends(get_db_session),
 ) -> int:
     """page_id から trip_id を解決し、アクセス権を検証する。"""
     result = await db.execute(select(Page.trip_id).where(Page.id == page_id))
@@ -148,9 +148,9 @@ async def require_page_access(
 
 
 async def require_block_access(
+    db: Annotated[AsyncSession, Depends(get_db_session)],
     block_id: int,
     request: Request,
-    db: AsyncSession = Depends(get_db_session),
 ) -> int:
     """block_id から trip_id を解決し、アクセス権を検証する。"""
     result = await db.execute(

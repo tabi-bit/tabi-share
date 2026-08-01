@@ -1,3 +1,5 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,10 +19,10 @@ router = APIRouter(tags=["Blocks"])
     response_model=Block,
 )
 async def create_block(
+    _: Annotated[int, Depends(require_page_access)],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
     page_id: int,
     block: BlockCreate,
-    _: int = Depends(require_page_access),
-    db: AsyncSession = Depends(get_db_session),
 ) -> Block:
     """
     説明:
@@ -38,9 +40,9 @@ async def create_block(
     response_model=list[Block],
 )
 async def get_blocks(
+    _: Annotated[int, Depends(require_page_access)],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
     page_id: int,
-    _: int = Depends(require_page_access),
-    db: AsyncSession = Depends(get_db_session),
 ) -> list[Block]:
     """
     説明:
@@ -57,9 +59,9 @@ async def get_blocks(
     response_model=Block,
 )
 async def get_block(
+    _: Annotated[int, Depends(require_block_access)],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
     block_id: int,
-    _: int = Depends(require_block_access),
-    db: AsyncSession = Depends(get_db_session),
 ) -> Block:
     """
     説明:
@@ -80,10 +82,10 @@ async def get_block(
     response_model=Block,
 )
 async def update_block(
+    _: Annotated[int, Depends(require_block_access)],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
     block_id: int,
     block: BlockUpdate,
-    _: int = Depends(require_block_access),
-    db: AsyncSession = Depends(get_db_session),
 ) -> Block:
     """
     説明:
@@ -106,9 +108,9 @@ async def update_block(
     status_code=204,
 )
 async def delete_block(
+    _: Annotated[int, Depends(require_block_access)],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
     block_id: int,
-    _: int = Depends(require_block_access),
-    db: AsyncSession = Depends(get_db_session),
 ) -> None:
     """
     説明:

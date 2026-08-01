@@ -10,6 +10,7 @@
 
 import logging
 import time
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -35,12 +36,15 @@ _test_send_last_sent: dict[str, float] = {}
 
 
 def get_fcm_token_from_header(
-    x_fcm_token: str = Header(
-        min_length=1,
-        max_length=500,
-        alias="X-FCM-Token",
-        description="FCM registration token. URL クエリではなく header で受け取ることでアクセスログへの露出を避ける",
-    ),
+    x_fcm_token: Annotated[
+        str,
+        Header(
+            min_length=1,
+            max_length=500,
+            alias="X-FCM-Token",
+            description="FCM registration token. URL クエリではなく header で受け取ることでアクセスログへの露出を避ける",
+        ),
+    ],
 ) -> str:
     return x_fcm_token
 
@@ -53,9 +57,9 @@ def get_fcm_token_from_header(
     status_code=status.HTTP_201_CREATED,
 )
 async def subscribe(
+    trip_id: Annotated[int, Depends(require_trip_access)],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
     payload: DeviceSubscriptionCreate,
-    trip_id: int = Depends(require_trip_access),
-    db: AsyncSession = Depends(get_db_session),
 ) -> DeviceSubscription:
     """指定 Trip に対して端末を購読させる。既存があれば timezone/minutes_before/user_agent を更新。"""
     sub = await notif_cruds.upsert_subscription(db, trip_id=trip_id, payload=payload)
@@ -69,9 +73,9 @@ async def subscribe(
     status_code=status.HTTP_204_NO_CONTENT,
 )
 async def unsubscribe(
-    fcm_token: str = Depends(get_fcm_token_from_header),
-    trip_id: int = Depends(require_trip_access),
-    db: AsyncSession = Depends(get_db_session),
+    fcm_token: Annotated[str, Depends(get_fcm_token_from_header)],
+    trip_id: Annotated[int, Depends(require_trip_access)],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> None:
     """指定 (fcm_token, trip_id) の購読を解除する。存在しなくても 204。"""
     await notif_cruds.delete_subscription(db, trip_id=trip_id, fcm_token=fcm_token)
@@ -84,9 +88,9 @@ async def unsubscribe(
     response_model=DeviceSubscription | None,
 )
 async def get_subscription(
-    fcm_token: str = Depends(get_fcm_token_from_header),
-    trip_id: int = Depends(require_trip_access),
-    db: AsyncSession = Depends(get_db_session),
+    fcm_token: Annotated[str, Depends(get_fcm_token_from_header)],
+    trip_id: Annotated[int, Depends(require_trip_access)],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> DeviceSubscription | None:
     """指定 (fcm_token, trip_id) の購読レコードを返す。無ければ null。"""
     sub = await notif_cruds.get_subscription(db, trip_id=trip_id, fcm_token=fcm_token)
@@ -102,9 +106,9 @@ async def get_subscription(
     status_code=status.HTTP_202_ACCEPTED,
 )
 async def send_test_notification(
-    fcm_token: str = Depends(get_fcm_token_from_header),
-    trip_id: int = Depends(require_trip_access),
-    db: AsyncSession = Depends(get_db_session),
+    fcm_token: Annotated[str, Depends(get_fcm_token_from_header)],
+    trip_id: Annotated[int, Depends(require_trip_access)],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> dict[str, str]:
     """自端末にテスト通知を即座に送信する (二重クリック防止で 1 秒に 1 回まで)。"""
     sub = await notif_cruds.get_subscription(db, trip_id=trip_id, fcm_token=fcm_token)
@@ -126,7 +130,11 @@ async def send_test_notification(
         raise NotFound(message="Trip not found")
 
     settings = get_settings()
-    frontend_base = "https://tabishare.net" if settings.environment == "production" else "https://st.tabishare.net"
+    frontend_base = (
+        "https://tabishare.net"
+        if settings.environment == "production"
+        else "https://st.tabishare.net"
+    )
     try:
         send_fcm(
             token=fcm_token,

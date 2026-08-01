@@ -1,31 +1,10 @@
-import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { clearAllLogs, readAllLogs } from '@/lib/debugLogger';
 
 /**
- * `?debug=1` 付きで開くと localStorage に永続化され、右下に Copy / Clear ボタンを表示する。
- * `?debug=0` で解除。Android PWA で console 取れないときの診断用。
+ * 診断ブランチ (chore/issue207_debug-logger) 専用: 右下に Copy / Clear ボタンを常時表示する。
+ * PR #216 は Draft & DO NOT MERGE 前提。gate 無しで install 直後から使える状態にしておく。
  */
-
-const STORAGE_KEY = '__fcm_debug_panel__';
-
-const isEnabled = (): boolean => {
-  try {
-    const params = new URLSearchParams(window.location.search);
-    const q = params.get('debug');
-    if (q === '1') {
-      localStorage.setItem(STORAGE_KEY, '1');
-      return true;
-    }
-    if (q === '0') {
-      localStorage.removeItem(STORAGE_KEY);
-      return false;
-    }
-    return localStorage.getItem(STORAGE_KEY) === '1';
-  } catch {
-    return false;
-  }
-};
 
 const copyText = async (text: string): Promise<boolean> => {
   try {
@@ -37,14 +16,6 @@ const copyText = async (text: string): Promise<boolean> => {
 };
 
 const DebugLogPanel = () => {
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    setVisible(isEnabled());
-  }, []);
-
-  if (!visible) return null;
-
   const onCopy = async () => {
     const logs = await readAllLogs();
     if (!logs) {

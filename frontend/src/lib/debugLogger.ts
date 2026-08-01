@@ -16,7 +16,7 @@ const MAX_ENTRIES = 500;
  * 揃えて更新。ログの各行に埋め込まれるので、共有されたログのバージョンが古い環境か新しい環境か
  * を確認しやすくする。
  */
-export const DEBUG_LOG_VERSION = 'v04-cl-2026-08-01';
+export const DEBUG_LOG_VERSION = 'v05-cl-2026-08-01';
 
 interface LogEntry {
   ts: number;

@@ -12,7 +12,7 @@
 // DEBUG_LOG_VERSION は診断コード修正のたびに手動で bump する。client 側 debugLogger.ts の
 // DEBUG_LOG_VERSION と対で更新。ログ各行に埋め込まれるので、実機で古い SW が動いているのか
 // 新しい SW が動いているのかを共有ログから判別できる (SW 更新は非同期でユーザ操作依存なため)。
-const DEBUG_LOG_VERSION = 'v04-sw-2026-08-01';
+const DEBUG_LOG_VERSION = 'v05-sw-2026-08-01';
 const DEBUG_DB = 'fcm-debug-log';
 const DEBUG_STORE = 'entries';
 const DEBUG_MAX = 500;
@@ -56,6 +56,18 @@ const debugLog = async (tag, message, data) => {
 
 // SW script が evaluate されたタイミングを残す。SW 更新のタイミング把握用。
 void debugLog('SW', 'sw script evaluated');
+
+// 新版 SW の active 待ち (デフォルト挙動) だと既存 tab が全部閉じるまで古い SW が動き続ける。
+// notificationclick handler / extractDeepLink の修正が実機に届かないケースが観測されたため
+// install → skipWaiting、activate → clients.claim で強制的に即切替させる。
+self.addEventListener('install', event => {
+  void debugLog('SW', 'install (skipWaiting)');
+  event.waitUntil(self.skipWaiting());
+});
+self.addEventListener('activate', event => {
+  void debugLog('SW', 'activate (clients.claim)');
+  event.waitUntil(self.clients.claim());
+});
 
 // FCM payload に載る deep link の位置は複数の可能性がある:
 // - `data.FCM_MSG.notification.click_action`: Firebase Admin SDK で WebpushFCMOptions(link=...) を

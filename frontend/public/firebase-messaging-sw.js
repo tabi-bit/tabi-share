@@ -12,7 +12,7 @@
 // DEBUG_LOG_VERSION は診断コード修正のたびに手動で bump する。client 側 debugLogger.ts の
 // DEBUG_LOG_VERSION と対で更新。ログ各行に埋め込まれるので、実機で古い SW が動いているのか
 // 新しい SW が動いているのかを共有ログから判別できる (SW 更新は非同期でユーザ操作依存なため)。
-const DEBUG_LOG_VERSION = 'v03-sw-2026-08-01';
+const DEBUG_LOG_VERSION = 'v04-sw-2026-08-01';
 const DEBUG_DB = 'fcm-debug-log';
 const DEBUG_STORE = 'entries';
 const DEBUG_MAX = 500;
@@ -57,11 +57,16 @@ const debugLog = async (tag, message, data) => {
 // SW script が evaluate されたタイミングを残す。SW 更新のタイミング把握用。
 void debugLog('SW', 'sw script evaluated');
 
-// Firebase Admin SDK の WebpushFCMOptions.link は data.FCM_MSG.fcmOptions.link に入る。
-// フォアグラウンド通知 (useForegroundNotificationToast) の自前 showNotification 経由は data.link。
+// FCM payload に載る deep link の位置は複数の可能性がある:
+// - `data.FCM_MSG.notification.click_action`: Firebase Admin SDK で WebpushFCMOptions(link=...) を
+//   指定した場合、SDK 12.x が実 payload に写す形。実機ログで確認済で **これが primary**
+// - `data.FCM_MSG.fcmOptions.link`: SDK バージョンや Admin SDK 経路によってはこちらに入るとの
+//   資料あり (残しておく安全策)
+// - `data.link`: フォアグラウンド通知 (useForegroundNotificationToast) の自前 showNotification 経由
 const extractDeepLink = notification => {
   const data = notification?.data ?? {};
-  return data?.FCM_MSG?.fcmOptions?.link ?? data?.link ?? null;
+  const fcm = data?.FCM_MSG;
+  return fcm?.notification?.click_action ?? fcm?.fcmOptions?.link ?? data?.link ?? null;
 };
 
 // PWA / ブラウザ tab 両方 push 登録している端末で、ユーザが今触ってる方を選ぶための優先度。

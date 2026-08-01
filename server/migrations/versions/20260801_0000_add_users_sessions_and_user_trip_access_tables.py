@@ -1,6 +1,6 @@
 """add_users_sessions_and_user_trip_access_tables
 
-Revision ID: a7e8f1d9c342
+Revision ID: f7a1c2d3b4e5
 Revises: e6a2f9b18c34
 Create Date: 2026-07-26 00:00:00.000000
 

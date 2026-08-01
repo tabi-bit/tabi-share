@@ -20,6 +20,25 @@ const pickTargetClient = clientsList => {
   );
 };
 
+// postMessage 経路が届かない状況の safety net として target URL を Cache Storage に書き残す。
+// client 側 (useFcmNavigationListener) は mount + visibilitychange のたびに読んで navigate する。
+// 起こりうる postMessage 未着ケース:
+//   - PWA が Android にキルされていて matchAll 上は phantom client、focus() では OS が task を
+//     復帰させるが postMessage は event loop で drain されない
+//   - cold start で client 側 message listener 登録前に SW が postMessage 送出
+const INTENT_CACHE = 'fcm-nav-intent-v1';
+// Cache API は Request URL をキーに使うため、実在しない同 origin URL を予約して衝突を避ける。
+const INTENT_KEY = new URL('/__fcm_pending_nav__', self.location.origin).href;
+
+const storePendingIntent = async url => {
+  try {
+    const cache = await caches.open(INTENT_CACHE);
+    await cache.put(new Request(INTENT_KEY), new Response(url, { headers: { 'content-type': 'text/plain' } }));
+  } catch {
+    // Cache API 非対応 / QuotaExceeded 等は best effort として無視
+  }
+};
+
 self.addEventListener('notificationclick', event => {
   event.notification.close();
 
@@ -37,6 +56,9 @@ self.addEventListener('notificationclick', event => {
 
   event.waitUntil(
     (async () => {
+      // storage 完了を focus/openWindow より前に保証。client 側の visibilitychange で確実に拾える。
+      await storePendingIntent(targetUrl.href);
+
       const clientsList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
       const target = pickTargetClient(clientsList);
 

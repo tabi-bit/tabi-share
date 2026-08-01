@@ -28,19 +28,35 @@ const waitForBlockElement = (blockId: number, maxMs: number, isCancelled: () => 
     tick();
   });
 
+// block ID は BIGSERIAL PRIMARY KEY (正の整数) のみ有効。"0" / 桁溢れ / 非数値は不正値扱いで
+// query 掃除だけ行う。useBlock(0) が SWR の falsy key で fetch を止めるため、そのまま 0 を渡すと
+// block も error も来ず ref も query も更新されずスタックする。
+const parseFocusBlockId = (raw: string | null): number | null => {
+  if (raw == null || !/^[1-9]\d*$/.test(raw)) return null;
+  const n = Number(raw);
+  return Number.isSafeInteger(n) ? n : null;
+};
+
 export const useFocusBlockOnMount = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const rawFocusBlock = searchParams.get(FOCUS_BLOCK_PARAM);
-  const focusBlockId = rawFocusBlock != null && /^\d+$/.test(rawFocusBlock) ? Number(rawFocusBlock) : null;
+  const focusBlockId = parseFocusBlockId(rawFocusBlock);
   const hasInvalidParam = rawFocusBlock != null && focusBlockId == null;
 
   const setSelectedPageId = useSetAtom(selectedPageIdAtom);
   const { block, error } = useBlock(focusBlockId);
-  // TripPage は unmount せず SPA navigate で URL だけ差し替わるため、boolean 一度きりゲートだと
-  // 通知連続タップ (42 → 99) の 2 回目が無視される。値ゲートにして rawFocusBlock が変わったら再処理する。
+  // 直前の rawFocusBlock を保持し、値が変わるまで再処理をブロックする。ref なので rerender は起こさない。
+  // - TripPage は SPA navigate で unmount しないので、連続通知 (42 → 99) の 2 回目を処理する
+  // - 消費済み記録は uncancelled 完了後 (async 内) にセット。StrictMode の double-fire で最初の async が
+  //   cancelled になっても 2 度目で確実に完走するため
+  // - query 掃除後 (rawFocusBlock === null) は ref をリセット。同一 block の再通知にも応答するため
   const consumedKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
+    if (rawFocusBlock === null) {
+      consumedKeyRef.current = null;
+      return;
+    }
     if (consumedKeyRef.current === rawFocusBlock) return;
 
     const clearParam = () =>
@@ -66,7 +82,6 @@ export const useFocusBlockOnMount = () => {
     }
     if (!block) return;
 
-    consumedKeyRef.current = rawFocusBlock;
     setSelectedPageId(block.pageId);
 
     let cancelled = false;
@@ -75,6 +90,7 @@ export const useFocusBlockOnMount = () => {
       if (cancelled) return;
       el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       clearParam();
+      consumedKeyRef.current = rawFocusBlock;
     })();
 
     return () => {

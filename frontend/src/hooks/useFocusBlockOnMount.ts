@@ -49,8 +49,13 @@ const waitForBlockElement = (blockId: number, maxMs: number, signal: AbortSignal
 
 // layout flush を 1 フレーム待ってから scroll する。Timeline 差し替え直後は要素の位置計算が
 // まだ確定していないことがあり、そのタイミングで scrollIntoView すると外れる。
-// rAF は clearParam() 直後の cleanup と間に合わない race を避けるため cancel しない
-// (detached element への scrollIntoView は no-op なので害はない)。
+//
+// rAF は明示 cancel しない (AbortSignal 対象外)。abort 後に fire するパターンは 2 つあるが、
+// いずれも実害が小さい:
+//   - unmount 経由の abort: element が detach 済で scrollIntoView は no-op
+//   - focusBlock 変化経由の abort: 元 element に一瞬 scroll した後、新しい rAF が上書き
+// 逆に rAF を signal で cancel すると、clearParam() 直後の自 cleanup で成功パスの scroll
+// まで潰れるため、そちらの副作用の方が大きい。
 const scrollIntoViewOnNextFrame = (el: HTMLElement) => {
   requestAnimationFrame(() => {
     el.scrollIntoView({ behavior: 'smooth', block: 'center' });

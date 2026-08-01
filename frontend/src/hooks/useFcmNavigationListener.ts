@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { debugLog } from '@/lib/debugLogger';
+import { DEBUG_LOG_VERSION, debugLog } from '@/lib/debugLogger';
 
 /**
  * firebase-messaging-sw.js の notificationclick が伝えてくる遷移先 URL を受けて
@@ -122,7 +122,12 @@ export const useFcmNavigationListener = () => {
 
     sw?.addEventListener('message', handler);
     document.addEventListener('visibilitychange', onVisibility);
-    void debugLog('CL', 'listener mounted', { hasSw: !!sw });
+    void debugLog('CL', 'listener mounted', {
+      hasSw: !!sw,
+      swControllerUrl: sw?.controller?.scriptURL ?? null,
+      currentUrl: window.location.href,
+      clientVersion: DEBUG_LOG_VERSION,
+    });
     void applyIntent();
 
     return () => {

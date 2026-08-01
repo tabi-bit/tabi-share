@@ -11,8 +11,16 @@ const DB_NAME = 'fcm-debug-log';
 const STORE_NAME = 'entries';
 const MAX_ENTRIES = 500;
 
+/**
+ * 診断コード修正のたびに手動で bump する。firebase-messaging-sw.js 側の DEBUG_LOG_VERSION と
+ * 揃えて更新。ログの各行に埋め込まれるので、共有されたログのバージョンが古い環境か新しい環境か
+ * を確認しやすくする。
+ */
+export const DEBUG_LOG_VERSION = 'v02-cl-2026-08-01';
+
 interface LogEntry {
   ts: number;
+  version: string;
   tag: string;
   message: string;
   data: unknown;
@@ -54,7 +62,13 @@ export const debugLog = async (tag: string, message: string, data?: unknown): Pr
     const db = await getDb();
     const tx = db.transaction(STORE_NAME, 'readwrite');
     const store = tx.objectStore(STORE_NAME);
-    const entry: LogEntry = { ts: Date.now(), tag, message, data: safeSerialize(data) };
+    const entry: LogEntry = {
+      ts: Date.now(),
+      version: DEBUG_LOG_VERSION,
+      tag,
+      message,
+      data: safeSerialize(data),
+    };
     store.add(entry);
     const countReq = store.count();
     countReq.onsuccess = () => {
@@ -78,7 +92,8 @@ export const debugLog = async (tag: string, message: string, data?: unknown): Pr
 const formatEntry = (e: LogEntry): string => {
   const t = new Date(e.ts).toISOString();
   const data = e.data == null ? '' : ` | ${JSON.stringify(e.data)}`;
-  return `[${t}] [${e.tag}] ${e.message}${data}`;
+  const version = e.version ?? '?';
+  return `[${t}] [${version}] [${e.tag}] ${e.message}${data}`;
 };
 
 export const readAllLogs = async (): Promise<string> => {

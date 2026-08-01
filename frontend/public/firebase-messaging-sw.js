@@ -9,6 +9,10 @@
 // --- 診断ロガー (client 側 lib/debugLogger.ts と同じ DB / store) ---
 // Android PWA から console を取れない環境向け。SW から IndexedDB に書いて client 側で
 // 読み出す。運用機能ではないので消しても実装挙動には影響しない。
+// DEBUG_LOG_VERSION は診断コード修正のたびに手動で bump する。client 側 debugLogger.ts の
+// DEBUG_LOG_VERSION と対で更新。ログ各行に埋め込まれるので、実機で古い SW が動いているのか
+// 新しい SW が動いているのかを共有ログから判別できる (SW 更新は非同期でユーザ操作依存なため)。
+const DEBUG_LOG_VERSION = 'v02-sw-2026-08-01';
 const DEBUG_DB = 'fcm-debug-log';
 const DEBUG_STORE = 'entries';
 const DEBUG_MAX = 500;
@@ -30,7 +34,7 @@ const debugLog = async (tag, message, data) => {
     const tx = db.transaction(DEBUG_STORE, 'readwrite');
     const store = tx.objectStore(DEBUG_STORE);
     const safeData = data === undefined ? null : JSON.parse(JSON.stringify(data));
-    store.add({ ts: Date.now(), tag, message, data: safeData });
+    store.add({ ts: Date.now(), version: DEBUG_LOG_VERSION, tag, message, data: safeData });
     const countReq = store.count();
     countReq.onsuccess = () => {
       const excess = countReq.result - DEBUG_MAX;
@@ -49,6 +53,9 @@ const debugLog = async (tag, message, data) => {
     // logger must not throw
   }
 };
+
+// SW script が evaluate されたタイミングを残す。SW 更新のタイミング把握用。
+void debugLog('SW', 'sw script evaluated');
 
 // Firebase Admin SDK の WebpushFCMOptions.link は data.FCM_MSG.fcmOptions.link に入る。
 // フォアグラウンド通知 (useForegroundNotificationToast) の自前 showNotification 経由は data.link。

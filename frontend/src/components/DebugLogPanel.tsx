@@ -1,5 +1,5 @@
 import { toast } from 'sonner';
-import { clearAllLogs, readAllLogs } from '@/lib/debugLogger';
+import { clearAllLogs, DEBUG_LOG_VERSION, readAllLogs } from '@/lib/debugLogger';
 
 /**
  * 診断ブランチ (chore/issue207_debug-logger) 専用: 右下に Copy / Clear ボタンを常時表示する。
@@ -18,17 +18,24 @@ const copyText = async (text: string): Promise<boolean> => {
 const DebugLogPanel = () => {
   const onCopy = async () => {
     const logs = await readAllLogs();
-    if (!logs) {
-      toast.info('ログなし');
-      return;
-    }
-    const lines = logs.split('\n').length;
-    const ok = await copyText(logs);
+    const controllerUrl = navigator.serviceWorker?.controller?.scriptURL ?? '(no controller)';
+    const header = [
+      '=== fcm debug log ===',
+      `client version: ${DEBUG_LOG_VERSION}`,
+      `sw controller:  ${controllerUrl}`,
+      `current URL:    ${window.location.href}`,
+      `copied at:      ${new Date().toISOString()}`,
+      '=====================',
+    ].join('\n');
+    const body = logs || '(no entries)';
+    const payload = `${header}\n${body}`;
+    const lines = body.split('\n').length;
+    const ok = await copyText(payload);
     if (ok) {
-      toast.success(`${lines} 件コピー`);
+      toast.success(`${lines} 件コピー (+ header)`);
     } else {
       // クリップボード拒否時は prompt で見せて手動コピー
-      window.prompt('コピーしてください', logs);
+      window.prompt('コピーしてください', payload);
     }
   };
 

@@ -1,3 +1,5 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,10 +21,10 @@ router = APIRouter(tags=["Pages"])
     response_model=PageCreateResponse,
 )
 async def create_page(
+    _: Annotated[int, Depends(require_trip_access)],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
     trip_id: int,
     page: PageCreate,
-    _: int = Depends(require_trip_access),
-    db: AsyncSession = Depends(get_db_session),
 ) -> PageCreateResponse:
     """
     説明:
@@ -39,9 +41,9 @@ async def create_page(
     response_model=list[Page],
 )
 async def get_pages(
+    _: Annotated[int, Depends(require_trip_access)],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
     trip_id: int,
-    _: int = Depends(require_trip_access),
-    db: AsyncSession = Depends(get_db_session),
 ) -> list[Page]:
     """
     説明:
@@ -58,9 +60,9 @@ async def get_pages(
     response_model=Page,
 )
 async def get_page(
+    _: Annotated[int, Depends(require_page_access)],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
     page_id: int,
-    _: int = Depends(require_page_access),
-    db: AsyncSession = Depends(get_db_session),
 ) -> Page:
     """
     説明:
@@ -81,10 +83,10 @@ async def get_page(
     response_model=Page,
 )
 async def update_page(
+    _: Annotated[int, Depends(require_page_access)],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
     page_id: int,
     page: PageUpdate,
-    _: int = Depends(require_page_access),
-    db: AsyncSession = Depends(get_db_session),
 ) -> Page:
     """
     説明:
@@ -105,9 +107,9 @@ async def update_page(
     status_code=204,
 )
 async def delete_page(
+    _: Annotated[int, Depends(require_page_access)],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
     page_id: int,
-    _: int = Depends(require_page_access),
-    db: AsyncSession = Depends(get_db_session),
 ):
     """
     説明:

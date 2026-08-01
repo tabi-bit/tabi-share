@@ -1,3 +1,5 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, Request, Response
 from nanoid import generate
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,10 +22,10 @@ URL_ID_SIZE = 16
     response_model=TripCreateOut,
 )
 async def create_trip(
+    db: Annotated[AsyncSession, Depends(get_db_session)],
     trip_in: TripCreateIn,
     request: Request,
     response: Response,
-    db: AsyncSession = Depends(get_db_session),
 ) -> TripCreateOut:
     """
     説明:
@@ -46,8 +48,8 @@ async def create_trip(
     response_model=list[Trip],
 )
 async def list_trips(
-    _: None = Depends(require_basic_auth),
-    db: AsyncSession = Depends(get_db_session),
+    _: Annotated[None, Depends(require_basic_auth)],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> list[Trip]:
     """
     説明:
@@ -64,9 +66,9 @@ async def list_trips(
     response_model=Trip,
 )
 async def get_trip(
+    _: Annotated[int, Depends(require_trip_access)],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
     trip_id: int,
-    _: int = Depends(require_trip_access),
-    db: AsyncSession = Depends(get_db_session),
 ) -> Trip:
     """
     説明:
@@ -87,10 +89,10 @@ async def get_trip(
     response_model=Trip,
 )
 async def get_trip_by_url_id(
+    db: Annotated[AsyncSession, Depends(get_db_session)],
     url_id: str,
     request: Request,
     response: Response,
-    db: AsyncSession = Depends(get_db_session),
 ) -> Trip:
     """
     説明:
@@ -113,10 +115,10 @@ async def get_trip_by_url_id(
     response_model=Trip,
 )
 async def update_trip(
+    _: Annotated[int, Depends(require_trip_access)],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
     trip_id: int,
     trip_in: TripUpdate,
-    _: int = Depends(require_trip_access),
-    db: AsyncSession = Depends(get_db_session),
 ) -> Trip:
     """
     説明:
@@ -137,9 +139,9 @@ async def update_trip(
     status_code=204,
 )
 async def delete_trip(
+    _: Annotated[int, Depends(require_trip_access)],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
     trip_id: int,
-    _: int = Depends(require_trip_access),
-    db: AsyncSession = Depends(get_db_session),
 ) -> None:
     """
     説明:

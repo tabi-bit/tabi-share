@@ -8,6 +8,7 @@
 
 import logging
 import time
+from typing import Annotated
 
 from fastapi import APIRouter, Depends
 from firebase_admin import exceptions as firebase_exceptions
@@ -103,7 +104,9 @@ def _build_badge_url() -> str:
     operation_id="notification-tick",
     dependencies=[Depends(verify_cloud_scheduler_oidc)],
 )
-async def tick(db: AsyncSession = Depends(get_db_session)) -> dict[str, int]:
+async def tick(
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+) -> dict[str, int]:
     """通知候補をスキャンし、送信ロックを取ったものだけ FCM に送信する。
 
     Cloud Scheduler から 1 分ごとに叩かれる想定。

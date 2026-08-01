@@ -9,6 +9,14 @@
           "source": "**",
           "destination": "/index.html"
         }
+      ],
+      "headers": [
+        {
+          "source": "/firebase-messaging-sw.js",
+          "headers": [
+            { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+          ]
+        }
       ]
     },
     {
@@ -20,6 +28,14 @@
           "source": "**",
           "destination": "/index.html"
         }
+      ],
+      "headers": [
+        {
+          "source": "/firebase-messaging-sw.js",
+          "headers": [
+            { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+          ]
+        }
       ]
     },
     {
@@ -30,6 +46,14 @@
         {
           "source": "**",
           "destination": "/index.html"
+        }
+      ],
+      "headers": [
+        {
+          "source": "/firebase-messaging-sw.js",
+          "headers": [
+            { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+          ]
         }
       ]
     }

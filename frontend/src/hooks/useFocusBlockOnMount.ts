@@ -12,21 +12,43 @@ import { useBlock } from '@/hooks/useBlocks';
  */
 
 const FOCUS_BLOCK_PARAM = 'focusBlock';
-const SCROLL_WAIT_MAX_MS = 3000;
+// 通知タップ → block 描画までに 2 段の非同期がある:
+//   1. useBlock(id) 単発 fetch → block.pageId 判明 → selectedPageId 切替
+//   2. useBlocks(pageId) list fetch 完了 → ViewTripLayout の Skeleton が Timeline に差し替わる
+// (2) が cold start で遅れると DOM に data-block-id が出るのに数秒かかることがある。
+// rAF ポーリングだと 1 フレーム単位で無駄回転するので MutationObserver で DOM 変化を待つ。
+const SCROLL_WAIT_MAX_MS = 8000;
 
 const waitForBlockElement = (blockId: number, maxMs: number, isCancelled: () => boolean): Promise<HTMLElement | null> =>
   new Promise(resolve => {
     const selector = `[data-block-id="${blockId}"]`;
-    const start = performance.now();
-    const tick = () => {
-      if (isCancelled()) return resolve(null);
-      const el = document.querySelector<HTMLElement>(selector);
-      if (el) return resolve(el);
-      if (performance.now() - start > maxMs) return resolve(null);
-      requestAnimationFrame(tick);
+
+    const found = document.querySelector<HTMLElement>(selector);
+    if (found) return resolve(found);
+
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    const finish = (el: HTMLElement | null) => {
+      observer.disconnect();
+      if (timeoutId !== null) clearTimeout(timeoutId);
+      resolve(el);
     };
-    tick();
+
+    const observer = new MutationObserver(() => {
+      if (isCancelled()) return finish(null);
+      const el = document.querySelector<HTMLElement>(selector);
+      if (el) finish(el);
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    timeoutId = setTimeout(() => finish(null), maxMs);
   });
+
+// layout flush を 1 フレーム待ってから scroll する。Timeline が差し替わった直後は要素の
+// 位置計算がまだ確定していないことがあり、そのタイミングで scrollIntoView すると外れる。
+const scrollIntoViewOnNextFrame = (el: HTMLElement) => {
+  requestAnimationFrame(() => {
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+};
 
 // block ID は BIGSERIAL PRIMARY KEY (正の整数) のみ有効。"0" / 桁溢れ / 非数値は不正値扱いで
 // query 掃除だけ行う。useBlock(0) が SWR の falsy key で fetch を止めるため、そのまま 0 を渡すと
@@ -88,7 +110,7 @@ export const useFocusBlockOnMount = () => {
     (async () => {
       const el = await waitForBlockElement(focusBlockId, SCROLL_WAIT_MAX_MS, () => cancelled);
       if (cancelled) return;
-      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      if (el) scrollIntoViewOnNextFrame(el);
       clearParam();
       consumedKeyRef.current = rawFocusBlock;
     })();

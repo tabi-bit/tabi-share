@@ -175,7 +175,9 @@ describe('useFocusBlockOnMount', () => {
     await waitFor(() => {
       expect(searchRef.current).toBe('');
     });
-    expect(scrollIntoViewMock).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(scrollIntoViewMock).toHaveBeenCalledTimes(1);
+    });
 
     // 2 回目: SPA navigate で URL に別の focusBlock を差し込む
     scrollIntoViewMock.mockClear();
@@ -258,7 +260,9 @@ describe('useFocusBlockOnMount', () => {
     await waitFor(() => {
       expect(searchRef.current).toBe('');
     });
-    expect(scrollIntoViewMock).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(scrollIntoViewMock).toHaveBeenCalledTimes(1);
+    });
 
     // 2 回目: URL が /trip/abc に戻った状態から、同じ block へ再通知タップを再現
     scrollIntoViewMock.mockClear();

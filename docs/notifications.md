@@ -196,7 +196,7 @@ tick が 60 秒を超えると次 tick と重なる。閾値と対処:
   - 素材: FA (frontend/src/assets/icons) + Lucide MapPin。オレンジバッジ (`#f4a261`) + 白抜き
 - **Badge** (Android status bar 等の小モノクロアイコン、96px、透過 PNG): `badge.png` を全通知で共通使用。紙飛行機シルエット (favicon 由来)、OS 側でアクセントカラーへリカラーされる。icon と別 URL にしないと Android で四角い塗りになる
 - 生成スクリプト: `scripts/gen_notification_icons.py`
-- **Deep link**: `/trip/{urlId}?focusBlock={blockId}` (該当ブロックにスクロール、Phase 2 で完全実装)
+- **Deep link**: `/trip/{urlId}?focusBlock={blockId}`。SW `notificationclick` (`frontend/public/firebase-messaging-sw.js`) が受け、既存 PWA/tab (focused > visible > 任意) に postMessage で client-side navigate、無ければ `clients.openWindow`。client 側は `useFocusBlockOnMount` で `useBlock(id)` から pageId を得て page 切替 → `[data-block-id]` を rAF 待機して `scrollIntoView` (center)。処理後 `focusBlock` は replaceState で除去。
 
 ## 6. プラットフォーム対応
 

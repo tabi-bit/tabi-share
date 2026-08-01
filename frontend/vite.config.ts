@@ -64,6 +64,11 @@ export default defineConfig({
       workbox: {
         navigateFallback: '/index.html',
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        // firebase-messaging-sw.js は別 scope で登録される独立 SW。VitePWA sw.js の
+        // precache に紛れ込むと、Chrome の register 時に fetch handler が cache 経由で
+        // 古い版を返し続けて更新が実機に届かなくなる。glob から除外必須。
+        globIgnores: ['**/firebase-messaging-sw.js'],
+        navigateFallbackDenylist: [/^\/firebase-messaging-sw\.js$/],
       },
     }),
   ],

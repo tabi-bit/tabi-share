@@ -12,7 +12,7 @@
 // DEBUG_LOG_VERSION は診断コード修正のたびに手動で bump する。client 側 debugLogger.ts の
 // DEBUG_LOG_VERSION と対で更新。ログ各行に埋め込まれるので、実機で古い SW が動いているのか
 // 新しい SW が動いているのかを共有ログから判別できる (SW 更新は非同期でユーザ操作依存なため)。
-const DEBUG_LOG_VERSION = 'v07-sw-2026-08-01';
+const DEBUG_LOG_VERSION = 'v08-sw-2026-08-01';
 const DEBUG_DB = 'fcm-debug-log';
 const DEBUG_STORE = 'entries';
 const DEBUG_MAX = 500;
@@ -68,15 +68,9 @@ self.addEventListener('activate', event => {
   void debugLog('SW', 'activate (clients.claim)');
   event.waitUntil(self.clients.claim());
 });
-// client 側 (useFcmNavigationListener) が既に waiting 状態の SW を叩き起こすためのハンドラ。
-// 未来の SW が仮に install で skipWaiting を呼ばない実装になっても、client 側からこの経路で
-// 強制 activate に持ち込めるよう保険を挟む。
-self.addEventListener('message', event => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
-    void debugLog('SW', 'SKIP_WAITING received');
-    void self.skipWaiting();
-  }
-});
+// [Round 1 削減] SKIP_WAITING message handler は client 側の
+// registration.update() 経路と対で削除。install → skipWaiting のデフォルトルートのみで
+// 更新が成立するか検証する。
 
 // FCM payload に載る deep link の位置は複数の可能性がある:
 // - `data.FCM_MSG.notification.click_action`: Firebase Admin SDK で WebpushFCMOptions(link=...) を
@@ -97,24 +91,8 @@ const pickTargetClient = clientsList => {
   );
 };
 
-// postMessage 経路が届かない状況の safety net として target URL を Cache Storage に書き残す。
-// client 側 (useFcmNavigationListener) は mount + visibilitychange のたびに読んで navigate する。
-// 起こりうる postMessage 未着ケース:
-//   - PWA が Android にキルされていて matchAll 上は phantom client、focus() では OS が task を
-//     復帰させるが postMessage は event loop で drain されない
-//   - cold start で client 側 message listener 登録前に SW が postMessage 送出
-const INTENT_CACHE = 'fcm-nav-intent-v1';
-// Cache API は Request URL をキーに使うため、実在しない同 origin URL を予約して衝突を避ける。
-const INTENT_KEY = new URL('/__fcm_pending_nav__', self.location.origin).href;
-
-const storePendingIntent = async url => {
-  try {
-    const cache = await caches.open(INTENT_CACHE);
-    await cache.put(new Request(INTENT_KEY), new Response(url, { headers: { 'content-type': 'text/plain' } }));
-  } catch {
-    // Cache API 非対応 / QuotaExceeded 等は best effort として無視
-  }
-};
+// [Round 1 削減] Cache Storage safety net (storePendingIntent) と client 側 applyIntent 経路を削除。
+// SW 更新問題 (真の原因) が解決した今、postMessage + focus + openWindow fallback だけで十分か検証する。
 
 self.addEventListener('notificationclick', event => {
   event.notification.close();
@@ -139,10 +117,6 @@ self.addEventListener('notificationclick', event => {
 
   event.waitUntil(
     (async () => {
-      // storage 完了を focus/openWindow より前に保証。client 側の visibilitychange で確実に拾える。
-      await storePendingIntent(targetUrl.href);
-      void debugLog('SW', 'intent stored', { url: targetUrl.href });
-
       const clientsList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
       void debugLog('SW', 'matchAll', {
         n: clientsList.length,

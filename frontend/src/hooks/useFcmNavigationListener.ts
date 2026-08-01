@@ -66,11 +66,15 @@ const parseSameOriginPath = (rawUrl: string): string | null => {
   return `${parsed.pathname}${parsed.search}${parsed.hash}`;
 };
 
+// 1 通知タップに対して message + intent の 2 経路が近接発火するのを dedupe する時間窓。
+// これ以上経過したら別イベント扱いで同 URL への遷移も許可する (通知を連続タップした時等)。
+const NAV_DEDUPE_WINDOW_MS = 1000;
+
 export const useFcmNavigationListener = () => {
   const navigate = useNavigate();
-  // fast path (message) と safety net (cache) が同一 URL に対して二重発火するのを防ぐ。
-  // 直近の遷移先を保持し、同値なら skip する。
-  const lastNavigatedRef = useRef<string | null>(null);
+  // 直近の遷移先とタイムスタンプ。時間窓を過ぎたら別イベントとして再遷移を許可する。
+  // 以前は unmount まで保持する ref で「一度行った URL には二度と行けない」バグがあった。
+  const lastNavRef = useRef<{ url: string; at: number } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -81,11 +85,13 @@ export const useFcmNavigationListener = () => {
         void debugLog('CL', 'navigateOnce skip (== current)', { target, source });
         return;
       }
-      if (lastNavigatedRef.current === target) {
-        void debugLog('CL', 'navigateOnce skip (== last)', { target, source });
+      const last = lastNavRef.current;
+      const now = performance.now();
+      if (last !== null && last.url === target && now - last.at < NAV_DEDUPE_WINDOW_MS) {
+        void debugLog('CL', 'navigateOnce skip (dedupe window)', { target, source, ageMs: now - last.at });
         return;
       }
-      lastNavigatedRef.current = target;
+      lastNavRef.current = { url: target, at: now };
       void debugLog('CL', 'navigate() called', { target, source });
       navigate(target);
     };

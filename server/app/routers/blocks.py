@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
@@ -43,7 +44,7 @@ async def get_blocks(
     _: Annotated[int, Depends(require_page_access)],
     db: Annotated[AsyncSession, Depends(get_db_session)],
     page_id: int,
-) -> list[Block]:
+) -> Sequence[Block]:
     """
     説明:
 

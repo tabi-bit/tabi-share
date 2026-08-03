@@ -8,7 +8,9 @@ from app.schemas.trip import TripCreateIn, TripUpdate
 
 def _trip_with_relations():
     return select(Trip).options(
-        selectinload(Trip.pages).selectinload(Page.blocks).options(
+        selectinload(Trip.pages)
+        .selectinload(Page.blocks)
+        .options(
             selectinload(Block.location),
             selectinload(Block.destination_location),
         )

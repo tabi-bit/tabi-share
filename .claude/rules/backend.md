@@ -51,6 +51,25 @@ server/
 - HTTPメソッド適切な使用（GET, POST, PUT, DELETE, PATCH）
 - レスポンス形式は一貫性を保つ
 
+#### 依存/パラメータの書き方（Annotated 必須）
+
+- FastAPI の `Depends` / `Query` / `Path` / `Header` / `Body` は **必ず `Annotated` 形式**で書く。
+  デフォルト値へ直接代入する旧形式は禁止（`ruff` の `FAST002` で CI が自動検出する）。
+
+  ```python
+  # NG（旧形式）
+  async def h(db: AsyncSession = Depends(get_db_session)): ...
+
+  # OK（Annotated）
+  async def h(db: Annotated[AsyncSession, Depends(get_db_session)]): ...
+  ```
+
+- **DI（`Depends`）系引数は関数シグネチャの先頭に置く**。Annotated 形式はデフォルト値を
+  持たないため引数順の制約がなく、依存を先頭・パスパラメータ/ボディを後ろに並べられる。
+- デフォルト値がある場合は Annotated の外に出す: `q: Annotated[int, Query(ge=0)] = 0`。
+- 検証は `server/scripts/verify.sh` を実行する（ruff check(FAST002) / ruff format / mypy / import+OpenAPI 生成の
+  全項目がゲート）。リファクタ前後で走らせて回帰がないことを確認する。CI (`ci_server.yml`) でも同スクリプトを実行する。
+
 ### 2. データベース操作
 
 - SQLAlchemyのORM使用

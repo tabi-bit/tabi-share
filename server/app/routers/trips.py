@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request, Response
@@ -50,7 +51,7 @@ async def create_trip(
 async def list_trips(
     _: Annotated[None, Depends(require_basic_auth)],
     db: Annotated[AsyncSession, Depends(get_db_session)],
-) -> list[Trip]:
+) -> Sequence[Trip]:
     """
     説明:
 

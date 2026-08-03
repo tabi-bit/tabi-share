@@ -1097,6 +1097,7 @@ dev = [
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "ruff" },
+    { name = "types-nanoid" },
     { name = "types-passlib" },
 ]
 
@@ -1125,6 +1126,7 @@ dev = [
     { name = "pytest", specifier = ">=8.4.1" },
     { name = "pytest-asyncio", specifier = ">=1.1.0" },
     { name = "ruff", specifier = ">=0.12.7" },
+    { name = "types-nanoid", specifier = ">=2.0.0.20260508" },
     { name = "types-passlib", specifier = ">=1.7.7.20250602" },
 ]
 
@@ -1168,6 +1170,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/04/57/d062573f391d062710d4088fa1369428c38d51460ab6fedff920efef932e/starlette-0.47.2.tar.gz", hash = "sha256:6ae9aa5db235e4846decc1e7b79c4f346adf41e9777aebeb49dfd09bbd7023d8", size = 2583948, upload-time = "2025-07-20T17:31:58.522Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f7/1f/b876b1f83aef204198a42dc101613fefccb32258e5428b5f9259677864b4/starlette-0.47.2-py3-none-any.whl", hash = "sha256:c5847e96134e5c5371ee9fac6fdf1a67336d5815e09eb2a01fdb57a351ef915b", size = 72984, upload-time = "2025-07-20T17:31:56.738Z" },
+]
+
+[[package]]
+name = "types-nanoid"
+version = "2.0.0.20260508"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/6b/9a/a9719ba0866c76c378d9ced7c59f76d98da987e8c971f2102aefbefd694b/types_nanoid-2.0.0.20260508.tar.gz", hash = "sha256:4ab493a2bc6dea7aa3c9671e2cb32ed0ed8f6419250a98ec533d49bc619302d7", size = 7351, upload-time = "2026-05-08T04:48:54.25Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9d/18/5a305d16ca4d43ce04c63a2c89b2da14de3b555f546d7f31b167a7f2ed55/types_nanoid-2.0.0.20260508-py3-none-any.whl", hash = "sha256:d6d3098c075ac1ba8e9e010e20605ffadf7a3870022eb19517868dc7566579c9", size = 8604, upload-time = "2026-05-08T04:48:53.257Z" },
 ]
 
 [[package]]

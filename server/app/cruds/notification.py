@@ -138,9 +138,7 @@ async def delete_sent_notifications_for_block(
     return result.rowcount or 0
 
 
-async def delete_sent_notifications_for_page(
-    db: AsyncSession, *, page_id: int
-) -> int:
+async def delete_sent_notifications_for_page(db: AsyncSession, *, page_id: int) -> int:
     """指定 page 配下 block の送信済み予約を全て削除する。
 
     Page.date が変更されると配下の全 block の絶対日時が動くため、まとめて再通知させる。
@@ -272,7 +270,9 @@ async def list_notification_candidates(db: AsyncSession) -> list[NotificationCan
 
     filtered: list[dict] = []
     for r in rows:
-        absolute = _compose_absolute_start(r["page_date"], r["start_time"], r["timezone"])
+        absolute = _compose_absolute_start(
+            r["page_date"], r["start_time"], r["timezone"]
+        )
         if absolute is None:
             continue
         threshold = now_utc + timedelta(minutes=r["minutes_before"])
@@ -284,11 +284,11 @@ async def list_notification_candidates(db: AsyncSession) -> list[NotificationCan
         return []
 
     location_ids: set[int] = set()
-    for r in filtered:
-        if r["location_id"] is not None:
-            location_ids.add(r["location_id"])
-        if r["destination_location_id"] is not None:
-            location_ids.add(r["destination_location_id"])
+    for item in filtered:
+        if item["location_id"] is not None:
+            location_ids.add(item["location_id"])
+        if item["destination_location_id"] is not None:
+            location_ids.add(item["destination_location_id"])
 
     location_name_map: dict[int, str] = {}
     if location_ids:

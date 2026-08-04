@@ -69,6 +69,10 @@ const getBrowserTimezone = (): string => Intl.DateTimeFormat().resolvedOptions()
 export const NotificationToggleButton = ({ tripId, tripHasStartDate, className }: NotificationToggleButtonProps) => {
   const { isSubscribed, isLoading, subscribe, unsubscribe, sendTest } = useTripSubscription(tripId);
   const [iosDialogOpen, setIosDialogOpen] = useState(false);
+  // useTripSubscription.isLoading は SWR GET の状態しか反映しないため、click 起因の
+  // permission リクエスト / SW 登録 / FCM token 取得 / subscribe API の待ち時間を
+  // カバーできない。ここで独自に click-in-flight state を持ってスピナー & 連打防止する。
+  const [isPending, setIsPending] = useState(false);
   const confirm = useConfirm();
 
   const handleTestSend = useCallback(async () => {
@@ -86,9 +90,10 @@ export const NotificationToggleButton = ({ tripId, tripHasStartDate, className }
   }, [sendTest]);
 
   const handleClick = useCallback(async () => {
-    if (tripId == null) return;
+    if (tripId == null || isPending) return;
 
     if (isSubscribed) {
+      setIsPending(true);
       try {
         const fcmToken = await fetchFcmToken();
         if (fcmToken == null) {
@@ -101,6 +106,8 @@ export const NotificationToggleButton = ({ tripId, tripHasStartDate, className }
         toast.error('通知を解除できませんでした', {
           description: '時間を置いて再度お試しください',
         });
+      } finally {
+        setIsPending(false);
       }
       return;
     }
@@ -130,6 +137,7 @@ export const NotificationToggleButton = ({ tripId, tripHasStartDate, className }
       if (!confirmed) return;
     }
 
+    setIsPending(true);
     try {
       const permission = await requestNotificationPermission();
       if (permission === 'denied') {
@@ -173,19 +181,22 @@ export const NotificationToggleButton = ({ tripId, tripHasStartDate, className }
       toast.error('通知を有効にできませんでした', {
         description: err instanceof Error && err.message ? err.message : '設定などをご確認ください',
       });
+    } finally {
+      setIsPending(false);
     }
-  }, [tripId, isSubscribed, tripHasStartDate, subscribe, unsubscribe, confirm, handleTestSend]);
+  }, [tripId, isPending, isSubscribed, tripHasStartDate, subscribe, unsubscribe, confirm, handleTestSend]);
 
   // Web Push 非対応ブラウザではボタン自体を出さない (macOS Safari 非 PWA / insecure context 等)。
   // iOS Safari (未 install) は Notification API は生えている前提でここでは弾かず、
   // click 時に needsIOSInstallForNotification() で install 誘導ダイアログへ回す。
   if (!isNotificationSupported()) return null;
 
+  const showLoading = isLoading || isPending;
   return (
     <NotificationToggleButtonView
       isSubscribed={isSubscribed}
-      isLoading={isLoading}
-      disabled={tripId == null || isLoading}
+      isLoading={showLoading}
+      disabled={tripId == null || showLoading}
       onToggleClick={handleClick}
       iosDialogOpen={iosDialogOpen}
       onIosDialogOpenChange={setIosDialogOpen}

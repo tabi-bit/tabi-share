@@ -17,7 +17,7 @@ export const useForegroundNotificationToast = () => {
     let cancelled = false;
 
     subscribeForegroundMessages(async payload => {
-      const { title, body, tripId, urlId, blockId } = payload;
+      const { title, body, tripId, urlId, blockId, icon } = payload;
       if (!title) return;
       if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
 
@@ -30,8 +30,12 @@ export const useForegroundNotificationToast = () => {
       // renotify: true は置換時に vibrate/sound を再アラート (iOS では best-effort)。
       // renotify は lib.dom.d.ts の NotificationOptions に含まれない (Chrome/Android で有効な拡張) ため、
       // 型を拡張してキャストする。
+      // badge は Firebase Web SDK が payload に載せてこないので frontend で hardcode
+      // (全通知共通の紙飛行機シルエット、docs/notifications.md §5)。icon は payload 由来。
       const options: NotificationOptions & { renotify?: boolean } = {
         body,
+        icon,
+        badge: '/icons/notify/badge.png',
         data: { tripId, urlId, blockId, link: urlId ? `/trip/${urlId}${focusParam}` : undefined },
         tag: tripId ? `trip-${tripId}` : undefined,
         renotify: tripId !== undefined,

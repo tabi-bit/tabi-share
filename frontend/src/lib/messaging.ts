@@ -62,6 +62,7 @@ export type ForegroundNotificationHandler = (payload: {
   blockId?: string;
   title?: string;
   body?: string;
+  icon?: string;
 }) => void;
 
 const noopUnsubscribe = (): void => undefined;
@@ -77,6 +78,9 @@ export const subscribeForegroundMessages = async (handler: ForegroundNotificatio
       blockId: message.data?.blockId,
       title: message.notification?.title,
       body: message.notification?.body,
+      // Firebase Web SDK は badge を NotificationPayload に含めない (0.13.0 時点)。
+      // badge は全通知共通なので showNotification 側で hardcode する。
+      icon: message.notification?.icon,
     });
   });
 };

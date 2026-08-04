@@ -57,6 +57,7 @@ export const fetchFcmToken = async (): Promise<string | null> => {
 };
 
 export type ForegroundNotificationHandler = (payload: {
+  tripId?: string;
   urlId?: string;
   blockId?: string;
   title?: string;
@@ -71,6 +72,7 @@ export const subscribeForegroundMessages = async (handler: ForegroundNotificatio
   const messaging = getMessaging(getFirebaseApp());
   return onMessage(messaging, message => {
     handler({
+      tripId: message.data?.tripId,
       urlId: message.data?.urlId,
       blockId: message.data?.blockId,
       title: message.notification?.title,

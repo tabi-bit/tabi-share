@@ -18,6 +18,11 @@ from app.schemas.notification import DeviceSubscriptionCreate
 
 _KIND_BEFORE = "before_5min"
 
+# 通知 body に載せる後続予定の上限件数 (docs/notifications.md §5)。
+# プラットフォーム別の body 長 (iOS ~4 行 / Chrome Win 4 行 / Safari macOS 121 chars) を踏まえ、
+# 現在予定 (1 行) + 場所行 (1 行) + 後続 2 件 = 4 行 body で iOS の展開に fit する件数。
+_MAX_UPCOMING_BLOCKS = 2
+
 
 async def upsert_subscription(
     db: AsyncSession,
@@ -183,8 +188,11 @@ class NotificationCandidate:
     fcm_token: str
     minutes_before: int
     timezone: str
+    trip_id: int
     trip_url_id: str
-    trip_title: str
+    # 同一 page 内で next block の後に来る予定 (絶対 UTC + block_title)。
+    # rolling next indicator (docs/notifications.md §5) 表示用。空なら省略。
+    upcoming_blocks: list[tuple[datetime, str]]
 
 
 def _compose_absolute_start(
@@ -236,14 +244,15 @@ async def list_notification_candidates(db: AsyncSession) -> list[NotificationCan
             Block.block_type.label("block_type"),
             Block.transportation_type.label("transportation_type"),
             Block.start_time.label("start_time"),
+            Block.page_id.label("page_id"),
             Block.location_id,
             Block.destination_location_id,
             Page.date.label("page_date"),
             DeviceSubscription.fcm_token.label("fcm_token"),
             DeviceSubscription.minutes_before.label("minutes_before"),
             DeviceSubscription.timezone.label("timezone"),
+            Trip.id.label("trip_id"),
             Trip.url_id.label("trip_url_id"),
-            Trip.title.label("trip_title"),
         )
         .select_from(Block)
         .join(Page, Block.page_id == Page.id)
@@ -299,6 +308,24 @@ async def list_notification_candidates(db: AsyncSession) -> list[NotificationCan
         ).all()
         location_name_map = {row.id: row.name for row in loc_rows}
 
+    # 後続予定 (docs/notifications.md §5) を組み立てるため、候補が属する page 内の
+    # 全 block を 1 クエリでまとめて取得し、Python 側で candidate 毎に絞り込む。
+    # N+1 を避けつつ実装は素朴に保つ (candidate は現実的に少数のため)。
+    page_ids = {r["page_id"] for r in filtered}
+    page_blocks_map: dict[int, list[tuple[int, datetime, str]]] = {}
+    if page_ids:
+        pb_rows = (
+            await db.execute(
+                select(Block.id, Block.page_id, Block.start_time, Block.title).where(
+                    Block.page_id.in_(page_ids)
+                )
+            )
+        ).all()
+        for row in pb_rows:
+            page_blocks_map.setdefault(row.page_id, []).append(
+                (row.id, row.start_time, row.title)
+            )
+
     return [
         NotificationCandidate(
             block_id=r["block_id"],
@@ -317,8 +344,45 @@ async def list_notification_candidates(db: AsyncSession) -> list[NotificationCan
             fcm_token=r["fcm_token"],
             minutes_before=r["minutes_before"],
             timezone=r["timezone"],
+            trip_id=r["trip_id"],
             trip_url_id=r["trip_url_id"],
-            trip_title=r["trip_title"],
+            upcoming_blocks=_collect_upcoming_blocks(
+                page_blocks=page_blocks_map.get(r["page_id"], []),
+                current_block_id=r["block_id"],
+                page_date=r["page_date"],
+                tz_name=r["timezone"],
+                after_utc=r["absolute_start"],
+            ),
         )
         for r in filtered
     ]
+
+
+def _collect_upcoming_blocks(
+    *,
+    page_blocks: list[tuple[int, datetime, str]],
+    current_block_id: int,
+    page_date: date,
+    tz_name: str,
+    after_utc: datetime,
+) -> list[tuple[datetime, str]]:
+    """same-page 内で candidate の絶対時刻より後にある block を絶対時刻順で上位 N 件返す。
+
+    - current_block_id は除外 (自身)
+    - Block.start_time の time-of-day のみ使い、Page.date + subscriber tz で絶対時刻化する
+      (docs/notifications.md §3 の不変条件)
+    - tz が不正な block は skip (candidate 自体が tz 検証済で残っている前提)
+    - 深夜またぎ block (Page.date=X で time=03:00 等) は「X 日の 03:00」として扱われるため、
+      絶対時刻順で見ると 22:00 の前に来ることがある。既存の Block.start_time モデルの
+      挙動に従うのみ (docs/notifications.md §5 参照)。
+    """
+    upcoming: list[tuple[datetime, str]] = []
+    for block_id, start_time, title in page_blocks:
+        if block_id == current_block_id:
+            continue
+        absolute = _compose_absolute_start(page_date, start_time, tz_name)
+        if absolute is None or absolute <= after_utc:
+            continue
+        upcoming.append((absolute, title))
+    upcoming.sort(key=lambda item: item[0])
+    return upcoming[:_MAX_UPCOMING_BLOCKS]

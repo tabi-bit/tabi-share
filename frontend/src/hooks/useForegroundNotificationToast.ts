@@ -17,7 +17,7 @@ export const useForegroundNotificationToast = () => {
     let cancelled = false;
 
     subscribeForegroundMessages(async payload => {
-      const { title, body, urlId, blockId } = payload;
+      const { title, body, tripId, urlId, blockId } = payload;
       if (!title) return;
       if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
 
@@ -25,11 +25,18 @@ export const useForegroundNotificationToast = () => {
       if (!registration) return;
 
       const focusParam = blockId ? `?focusBlock=${blockId}` : '';
-      await registration.showNotification(title, {
+      // tag は同一 trip の旧通知を置換する rolling next indicator。
+      // backend の WebpushNotification.tag と一致させる (docs/notifications.md §5b)。
+      // renotify: true は置換時に vibrate/sound を再アラート (iOS では best-effort)。
+      // renotify は lib.dom.d.ts の NotificationOptions に含まれない (Chrome/Android で有効な拡張) ため、
+      // 型を拡張してキャストする。
+      const options: NotificationOptions & { renotify?: boolean } = {
         body,
-        data: { urlId, blockId, link: urlId ? `/trip/${urlId}${focusParam}` : undefined },
-        tag: blockId ? `block-${blockId}` : undefined,
-      });
+        data: { tripId, urlId, blockId, link: urlId ? `/trip/${urlId}${focusParam}` : undefined },
+        tag: tripId ? `trip-${tripId}` : undefined,
+        renotify: tripId !== undefined,
+      };
+      await registration.showNotification(title, options);
     })
       .then(fn => {
         if (cancelled) fn();

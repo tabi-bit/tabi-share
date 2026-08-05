@@ -25,16 +25,10 @@ export const useForegroundNotificationToast = () => {
       if (!registration) return;
 
       const focusParam = blockId ? `?focusBlock=${blockId}` : '';
-      // tag は同一 trip の旧通知を置換する rolling next indicator。
-      // backend の WebpushNotification.tag と一致させる (docs/notifications.md §5b)。
-      // renotify: true は置換時に vibrate/sound を再アラート (iOS では best-effort)。
-      // renotify は lib.dom.d.ts の NotificationOptions に含まれない (Chrome/Android で有効な拡張) ため、
-      // 型を拡張してキャストする。
-      // badge は Firebase Web SDK が payload に載せてこないので frontend で hardcode
-      // (全通知共通の紙飛行機シルエット、docs/notifications.md §5)。icon は payload 由来。
-      // tag と renotify の判定条件を Boolean(tripId) に揃える。tripId='' の場合、tag は
-      // undefined になるが `renotify: tripId !== undefined` だと true になり、Web 仕様上
-      // tag なし + renotify=true は showNotification が TypeError で reject する。
+      // tag / renotify は docs §5b (backend の WebpushNotification.tag と一致)。renotify は
+      // lib.dom.d.ts の NotificationOptions に無い拡張なので型を拡張。tag なし + renotify=true は
+      // Web 仕様で TypeError になるため Boolean(tripId) で対称化する。
+      // badge は Firebase Web SDK が NotificationPayload に載せないため hardcode (docs §5)。
       const options: NotificationOptions & { renotify?: boolean } = {
         body,
         icon,

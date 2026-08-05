@@ -69,9 +69,8 @@ const getBrowserTimezone = (): string => Intl.DateTimeFormat().resolvedOptions()
 export const NotificationToggleButton = ({ tripId, tripHasStartDate, className }: NotificationToggleButtonProps) => {
   const { isSubscribed, isLoading, subscribe, unsubscribe, sendTest } = useTripSubscription(tripId);
   const [iosDialogOpen, setIosDialogOpen] = useState(false);
-  // useTripSubscription.isLoading は SWR GET の状態しか反映しないため、click 起因の
-  // permission リクエスト / SW 登録 / FCM token 取得 / subscribe API の待ち時間を
-  // カバーできない。ここで独自に click-in-flight state を持ってスピナー & 連打防止する。
+  // useTripSubscription.isLoading は SWR GET のみ反映で click 中の非同期処理をカバーできないため、
+  // ローカル pending state で spinner + 連打防止する。
   const [isPending, setIsPending] = useState(false);
   const confirm = useConfirm();
 

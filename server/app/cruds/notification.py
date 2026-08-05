@@ -18,9 +18,7 @@ from app.schemas.notification import DeviceSubscriptionCreate
 
 _KIND_BEFORE = "before_5min"
 
-# 通知 body に載せる後続予定の上限件数 (docs/notifications.md §5)。
-# プラットフォーム別の body 長 (iOS ~4 行 / Chrome Win 4 行 / Safari macOS 121 chars) を踏まえ、
-# 現在予定 (1 行) + 場所行 (1 行) + 後続 2 件 = 4 行 body で iOS の展開に fit する件数。
+# body に載せる upcoming block の上限。iOS 4 行制限に収まる件数 (docs §5)。
 _MAX_UPCOMING_BLOCKS = 2
 
 
@@ -190,9 +188,7 @@ class NotificationCandidate:
     timezone: str
     trip_id: int
     trip_url_id: str
-    # 同一 page 内で next block の後に来る予定 (絶対 UTC + block_title)。
-    # rolling next indicator (docs/notifications.md §5) 表示用。空なら省略。
-    upcoming_blocks: list[tuple[datetime, str]]
+    upcoming_blocks: list[tuple[datetime, str]]  # docs §5 の upcoming block (絶対 UTC, title)
 
 
 def _compose_absolute_start(
@@ -308,9 +304,7 @@ async def list_notification_candidates(db: AsyncSession) -> list[NotificationCan
         ).all()
         location_name_map = {row.id: row.name for row in loc_rows}
 
-    # 通知本文の後続予定 (page 単位、docs §5) と、延期判定 (trip 単位、tag=trip-{tripId}
-    # で cross-page 上書きを防ぐ、docs §5b) の両方に使う sibling block を 1 クエリで取得。
-    # Page.date を [今日 ±1 日] に絞り、subscriber tz 差による深夜またぎもカバーする。
+    # upcoming block (page 単位、docs §5) と延期判定 (trip 単位、docs §5b) 双方に使う sibling を 1 クエリで取得。
     trip_ids = {r["trip_id"] for r in filtered}
     trip_blocks_map: dict[int, list[tuple[int, date, datetime, str]]] = {}
     page_blocks_map: dict[int, list[tuple[int, datetime, str]]] = {}
@@ -342,11 +336,7 @@ async def list_notification_candidates(db: AsyncSession) -> list[NotificationCan
                 (row.id, row.start_time, row.title)
             )
 
-    # rolling next tag=trip-{tripId} は同一 trip の旧通知を置換するため、A (01:00) より
-    # 先に B (01:02) の通知を送ると A の 5 分前通知が start 前に消える。同一 trip に
-    # candidate より早い upcoming block (cross-page 含む) が未 start なら候補送信を
-    # 後 tick に延期する (docs/notifications.md §5b)。A が start すれば次 tick で
-    # earliest 判定から抜け、B が新たな next として送信される。
+    # 延期 heuristic (docs §5b): earlier upcoming があれば rolling next tag の上書きを避けるため後 tick に延期。
     filtered = [
         r
         for r in filtered
@@ -402,18 +392,9 @@ def _has_earlier_upcoming_in_same_trip(
     candidate_absolute_start: datetime,
     now_utc: datetime,
 ) -> bool:
-    """same-trip 内に「now より未来かつ candidate より前」の block が存在するかを返す。
+    """candidate より前に start する未 start block (earlier upcoming) が同 trip にあれば True (docs §5b)。
 
-    True なら candidate は「earlier upcoming」を持つため、rolling next tag=trip-{tripId}
-    の上書きで先行通知が消えることを防ぐために candidate の送信を後 tick に延期すべき。
-
-    tag が trip 単位なので判定も trip 単位。cross-page (日跨ぎ等) でも tag は共通なため、
-    同一 trip の別 page block も earlier upcoming の対象とする。
-
-    - candidate 自身は除外
-    - tz が不正な block は skip
-    - 同一時刻 (`b_abs == candidate_absolute_start`) は「earlier」に含めない (同時刻の
-      複数 block は上書き競合するが、現状の設計では受容 = 最後着が残る)
+    同時刻 (`b_abs == candidate_absolute_start`) は含めない (上書き競合は受容、docs §5b)。
     """
     for bid, page_date, start_time, _title in trip_blocks:
         if bid == candidate_block_id:
@@ -434,18 +415,9 @@ def _collect_upcoming_blocks(
     tz_name: str,
     after_utc: datetime,
 ) -> list[tuple[datetime, str]]:
-    """same-page 内で candidate の絶対時刻より後 (or 同時刻の他 block) を絶対時刻順で上位 N 件返す。
+    """same-page 内で `after_utc` 以降の block を絶対時刻順で上位 N 件返す (docs §5 の upcoming block)。
 
-    - current_block_id は除外 (自身)
-    - Block.start_time の time-of-day のみ使い、Page.date + subscriber tz で絶対時刻化する
-      (docs/notifications.md §3 の不変条件)
-    - tz が不正な block は skip (candidate 自体が tz 検証済で残っている前提)
-    - **同時刻の他 block は含める**: end_time null と duration あり block 等で同一 start_time
-      は実運用で発生する。同時刻 A/B は同一 tag で片方だけが表示されるが、勝者側の body に
-      他方が upcoming として現れることで情報損失を防ぐ (docs/notifications.md §5b)。
-    - 深夜またぎ block (Page.date=X で time=03:00 等) は「X 日の 03:00」として扱われるため、
-      絶対時刻順で見ると 22:00 の前に来ることがある。既存の Block.start_time モデルの
-      挙動に従うのみ (docs/notifications.md §5 参照)。
+    同時刻の他 block も含める (上書き競合時の情報損失を防ぐ、docs §5b)。
     """
     upcoming: list[tuple[datetime, str]] = []
     for block_id, start_time, title in page_blocks:

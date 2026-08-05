@@ -161,6 +161,18 @@ tick が 60 秒を超えると次 tick と重なる。閾値と対処:
 
 ## 5. 通知内容フォーマット
 
+### 用語
+
+| 用語 | 説明 |
+|---|---|
+| **candidate** | tick で FCM 送信対象と判定された `(block, subscription)` 結合行。cruds の `NotificationCandidate` |
+| **next block** | candidate の block。通知 Title / Body 1 行目に表示される「現在アラート予定」 |
+| **upcoming block (後続予定)** | Body 3 行目以降に載せる、同一 page 内で next block の絶対時刻**以降**の block (最大 2 件)。関数 `_collect_upcoming_blocks` |
+| **earlier upcoming** | §5b の延期判定で「同一 trip 内で candidate より**前**に start 予定の未 start block」。関数 `_has_earlier_upcoming_in_same_trip` |
+| **rolling next indicator** | `tag=trip-{tripId}` で trip 内の通知を 1 通に集約する設計思想 (§5b) |
+
+### 例
+
 ```text
 [Schedule (event/stay) — location あり、後続 2 件あり]
   Title:  next 昼食

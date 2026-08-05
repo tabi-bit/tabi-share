@@ -78,8 +78,7 @@ export const subscribeForegroundMessages = async (handler: ForegroundNotificatio
       blockId: message.data?.blockId,
       title: message.notification?.title,
       body: message.notification?.body,
-      // Firebase Web SDK は badge を NotificationPayload に含めない (0.13.0 時点)。
-      // badge は全通知共通なので showNotification 側で hardcode する。
+      // NotificationPayload に badge は無い (0.13.0)。呼び出し側で hardcode。
       icon: message.notification?.icon,
     });
   });

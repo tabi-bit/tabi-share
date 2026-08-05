@@ -17,7 +17,7 @@ export const useForegroundNotificationToast = () => {
     let cancelled = false;
 
     subscribeForegroundMessages(async payload => {
-      const { title, body, tripId, urlId, blockId, icon } = payload;
+      const { title, body, kind, tripId, urlId, blockId, icon } = payload;
       if (!title) return;
       if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
 
@@ -25,17 +25,16 @@ export const useForegroundNotificationToast = () => {
       if (!registration) return;
 
       const focusParam = blockId ? `?focusBlock=${blockId}` : '';
-      // tag / renotify は docs §5b (backend の WebpushNotification.tag と一致)。renotify は
-      // lib.dom.d.ts の NotificationOptions に無い拡張なので型を拡張。tag なし + renotify=true は
-      // Web 仕様で TypeError になるため Boolean(tripId) で対称化する。
-      // badge は Firebase Web SDK が NotificationPayload に載せないため hardcode (docs §5)。
+      // tag / renotify / badge は docs §5b / §5。renotify は lib.dom.d.ts に無い拡張なので型を拡張。
+      // tag prefix は kind に追従: test 送信は test-{tripId} で本運用 trip-{tripId} と分離。
+      const tag = tripId ? `${kind === 'test' ? 'test' : 'trip'}-${tripId}` : undefined;
       const options: NotificationOptions & { renotify?: boolean } = {
         body,
         icon,
         badge: '/icons/notify/badge.png',
-        data: { tripId, urlId, blockId, link: urlId ? `/trip/${urlId}${focusParam}` : undefined },
-        tag: tripId ? `trip-${tripId}` : undefined,
-        renotify: Boolean(tripId),
+        data: { kind, tripId, urlId, blockId, link: urlId ? `/trip/${urlId}${focusParam}` : undefined },
+        tag,
+        renotify: Boolean(tag),
       };
       await registration.showNotification(title, options);
     })

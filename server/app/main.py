@@ -25,6 +25,7 @@ from app.observability import setup_observability
 from .routers import (
     auth as auth_router,
     blocks,
+    me,
     notification,
     notification_internal,
     pages,
@@ -115,6 +116,7 @@ app.include_router(trips.router)
 app.include_router(pages.router)
 app.include_router(blocks.router)
 app.include_router(auth_router.router)
+app.include_router(me.router)
 app.include_router(notification.router)
 app.include_router(notification_internal.router)
 

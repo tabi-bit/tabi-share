@@ -6,6 +6,7 @@ from datetime import date, datetime
 
 from sqlalchemy import (
     BigInteger,
+    Boolean,
     CheckConstraint,
     Connection,
     Date,
@@ -311,6 +312,114 @@ class SentNotification(Base):
         server_default=func.now(),
         nullable=False,
         comment="送信ロックを取得した時刻",
+    )
+
+
+class User(Base):
+    """認可のための user 概念。
+
+    Cookie 発行時に匿名 user として自動作成される。Firebase Auth 認証時に
+    firebase_uid が埋められて認証済み user に昇格する。認可判定は常に
+    user_trip_access を参照するため、認証・未認証の分岐は user レコードの
+    firebase_uid が NULL かどうかだけに集約される。
+    """
+
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    firebase_uid: Mapped[str | None] = mapped_column(
+        String(128),
+        nullable=True,
+        unique=True,
+        comment="Firebase Authentication UID（匿名 user は NULL）",
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+        comment="作成日時",
+    )
+
+
+class UserSession(Base):
+    """Cookie に載る不透明トークンで識別されるデバイスセッション。
+
+    テーブル名は業界慣習に沿って sessions。Python クラス名は
+    sqlalchemy.orm.Session との衝突回避のため UserSession とする。
+    """
+
+    __tablename__ = "sessions"
+
+    id: Mapped[str] = mapped_column(
+        String(32),
+        primary_key=True,
+        comment="Cookie に載る session_id（不透明トークン）",
+    )
+    user_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+        comment="紐付く user",
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+        comment="作成日時",
+    )
+    last_seen_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+        comment="最終アクセス日時",
+    )
+
+
+class UserTripAccess(Base):
+    """user × trip のアクセス権と一覧上のアーカイブ状態。
+
+    サロゲートキー id を PK とし、(user_id, trip_id) を UNIQUE 制約に置く。
+    並列付与の race は INSERT ... ON CONFLICT DO NOTHING (unique 制約経由) で
+    idempotent 化する (旧来の trip_ids 配列 JWT が read-modify-write で抱えていた
+    問題を根本解決)。将来カラム追加や個別参照が生じた際に扱いやすい構成。
+    """
+
+    __tablename__ = "user_trip_access"
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id",
+            "trip_id",
+            name="uq_user_trip_access_user_id_trip_id",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+        comment="アクセス権を持つ user",
+    )
+    trip_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("trips.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+        comment="アクセス可能な trip",
+    )
+    archived: Mapped[bool] = mapped_column(
+        Boolean,
+        server_default=text("false"),
+        nullable=False,
+        comment="一覧からアーカイブされたか",
+    )
+    granted_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+        comment="アクセス権を得た日時",
     )
 
 

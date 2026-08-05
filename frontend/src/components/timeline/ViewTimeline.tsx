@@ -50,43 +50,49 @@ interface ViewTimelineProps {
 
 // --- グループ化 ---
 
-/** 同一 startTime のブロックを OverlapGroup にまとめる */
-export const groupByStartTime = (sortedBlocks: Block[]): OverlapGroup[] => {
-  if (sortedBlocks.length === 0) return [];
-
-  const groups: OverlapGroup[] = [];
-  let i = 0;
-
-  while (i < sortedBlocks.length) {
-    const startMs = sortedBlocks[i].startTime.getTime();
-    const groupBlocks: Block[] = [sortedBlocks[i]];
-    i++;
-
-    // 同じ startTime のブロックを集める
-    while (i < sortedBlocks.length && sortedBlocks[i].startTime.getTime() === startMs) {
-      groupBlocks.push(sortedBlocks[i]);
-      i++;
-    }
-
-    // headerBlock: endTime === null のブロック（最初の1つ）
-    const headerBlock = groupBlocks.find(b => b.endTime === null) ?? null;
-    const containerBlocks = headerBlock ? groupBlocks.filter(b => b !== headerBlock) : groupBlocks;
-
-    // groupEnd: endTime を持つブロックの中で最も遅い endTime
-    const endTimes = groupBlocks.map(b => b.endTime?.getTime()).filter((t): t is number => t != null);
-    const groupEnd = endTimes.length > 0 ? new Date(Math.max(...endTimes)) : null;
-
-    groups.push({
-      blocks: groupBlocks,
-      headerBlock,
-      containerBlocks,
-      groupStart: sortedBlocks[i - 1].startTime, // 全て同じ startTime
-      groupEnd,
-    });
-  }
-
-  return groups;
+/**
+ * 時間帯が重なるブロックを OverlapGroup にまとめる (sweep-line)。
+ * - 判定は「次ブロックの startTime が running max endTime より前」か「groupStart と一致」。
+ *   → 完全一致 (同時刻開始) と包含 (長いブロックの内側で開始) を同じロジックで扱う。
+ * - groupEnd が null (headerBlock のみで開始) の場合は完全一致のみ merge する。
+ * - グループの opener が endTime=null の場合、その opener を headerBlock としてコンテナ外に描画。
+ *   後発 (mid-group) の endTime=null は containerBlocks 側に置く。
+ */
+const shouldMergeIntoGroup = (group: OverlapGroup, block: Block): boolean => {
+  const startMs = block.startTime.getTime();
+  return startMs === group.groupStart.getTime() || (group.groupEnd !== null && startMs < group.groupEnd.getTime());
 };
+
+const openGroup = (block: Block): OverlapGroup => {
+  const isHeader = block.endTime === null;
+  return {
+    blocks: [block],
+    headerBlock: isHeader ? block : null,
+    containerBlocks: isHeader ? [] : [block],
+    groupStart: block.startTime,
+    groupEnd: block.endTime,
+  };
+};
+
+const extendGroup = (group: OverlapGroup, block: Block): void => {
+  group.blocks.push(block);
+  group.containerBlocks.push(block);
+  const endMs = block.endTime?.getTime();
+  if (endMs !== undefined && (group.groupEnd === null || endMs > group.groupEnd.getTime())) {
+    group.groupEnd = new Date(endMs);
+  }
+};
+
+export const groupOverlappingBlocks = (sortedBlocks: Block[]): OverlapGroup[] =>
+  sortedBlocks.reduce<OverlapGroup[]>((groups, block) => {
+    const last = groups.length > 0 ? groups[groups.length - 1] : null;
+    if (last && shouldMergeIntoGroup(last, block)) {
+      extendGroup(last, block);
+    } else {
+      groups.push(openGroup(block));
+    }
+    return groups;
+  }, []);
 
 // --- NOW 判定ヘルパー ---
 
@@ -205,7 +211,7 @@ export const buildTimelineItems = (groups: OverlapGroup[], now: Date | null = nu
 export function ViewTimeline({ blocks, pageDate, now, className }: ViewTimelineProps) {
   // React Compiler が pageDate/now/blocks 変化時のみ再計算するようメモ化する
   const effectiveNow = pageDate && now && isSameLocalDate(pageDate, now) ? now : null;
-  const groups = groupByStartTime(sortBlocks(blocks));
+  const groups = groupOverlappingBlocks(sortBlocks(blocks));
   const timelineItems = buildTimelineItems(groups, effectiveNow);
 
   return (

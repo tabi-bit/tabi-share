@@ -162,6 +162,45 @@ export const OverlappingNoNull: Story = {
   },
 };
 
+/** issue #220: 長いブロックの区間内で別ブロックが始まるケース (containment) */
+export const OverlappingContainment: Story = {
+  args: {
+    blocks: [
+      {
+        id: 1,
+        type: 'transportation',
+        transportationType: 'car',
+        title: '車移動',
+        startTime: new Date(2024, 0, 1, 10, 0),
+        endTime: new Date(2024, 0, 1, 14, 0),
+        detail: '休憩 1時間込み',
+        pageId: 1,
+        location: null,
+        destinationLocation: null,
+      },
+      {
+        id: 2,
+        type: 'schedule',
+        title: '天満橋着',
+        startTime: new Date(2024, 0, 1, 10, 30),
+        endTime: null,
+        pageId: 1,
+        location: null,
+      },
+      {
+        id: 3,
+        type: 'schedule',
+        title: 'ガラス美術館',
+        startTime: new Date(2024, 0, 1, 15, 0),
+        endTime: new Date(2024, 0, 1, 16, 45),
+        pageId: 1,
+        location: null,
+      },
+    ] satisfies Block[],
+    type: 'view',
+  },
+};
+
 /** ケース3: グループ + gap + 単独ブロック */
 export const OverlappingWithGap: Story = {
   args: {

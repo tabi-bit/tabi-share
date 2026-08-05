@@ -88,7 +88,7 @@ CREATE INDEX idx_blocks_start_time ON blocks(start_time);
 ```sql
 -- DB は Page.date で粗く絞るだけ (±1 日)。Block.start_time の time-of-day を
 -- Page.date + subscriber TZ で組み立てる細かい window 判定は Python 側で行う。
-SELECT b.*, p.date, s.fcm_token, s.minutes_before, s.timezone, t.url_id, t.title
+SELECT b.*, p.date, s.fcm_token, s.minutes_before, s.timezone, t.id, t.url_id
 FROM blocks b
   JOIN pages p ON b.page_id = p.id
   JOIN trips t ON p.trip_id = t.id
@@ -219,9 +219,15 @@ tick が 60 秒を超えると次 tick と重なる。閾値と対処:
   - テスト送信: `test-{tripId}` (本運用と分離、テスト後に本運用通知で消えないため)
   - `tripId` は数値 PK。frontend foreground toast の payload にも `tripId` を含めて同じ tag を組む
 - **renotify**: `true` (置換時に vibrate/sound を再アラート、iOS では best-effort)
+- **延期 heuristic** (`_has_earlier_upcoming_in_same_trip`): tag が trip 単位のため、A@01:00 の 5 分前通知が届いた直後に B@01:02 の 5 分前通知が送られると B が A を start 前に上書きしてしまう。これを防ぐため、tick で candidate 送信前に「同一 trip 内に `now < absolute_start < candidate.absolute_start` の block が存在するか」を判定し、存在すれば candidate を **後 tick に延期**する。
+  - 判定は **trip スコープ** (cross-page 含む)。tag=trip-{tripId} で cross-page も同じ通知として集約されるため、判定単位も一致させる。日跨ぎ (23:58 → 00:01) や long `minutes_before` 購読でも安全
+  - 先行 block が start する (`absolute_start <= now`) と次 tick で earliest 判定から抜け、candidate が送信可能になる
+  - 先行 block の body には後続予定として candidate が upcoming で載っているため、ユーザは先行通知を見た時点で候補予定の存在を認識できる (rolling next 思想と整合)
+  - **trade-off**: gap が tick 間隔 (1 分) 以下で scheduler jitter や tick 1 回のスキップが重なると、candidate が無送信・無ログで消失しうる (実運用で希、無対応)
 - **既知制約**:
   - **iOS Safari (PWA) の renotify は仕様準拠でない可能性**: renotify が効かなくても tag による置換は効くので、silent replace 相当になる (docs §6 参照)
-  - **同 tick 内で複数 block を並行送信した際の FCM 順序逆転**: 同 tag で古い通知が最終表示される可能性 (実運用で稀、無対応)
+  - **同時刻 block の順序逆転**: 同一 trip 内の同時刻 A/B は延期対象に含めず両方送信するため、FCM 配送順で「main」がどちらになるかは非決定的 (ただし body に他方が upcoming で載るので情報損失はゼロ、docs §5 参照)
+  - **cross-tick 順序逆転**: 遅い tick (60 秒超) の送信が次 tick の送信を後追いして、古い通知が新しい通知を上書きする可能性 (稀、`elapsed_ms >= 45000` の warning で検知)
   - **プラットフォーム別 body 長制限**: iOS ~4 行 / Chrome Windows 4 行 / Firefox macOS 50 chars 等で末尾が切れる。設計は先頭に大事な情報 (block 名 / 場所) を配置してこれを許容
   - **未タップの古い block 通知は消える**: 「見逃した予定への気付き」は失われる (rolling next の思想上の trade-off)
   - **`kind` 将来拡張時 (例 `at_start`)**: 同一 trip tag で置換されるため、`before_5min` と `at_start` が同時期に来ると片方が消える (対応は拡張時に再検討)

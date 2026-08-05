@@ -123,22 +123,22 @@ def test_collect_upcoming_returns_empty_for_invalid_tz() -> None:
     assert result == []
 
 
-class TestHasEarlierUpcomingInSamePage:
-    """A@01:00 / B@01:02 の rolling next 上書きバグ対策の heuristic。"""
+class TestHasEarlierUpcomingInSameTrip:
+    """A@01:00 / B@01:02 (same page) や 23:58/00:01 (cross page) の rolling next 上書き対策。"""
 
+    # trip_blocks の tuple 形式: (block_id, page_date, start_time, title)
     @staticmethod
-    def _page_blocks() -> list[tuple[int, datetime, str]]:
-        # time-of-day で 01:00 と 01:02 の 2 block
+    def _same_page_blocks() -> list[tuple[int, date, datetime, str]]:
+        d = date(2026, 8, 5)
         return [
-            (10, datetime(2000, 1, 1, 1, 0, tzinfo=UTC), "A"),
-            (11, datetime(2000, 1, 1, 1, 2, tzinfo=UTC), "B"),
+            (10, d, datetime(2000, 1, 1, 1, 0, tzinfo=UTC), "A"),  # A@01:00
+            (11, d, datetime(2000, 1, 1, 1, 2, tzinfo=UTC), "B"),  # B@01:02
         ]
 
     def test_true_when_earlier_block_is_still_upcoming(self) -> None:
         """00:57 時点で B の候補判定: A (01:00) はまだ start 前 → B は延期"""
-        result = notif_cruds._has_earlier_upcoming_in_same_page(
-            page_blocks=self._page_blocks(),
-            page_date=date(2026, 8, 5),
+        result = notif_cruds._has_earlier_upcoming_in_same_trip(
+            trip_blocks=self._same_page_blocks(),
             tz_name="UTC",
             candidate_block_id=11,  # B
             candidate_absolute_start=datetime(2026, 8, 5, 1, 2, tzinfo=UTC),
@@ -148,9 +148,8 @@ class TestHasEarlierUpcomingInSamePage:
 
     def test_false_when_earlier_block_has_started(self) -> None:
         """01:00 時点で B の候補判定: A の absolute_start は now と同時刻 → 「earlier upcoming」ではない → B 送信"""
-        result = notif_cruds._has_earlier_upcoming_in_same_page(
-            page_blocks=self._page_blocks(),
-            page_date=date(2026, 8, 5),
+        result = notif_cruds._has_earlier_upcoming_in_same_trip(
+            trip_blocks=self._same_page_blocks(),
             tz_name="UTC",
             candidate_block_id=11,
             candidate_absolute_start=datetime(2026, 8, 5, 1, 2, tzinfo=UTC),
@@ -160,9 +159,8 @@ class TestHasEarlierUpcomingInSamePage:
 
     def test_false_for_earliest_candidate(self) -> None:
         """00:55 時点で A の候補判定: A より早い block は存在しない → A 送信"""
-        result = notif_cruds._has_earlier_upcoming_in_same_page(
-            page_blocks=self._page_blocks(),
-            page_date=date(2026, 8, 5),
+        result = notif_cruds._has_earlier_upcoming_in_same_trip(
+            trip_blocks=self._same_page_blocks(),
             tz_name="UTC",
             candidate_block_id=10,  # A
             candidate_absolute_start=datetime(2026, 8, 5, 1, 0, tzinfo=UTC),
@@ -172,9 +170,9 @@ class TestHasEarlierUpcomingInSamePage:
 
     def test_false_when_only_candidate_itself(self) -> None:
         """自身のみが upcoming → 延期しない"""
-        result = notif_cruds._has_earlier_upcoming_in_same_page(
-            page_blocks=[(10, datetime(2000, 1, 1, 1, 0, tzinfo=UTC), "A")],
-            page_date=date(2026, 8, 5),
+        d = date(2026, 8, 5)
+        result = notif_cruds._has_earlier_upcoming_in_same_trip(
+            trip_blocks=[(10, d, datetime(2000, 1, 1, 1, 0, tzinfo=UTC), "A")],
             tz_name="UTC",
             candidate_block_id=10,
             candidate_absolute_start=datetime(2026, 8, 5, 1, 0, tzinfo=UTC),
@@ -184,13 +182,13 @@ class TestHasEarlierUpcomingInSamePage:
 
     def test_false_when_same_start_time(self) -> None:
         """同一時刻 (A=B=01:00) は「earlier upcoming」に含めない (競合は受容、docstring 参照)"""
-        page_blocks = [
-            (10, datetime(2000, 1, 1, 1, 0, tzinfo=UTC), "A"),
-            (11, datetime(2000, 1, 1, 1, 0, tzinfo=UTC), "B"),
+        d = date(2026, 8, 5)
+        trip_blocks = [
+            (10, d, datetime(2000, 1, 1, 1, 0, tzinfo=UTC), "A"),
+            (11, d, datetime(2000, 1, 1, 1, 0, tzinfo=UTC), "B"),
         ]
-        result = notif_cruds._has_earlier_upcoming_in_same_page(
-            page_blocks=page_blocks,
-            page_date=date(2026, 8, 5),
+        result = notif_cruds._has_earlier_upcoming_in_same_trip(
+            trip_blocks=trip_blocks,
             tz_name="UTC",
             candidate_block_id=11,
             candidate_absolute_start=datetime(2026, 8, 5, 1, 0, tzinfo=UTC),
@@ -200,13 +198,13 @@ class TestHasEarlierUpcomingInSamePage:
 
     def test_ignores_past_blocks(self) -> None:
         """既に start した block は「earlier upcoming」でない (now より過去)"""
-        page_blocks = [
-            (10, datetime(2000, 1, 1, 0, 0, tzinfo=UTC), "past"),  # 00:00 (過去)
-            (11, datetime(2000, 1, 1, 1, 2, tzinfo=UTC), "B"),
+        d = date(2026, 8, 5)
+        trip_blocks = [
+            (10, d, datetime(2000, 1, 1, 0, 0, tzinfo=UTC), "past"),  # 00:00 (過去)
+            (11, d, datetime(2000, 1, 1, 1, 2, tzinfo=UTC), "B"),
         ]
-        result = notif_cruds._has_earlier_upcoming_in_same_page(
-            page_blocks=page_blocks,
-            page_date=date(2026, 8, 5),
+        result = notif_cruds._has_earlier_upcoming_in_same_trip(
+            trip_blocks=trip_blocks,
             tz_name="UTC",
             candidate_block_id=11,
             candidate_absolute_start=datetime(2026, 8, 5, 1, 2, tzinfo=UTC),
@@ -215,13 +213,32 @@ class TestHasEarlierUpcomingInSamePage:
         assert result is False
 
     def test_ignores_invalid_tz_blocks(self) -> None:
-        page_blocks = [(10, datetime(2000, 1, 1, 1, 0, tzinfo=UTC), "A")]
-        result = notif_cruds._has_earlier_upcoming_in_same_page(
-            page_blocks=page_blocks,
-            page_date=date(2026, 8, 5),
+        d = date(2026, 8, 5)
+        trip_blocks = [(10, d, datetime(2000, 1, 1, 1, 0, tzinfo=UTC), "A")]
+        result = notif_cruds._has_earlier_upcoming_in_same_trip(
+            trip_blocks=trip_blocks,
             tz_name="Not/A_Real_TZ",
             candidate_block_id=11,
             candidate_absolute_start=datetime(2026, 8, 5, 1, 2, tzinfo=UTC),
             now_utc=datetime(2026, 8, 5, 0, 57, tzinfo=UTC),
         )
         assert result is False
+
+    def test_true_cross_page_earlier_upcoming(self) -> None:
+        """cross-page: Page A (23:58) と Page B 翌日 (00:01) の候補判定。
+
+        23:56 tick で B の絶対時刻 = 2026-08-06 00:01 UTC。同じ trip の A (2026-08-05 23:58 UTC)
+        は now < A.abs < B.abs を満たす earlier upcoming → B は延期。
+        """
+        trip_blocks = [
+            (10, date(2026, 8, 5), datetime(2000, 1, 1, 23, 58, tzinfo=UTC), "A"),
+            (11, date(2026, 8, 6), datetime(2000, 1, 1, 0, 1, tzinfo=UTC), "B"),
+        ]
+        result = notif_cruds._has_earlier_upcoming_in_same_trip(
+            trip_blocks=trip_blocks,
+            tz_name="UTC",
+            candidate_block_id=11,
+            candidate_absolute_start=datetime(2026, 8, 6, 0, 1, tzinfo=UTC),
+            now_utc=datetime(2026, 8, 5, 23, 56, tzinfo=UTC),
+        )
+        assert result is True

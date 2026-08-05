@@ -308,35 +308,50 @@ async def list_notification_candidates(db: AsyncSession) -> list[NotificationCan
         ).all()
         location_name_map = {row.id: row.name for row in loc_rows}
 
-    # 後続予定 (docs/notifications.md §5) を組み立てるため、候補が属する page 内の
-    # 全 block を 1 クエリでまとめて取得し、Python 側で candidate 毎に絞り込む。
-    # N+1 を避けつつ実装は素朴に保つ (candidate は現実的に少数のため)。
-    page_ids = {r["page_id"] for r in filtered}
+    # 通知本文の後続予定 (page 単位、docs §5) と、延期判定 (trip 単位、tag=trip-{tripId}
+    # で cross-page 上書きを防ぐ、docs §5b) の両方に使う sibling block を 1 クエリで取得。
+    # Page.date を [今日 ±1 日] に絞り、subscriber tz 差による深夜またぎもカバーする。
+    trip_ids = {r["trip_id"] for r in filtered}
+    trip_blocks_map: dict[int, list[tuple[int, date, datetime, str]]] = {}
     page_blocks_map: dict[int, list[tuple[int, datetime, str]]] = {}
-    if page_ids:
-        pb_rows = (
+    if trip_ids:
+        tb_rows = (
             await db.execute(
-                select(Block.id, Block.page_id, Block.start_time, Block.title).where(
-                    Block.page_id.in_(page_ids)
+                select(
+                    Block.id,
+                    Block.page_id,
+                    Page.trip_id,
+                    Page.date.label("page_date"),
+                    Block.start_time,
+                    Block.title,
+                )
+                .join(Page, Block.page_id == Page.id)
+                .where(
+                    Page.trip_id.in_(trip_ids),
+                    Page.date.is_not(None),
+                    Page.date >= date_lower,
+                    Page.date <= date_upper,
                 )
             )
         ).all()
-        for row in pb_rows:
+        for row in tb_rows:
+            trip_blocks_map.setdefault(row.trip_id, []).append(
+                (row.id, row.page_date, row.start_time, row.title)
+            )
             page_blocks_map.setdefault(row.page_id, []).append(
                 (row.id, row.start_time, row.title)
             )
 
-    # rolling next tag (trip-{tripId}) は同一 trip の旧通知を置換するため、
-    # A (01:00) より先に B (01:02) の通知を送ると A の 5 分前通知が start 前に
-    # 消される。同 page 内に candidate より早い upcoming block が未 start なら、
-    # candidate の送信を後 tick に延期する (docs/notifications.md §5b)。
-    # A が start すれば次 tick で earliest 判定から抜け、B が新たな next として送信される。
+    # rolling next tag=trip-{tripId} は同一 trip の旧通知を置換するため、A (01:00) より
+    # 先に B (01:02) の通知を送ると A の 5 分前通知が start 前に消える。同一 trip に
+    # candidate より早い upcoming block (cross-page 含む) が未 start なら候補送信を
+    # 後 tick に延期する (docs/notifications.md §5b)。A が start すれば次 tick で
+    # earliest 判定から抜け、B が新たな next として送信される。
     filtered = [
         r
         for r in filtered
-        if not _has_earlier_upcoming_in_same_page(
-            page_blocks=page_blocks_map.get(r["page_id"], []),
-            page_date=r["page_date"],
+        if not _has_earlier_upcoming_in_same_trip(
+            trip_blocks=trip_blocks_map.get(r["trip_id"], []),
             tz_name=r["timezone"],
             candidate_block_id=r["block_id"],
             candidate_absolute_start=r["absolute_start"],
@@ -379,26 +394,28 @@ async def list_notification_candidates(db: AsyncSession) -> list[NotificationCan
     ]
 
 
-def _has_earlier_upcoming_in_same_page(
+def _has_earlier_upcoming_in_same_trip(
     *,
-    page_blocks: list[tuple[int, datetime, str]],
-    page_date: date,
+    trip_blocks: list[tuple[int, date, datetime, str]],
     tz_name: str,
     candidate_block_id: int,
     candidate_absolute_start: datetime,
     now_utc: datetime,
 ) -> bool:
-    """same-page 内に「now より未来かつ candidate より前」の block が存在するかを返す。
+    """same-trip 内に「now より未来かつ candidate より前」の block が存在するかを返す。
 
-    True なら candidate は「earlier upcoming」を持つため、rolling next tag の上書きで
-    先行通知が消えることを防ぐために candidate の送信を後 tick に延期すべき。
+    True なら candidate は「earlier upcoming」を持つため、rolling next tag=trip-{tripId}
+    の上書きで先行通知が消えることを防ぐために candidate の送信を後 tick に延期すべき。
+
+    tag が trip 単位なので判定も trip 単位。cross-page (日跨ぎ等) でも tag は共通なため、
+    同一 trip の別 page block も earlier upcoming の対象とする。
 
     - candidate 自身は除外
     - tz が不正な block は skip
     - 同一時刻 (`b_abs == candidate_absolute_start`) は「earlier」に含めない (同時刻の
       複数 block は上書き競合するが、現状の設計では受容 = 最後着が残る)
     """
-    for bid, start_time, _title in page_blocks:
+    for bid, page_date, start_time, _title in trip_blocks:
         if bid == candidate_block_id:
             continue
         b_abs = _compose_absolute_start(page_date, start_time, tz_name)

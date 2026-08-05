@@ -32,13 +32,16 @@ export const useForegroundNotificationToast = () => {
       // 型を拡張してキャストする。
       // badge は Firebase Web SDK が payload に載せてこないので frontend で hardcode
       // (全通知共通の紙飛行機シルエット、docs/notifications.md §5)。icon は payload 由来。
+      // tag と renotify の判定条件を Boolean(tripId) に揃える。tripId='' の場合、tag は
+      // undefined になるが `renotify: tripId !== undefined` だと true になり、Web 仕様上
+      // tag なし + renotify=true は showNotification が TypeError で reject する。
       const options: NotificationOptions & { renotify?: boolean } = {
         body,
         icon,
         badge: '/icons/notify/badge.png',
         data: { tripId, urlId, blockId, link: urlId ? `/trip/${urlId}${focusParam}` : undefined },
         tag: tripId ? `trip-${tripId}` : undefined,
-        renotify: tripId !== undefined,
+        renotify: Boolean(tripId),
       };
       await registration.showNotification(title, options);
     })

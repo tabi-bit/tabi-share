@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -243,6 +243,74 @@ describe('NotificationToggleButton', () => {
       await user.click(button);
       expect(mockRequestNotificationPermission).not.toHaveBeenCalled();
       expect(subscriptionMock.subscribe).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('click-in-flight (isPending) の反映', () => {
+    it('subscribe 処理中はボタンが disabled で spinner が表示され、二度目の click は無視される', async () => {
+      // subscribe を「解決を保留する Promise」に差し替えて in-flight 状態を作る
+      let resolveSubscribe!: () => void;
+      subscriptionMock.subscribe.mockReturnValue(
+        new Promise<void>(resolve => {
+          resolveSubscribe = resolve;
+        })
+      );
+      const user = userEvent.setup();
+      render(<NotificationToggleButton tripId={1} tripHasStartDate={true} />);
+      const button = screen.getByRole('button', { name: '通知を有効にする' });
+
+      await user.click(button);
+      // subscribe 呼び出しまで到達している (permission → token → subscribe の 3 段が in-flight)
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(button).toBeDisabled();
+      // Loader2 は svg なので aria-label 判定は難しく、classList 経由で確認
+      expect(button.querySelector('.animate-spin')).not.toBeNull();
+
+      // 二度目 click は無視される (subscribe は 1 回だけ)
+      await user.click(button);
+      expect(subscriptionMock.subscribe).toHaveBeenCalledTimes(1);
+
+      // 完了させると disabled 解除・spinner が消える
+      await act(async () => {
+        resolveSubscribe();
+      });
+      expect(mockToast.success).toHaveBeenCalled();
+    });
+
+    it('unsubscribe 処理中もボタンが disabled で spinner 表示', async () => {
+      subscriptionMock.isSubscribed = true;
+      let resolveUnsubscribe!: () => void;
+      subscriptionMock.unsubscribe.mockReturnValue(
+        new Promise<void>(resolve => {
+          resolveUnsubscribe = resolve;
+        })
+      );
+      const user = userEvent.setup();
+      render(<NotificationToggleButton tripId={1} tripHasStartDate={true} />);
+      const button = screen.getByRole('button', { name: '通知を無効にする' });
+
+      await user.click(button);
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(button).toBeDisabled();
+      expect(button.querySelector('.animate-spin')).not.toBeNull();
+
+      await act(async () => {
+        resolveUnsubscribe();
+      });
+    });
+
+    it('iOS 誘導 / permission 済 denied / confirm キャンセルなど early return では spinner を出さない', async () => {
+      // iOS 誘導ケース
+      mockNeedsIOSInstall.mockReturnValue(true);
+      const user = userEvent.setup();
+      render(<NotificationToggleButton tripId={1} tripHasStartDate={true} />);
+      const button = screen.getByRole('button', { name: '通知を有効にする' });
+      await user.click(button);
+      // iOS 誘導ダイアログが開くだけで、ボタン自体は spin しない
+      expect(button.querySelector('.animate-spin')).toBeNull();
+      expect(button).not.toBeDisabled();
     });
   });
 });

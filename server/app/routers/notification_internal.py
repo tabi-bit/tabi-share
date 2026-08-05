@@ -155,12 +155,14 @@ async def tick(
         if not reserved:
             continue
 
-        title = format_title(cand.start_time, cand.timezone)
+        title = format_title(cand.block_title)
         body = format_body(
             block_title=cand.block_title,
+            start_time=cand.start_time,
             location_name=cand.location_name,
             destination_name=cand.destination_name,
-            trip_title=cand.trip_title,
+            subscriber_timezone=cand.timezone,
+            upcoming=cand.upcoming_blocks,
         )
         link = _build_link(cand.trip_url_id, cand.block_id)
         icon_url = _build_icon_url(cand.block_type, cand.transportation_type)
@@ -172,6 +174,7 @@ async def tick(
                 title=title,
                 body=body,
                 data={
+                    "tripId": str(cand.trip_id),
                     "urlId": cand.trip_url_id,
                     "blockId": str(cand.block_id),
                     "kind": "before_5min",
@@ -179,6 +182,8 @@ async def tick(
                 link=link,
                 icon_url=icon_url,
                 badge_url=badge_url,
+                tag=f"trip-{cand.trip_id}",
+                renotify=True,
             )
             sent_count += 1
         except Exception as exc:

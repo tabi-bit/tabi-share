@@ -57,10 +57,13 @@ export const fetchFcmToken = async (): Promise<string | null> => {
 };
 
 export type ForegroundNotificationHandler = (payload: {
+  kind?: string;
+  tripId?: string;
   urlId?: string;
   blockId?: string;
   title?: string;
   body?: string;
+  icon?: string;
 }) => void;
 
 const noopUnsubscribe = (): void => undefined;
@@ -71,10 +74,14 @@ export const subscribeForegroundMessages = async (handler: ForegroundNotificatio
   const messaging = getMessaging(getFirebaseApp());
   return onMessage(messaging, message => {
     handler({
+      kind: message.data?.kind,
+      tripId: message.data?.tripId,
       urlId: message.data?.urlId,
       blockId: message.data?.blockId,
       title: message.notification?.title,
       body: message.notification?.body,
+      // NotificationPayload に badge は無い (0.13.0)。呼び出し側で hardcode。
+      icon: message.notification?.icon,
     });
   });
 };

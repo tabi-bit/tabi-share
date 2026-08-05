@@ -17,7 +17,7 @@ export const useForegroundNotificationToast = () => {
     let cancelled = false;
 
     subscribeForegroundMessages(async payload => {
-      const { title, body, urlId, blockId } = payload;
+      const { title, body, kind, tripId, urlId, blockId, icon } = payload;
       if (!title) return;
       if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
 
@@ -25,11 +25,18 @@ export const useForegroundNotificationToast = () => {
       if (!registration) return;
 
       const focusParam = blockId ? `?focusBlock=${blockId}` : '';
-      await registration.showNotification(title, {
+      // tag / renotify / badge は docs §5b / §5。renotify は lib.dom.d.ts に無い拡張なので型を拡張。
+      // tag prefix は kind に追従: test 送信は test-{tripId} で本運用 trip-{tripId} と分離。
+      const tag = tripId ? `${kind === 'test' ? 'test' : 'trip'}-${tripId}` : undefined;
+      const options: NotificationOptions & { renotify?: boolean } = {
         body,
-        data: { urlId, blockId, link: urlId ? `/trip/${urlId}${focusParam}` : undefined },
-        tag: blockId ? `block-${blockId}` : undefined,
-      });
+        icon,
+        badge: '/icons/notify/badge.png',
+        data: { kind, tripId, urlId, blockId, link: urlId ? `/trip/${urlId}${focusParam}` : undefined },
+        tag,
+        renotify: Boolean(tag),
+      };
+      await registration.showNotification(title, options);
     })
       .then(fn => {
         if (cancelled) fn();

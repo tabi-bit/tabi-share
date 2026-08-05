@@ -143,6 +143,8 @@ async def send_test_notification(
             data={"kind": "test", "tripId": str(trip_id), "urlId": trip.url_id},
             icon_url=f"{frontend_base}/icons/notify/test.png",
             badge_url=f"{frontend_base}/icons/notify/badge.png",
+            tag=f"test-{trip_id}",
+            renotify=True,
         )
     except Exception:
         logger.exception("Test FCM send failed", extra={"trip_id": trip_id})

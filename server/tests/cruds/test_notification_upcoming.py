@@ -98,3 +98,107 @@ def test_collect_upcoming_returns_empty_for_invalid_tz() -> None:
         after_utc=datetime(2000, 1, 1, 0, 0, tzinfo=UTC),
     )
     assert result == []
+
+
+class TestHasEarlierUpcomingInSamePage:
+    """A@01:00 / B@01:02 の rolling next 上書きバグ対策の heuristic。"""
+
+    @staticmethod
+    def _page_blocks() -> list[tuple[int, datetime, str]]:
+        # time-of-day で 01:00 と 01:02 の 2 block
+        return [
+            (10, datetime(2000, 1, 1, 1, 0, tzinfo=UTC), "A"),
+            (11, datetime(2000, 1, 1, 1, 2, tzinfo=UTC), "B"),
+        ]
+
+    def test_true_when_earlier_block_is_still_upcoming(self) -> None:
+        """00:57 時点で B の候補判定: A (01:00) はまだ start 前 → B は延期"""
+        result = notif_cruds._has_earlier_upcoming_in_same_page(
+            page_blocks=self._page_blocks(),
+            page_date=date(2026, 8, 5),
+            tz_name="UTC",
+            candidate_block_id=11,  # B
+            candidate_absolute_start=datetime(2026, 8, 5, 1, 2, tzinfo=UTC),
+            now_utc=datetime(2026, 8, 5, 0, 57, tzinfo=UTC),
+        )
+        assert result is True
+
+    def test_false_when_earlier_block_has_started(self) -> None:
+        """01:00 時点で B の候補判定: A の absolute_start は now と同時刻 → 「earlier upcoming」ではない → B 送信"""
+        result = notif_cruds._has_earlier_upcoming_in_same_page(
+            page_blocks=self._page_blocks(),
+            page_date=date(2026, 8, 5),
+            tz_name="UTC",
+            candidate_block_id=11,
+            candidate_absolute_start=datetime(2026, 8, 5, 1, 2, tzinfo=UTC),
+            now_utc=datetime(2026, 8, 5, 1, 0, tzinfo=UTC),
+        )
+        assert result is False
+
+    def test_false_for_earliest_candidate(self) -> None:
+        """00:55 時点で A の候補判定: A より早い block は存在しない → A 送信"""
+        result = notif_cruds._has_earlier_upcoming_in_same_page(
+            page_blocks=self._page_blocks(),
+            page_date=date(2026, 8, 5),
+            tz_name="UTC",
+            candidate_block_id=10,  # A
+            candidate_absolute_start=datetime(2026, 8, 5, 1, 0, tzinfo=UTC),
+            now_utc=datetime(2026, 8, 5, 0, 55, tzinfo=UTC),
+        )
+        assert result is False
+
+    def test_false_when_only_candidate_itself(self) -> None:
+        """自身のみが upcoming → 延期しない"""
+        result = notif_cruds._has_earlier_upcoming_in_same_page(
+            page_blocks=[(10, datetime(2000, 1, 1, 1, 0, tzinfo=UTC), "A")],
+            page_date=date(2026, 8, 5),
+            tz_name="UTC",
+            candidate_block_id=10,
+            candidate_absolute_start=datetime(2026, 8, 5, 1, 0, tzinfo=UTC),
+            now_utc=datetime(2026, 8, 5, 0, 55, tzinfo=UTC),
+        )
+        assert result is False
+
+    def test_false_when_same_start_time(self) -> None:
+        """同一時刻 (A=B=01:00) は「earlier upcoming」に含めない (競合は受容、docstring 参照)"""
+        page_blocks = [
+            (10, datetime(2000, 1, 1, 1, 0, tzinfo=UTC), "A"),
+            (11, datetime(2000, 1, 1, 1, 0, tzinfo=UTC), "B"),
+        ]
+        result = notif_cruds._has_earlier_upcoming_in_same_page(
+            page_blocks=page_blocks,
+            page_date=date(2026, 8, 5),
+            tz_name="UTC",
+            candidate_block_id=11,
+            candidate_absolute_start=datetime(2026, 8, 5, 1, 0, tzinfo=UTC),
+            now_utc=datetime(2026, 8, 5, 0, 55, tzinfo=UTC),
+        )
+        assert result is False
+
+    def test_ignores_past_blocks(self) -> None:
+        """既に start した block は「earlier upcoming」でない (now より過去)"""
+        page_blocks = [
+            (10, datetime(2000, 1, 1, 0, 0, tzinfo=UTC), "past"),  # 00:00 (過去)
+            (11, datetime(2000, 1, 1, 1, 2, tzinfo=UTC), "B"),
+        ]
+        result = notif_cruds._has_earlier_upcoming_in_same_page(
+            page_blocks=page_blocks,
+            page_date=date(2026, 8, 5),
+            tz_name="UTC",
+            candidate_block_id=11,
+            candidate_absolute_start=datetime(2026, 8, 5, 1, 2, tzinfo=UTC),
+            now_utc=datetime(2026, 8, 5, 0, 57, tzinfo=UTC),
+        )
+        assert result is False
+
+    def test_ignores_invalid_tz_blocks(self) -> None:
+        page_blocks = [(10, datetime(2000, 1, 1, 1, 0, tzinfo=UTC), "A")]
+        result = notif_cruds._has_earlier_upcoming_in_same_page(
+            page_blocks=page_blocks,
+            page_date=date(2026, 8, 5),
+            tz_name="Not/A_Real_TZ",
+            candidate_block_id=11,
+            candidate_absolute_start=datetime(2026, 8, 5, 1, 2, tzinfo=UTC),
+            now_utc=datetime(2026, 8, 5, 0, 57, tzinfo=UTC),
+        )
+        assert result is False

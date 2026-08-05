@@ -326,6 +326,27 @@ async def list_notification_candidates(db: AsyncSession) -> list[NotificationCan
                 (row.id, row.start_time, row.title)
             )
 
+    # rolling next tag (trip-{tripId}) は同一 trip の旧通知を置換するため、
+    # A (01:00) より先に B (01:02) の通知を送ると A の 5 分前通知が start 前に
+    # 消される。同 page 内に candidate より早い upcoming block が未 start なら、
+    # candidate の送信を後 tick に延期する (docs/notifications.md §5b)。
+    # A が start すれば次 tick で earliest 判定から抜け、B が新たな next として送信される。
+    filtered = [
+        r
+        for r in filtered
+        if not _has_earlier_upcoming_in_same_page(
+            page_blocks=page_blocks_map.get(r["page_id"], []),
+            page_date=r["page_date"],
+            tz_name=r["timezone"],
+            candidate_block_id=r["block_id"],
+            candidate_absolute_start=r["absolute_start"],
+            now_utc=now_utc,
+        )
+    ]
+
+    if not filtered:
+        return []
+
     return [
         NotificationCandidate(
             block_id=r["block_id"],
@@ -356,6 +377,36 @@ async def list_notification_candidates(db: AsyncSession) -> list[NotificationCan
         )
         for r in filtered
     ]
+
+
+def _has_earlier_upcoming_in_same_page(
+    *,
+    page_blocks: list[tuple[int, datetime, str]],
+    page_date: date,
+    tz_name: str,
+    candidate_block_id: int,
+    candidate_absolute_start: datetime,
+    now_utc: datetime,
+) -> bool:
+    """same-page 内に「now より未来かつ candidate より前」の block が存在するかを返す。
+
+    True なら candidate は「earlier upcoming」を持つため、rolling next tag の上書きで
+    先行通知が消えることを防ぐために candidate の送信を後 tick に延期すべき。
+
+    - candidate 自身は除外
+    - tz が不正な block は skip
+    - 同一時刻 (`b_abs == candidate_absolute_start`) は「earlier」に含めない (同時刻の
+      複数 block は上書き競合するが、現状の設計では受容 = 最後着が残る)
+    """
+    for bid, start_time, _title in page_blocks:
+        if bid == candidate_block_id:
+            continue
+        b_abs = _compose_absolute_start(page_date, start_time, tz_name)
+        if b_abs is None:
+            continue
+        if now_utc < b_abs < candidate_absolute_start:
+            return True
+    return False
 
 
 def _collect_upcoming_blocks(

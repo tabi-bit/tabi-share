@@ -195,11 +195,12 @@ tick が 60 秒を超えると次 tick と重なる。閾値と対処:
   - どちらも無し → 行ごと省略
   - どの表記でも `format_body` 側で全角スペースを prefix してインデント表示にする
 - **後続予定** (`_format_scheduled_line`、Issue #218):
-  - 同一 page 内で next block の絶対時刻より後にある block を上限 **2 件** 表示
+  - 同一 page 内で next block の絶対時刻**以降** (同時刻の他 block を含む) を上限 **2 件** 表示
   - 表記は `▶ HH:MM ブロック名` (場所や交通アイコンは省略、簡潔性優先)
   - 絶対時刻順で早い順に並べる
   - 深夜またぎ (`Page.date=X` で time-of-day が朝の block) は「X 日の朝」として絶対時刻化されるため、絶対時刻順で見ると 22:00 の前に来ることがある。既存の `Block.start_time` モデル (§3) の挙動に従うのみ
   - 上限 2 件の判断根拠: iOS ~4 行 / Chrome Windows 4 行 / Safari macOS 121 chars の展開時 body 制限に、後続 2 件フルで収まる件数
+  - **同時刻の他 block を含める理由**: end_time null と duration あり block 等で同一 `start_time` は実運用で発生する。同時刻 A/B は同一 tag で片方だけが通知センターに残るが、勝者側の body に他方が upcoming として現れて情報損失を防ぐ
 - **trip 名を body に含めない** (Issue #218):
   - tag=`trip-{tripId}` で通知が 1 通に集約されるため、通知内での trip 識別は不要
   - 削除により body 4 行に収まり iOS 展開時に後続 2 件目まで完全表示

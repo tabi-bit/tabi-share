@@ -53,7 +53,13 @@ def test_collect_upcoming_limits_to_max() -> None:
     assert len(result) == 2
 
 
-def test_collect_upcoming_drops_blocks_at_or_before_current() -> None:
+def test_collect_upcoming_drops_only_past_blocks() -> None:
+    """`< after_utc` を strict にすることで、同時刻の他 block は upcoming に含める。
+
+    end_time null と duration あり block 等で同一 start_time は実運用で発生するため、
+    同時刻 A/B が rolling next tag で片方消える場合でも、勝者側の body に他方が
+    upcoming として現れて情報損失を防ぐ (docs/notifications.md §5b)。
+    """
     page_blocks = [
         (1, datetime(2000, 1, 1, 11, 0, tzinfo=UTC), "past"),
         (2, datetime(2000, 1, 1, 12, 0, tzinfo=UTC), "same"),
@@ -66,7 +72,24 @@ def test_collect_upcoming_drops_blocks_at_or_before_current() -> None:
         tz_name="UTC",
         after_utc=datetime(2026, 8, 5, 12, 0, tzinfo=UTC),
     )
-    assert [title for _, title in result] == ["future"]
+    # 同時刻の "same" と後続 "future" が上限 2 件に収まる。past は除外。
+    assert [title for _, title in result] == ["same", "future"]
+
+
+def test_collect_upcoming_includes_same_time_sibling() -> None:
+    """A@01:00 と B@01:00 が同一 page にある場合、A の upcoming に B が入る。"""
+    page_blocks = [
+        (10, datetime(2000, 1, 1, 1, 0, tzinfo=UTC), "A"),
+        (11, datetime(2000, 1, 1, 1, 0, tzinfo=UTC), "B"),
+    ]
+    result = notif_cruds._collect_upcoming_blocks(
+        page_blocks=page_blocks,
+        current_block_id=10,  # A
+        page_date=date(2026, 8, 5),
+        tz_name="UTC",
+        after_utc=datetime(2026, 8, 5, 1, 0, tzinfo=UTC),
+    )
+    assert [title for _, title in result] == ["B"]
 
 
 def test_collect_upcoming_uses_subscriber_tz_for_absolute_time() -> None:

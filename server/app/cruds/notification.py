@@ -417,12 +417,15 @@ def _collect_upcoming_blocks(
     tz_name: str,
     after_utc: datetime,
 ) -> list[tuple[datetime, str]]:
-    """same-page 内で candidate の絶対時刻より後にある block を絶対時刻順で上位 N 件返す。
+    """same-page 内で candidate の絶対時刻より後 (or 同時刻の他 block) を絶対時刻順で上位 N 件返す。
 
     - current_block_id は除外 (自身)
     - Block.start_time の time-of-day のみ使い、Page.date + subscriber tz で絶対時刻化する
       (docs/notifications.md §3 の不変条件)
     - tz が不正な block は skip (candidate 自体が tz 検証済で残っている前提)
+    - **同時刻の他 block は含める**: end_time null と duration あり block 等で同一 start_time
+      は実運用で発生する。同時刻 A/B は同一 tag で片方だけが表示されるが、勝者側の body に
+      他方が upcoming として現れることで情報損失を防ぐ (docs/notifications.md §5b)。
     - 深夜またぎ block (Page.date=X で time=03:00 等) は「X 日の 03:00」として扱われるため、
       絶対時刻順で見ると 22:00 の前に来ることがある。既存の Block.start_time モデルの
       挙動に従うのみ (docs/notifications.md §5 参照)。
@@ -432,7 +435,7 @@ def _collect_upcoming_blocks(
         if block_id == current_block_id:
             continue
         absolute = _compose_absolute_start(page_date, start_time, tz_name)
-        if absolute is None or absolute <= after_utc:
+        if absolute is None or absolute < after_utc:
             continue
         upcoming.append((absolute, title))
     upcoming.sort(key=lambda item: item[0])

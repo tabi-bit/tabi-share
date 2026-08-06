@@ -1,9 +1,12 @@
+import { isAxiosError } from 'axios';
 import { signInWithCustomToken } from 'firebase/auth';
 import QrScanner from 'qr-scanner';
 import { type FormEvent, useEffect, useId, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { apiClient } from '@/lib/apiClient';
 import { getFirebaseAuth } from '@/lib/firebase';
 
 interface PairReceiveDialogProps {
@@ -11,30 +14,33 @@ interface PairReceiveDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+interface RedeemPairingOut {
+  custom_token: string;
+}
+
 type Status = 'idle' | 'verifying' | 'error';
 
 /**
- * 未認証 (匿名 session) デバイスで、認証済み側から発行された引き継ぎコード
- * (Firebase Custom Token) を受け取るためのダイアログ。
+ * 未認証 (匿名 session) デバイスで、認証済み側から発行された 8 桁引き継ぎコードを
+ * 入力して認証状態を移送するためのダイアログ。
  *
- * 手段: textarea へのペースト or QR カメラスキャン (iOS 18.1.1+ / それ以外は動作)。
- * カメラ利用不可な環境ではペースト UI にフォールバックする。
- *
- * `signInWithCustomToken` 成功後は、`useAuthStateSync` の `onAuthStateChanged` が
- * 発火して `/auth/link` (パターン 2: マージ) と `/me/trips` が自動実行される。
+ * フロー:
+ *   1. code 入力 or QR スキャン → `POST /pair/redeem` に投げて custom_token を交換
+ *   2. `signInWithCustomToken` で Firebase Auth に注入
+ *   3. `useAuthStateSync` の `onAuthStateChanged` が発火し `/auth/link` (パターン 2: マージ) と
+ *      `/me/trips` が自動実行される
  */
 export const PairReceiveDialog = ({ open, onOpenChange }: PairReceiveDialogProps) => {
-  const textareaId = useId();
+  const codeInputId = useId();
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const scannerRef = useRef<QrScanner | null>(null);
-  const [token, setToken] = useState('');
+  const [code, setCode] = useState('');
   const [status, setStatus] = useState<Status>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [scanMode, setScanMode] = useState(false);
 
   useEffect(() => {
     if (open) return;
-    setToken('');
+    setCode('');
     setStatus('idle');
     setErrorMessage(null);
     setScanMode(false);
@@ -46,21 +52,19 @@ export const PairReceiveDialog = ({ open, onOpenChange }: PairReceiveDialogProps
     const scanner = new QrScanner(
       video,
       result => {
-        setToken(result.data);
+        setCode(result.data);
         setScanMode(false);
       },
       { returnDetailedScanResult: true }
     );
-    scannerRef.current = scanner;
     scanner.start().catch(err => {
       console.error('failed to start QR scanner', err);
-      setErrorMessage('カメラを起動できませんでした。コードを直接貼り付けてください。');
+      setErrorMessage('カメラを起動できませんでした。コードを直接入力してください。');
       setScanMode(false);
     });
     return () => {
       scanner.stop();
       scanner.destroy();
-      scannerRef.current = null;
     };
   }, [scanMode]);
 
@@ -68,19 +72,25 @@ export const PairReceiveDialog = ({ open, onOpenChange }: PairReceiveDialogProps
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
-    const trimmed = token.trim();
+    const trimmed = code.trim();
     if (trimmed.length === 0) return;
     setStatus('verifying');
     setErrorMessage(null);
     try {
-      await signInWithCustomToken(getFirebaseAuth(), trimmed);
-      // 成功時は onAuthStateChanged 経由で syncAuthedUser が発火する。
-      // ダイアログはここで閉じてしまって OK (トップの useAuthStateSync が受け取る)。
+      const { data } = await apiClient.post<RedeemPairingOut>('/pair/redeem', { code: trimmed });
+      await signInWithCustomToken(getFirebaseAuth(), data.custom_token);
+      // 成功時は onAuthStateChanged 経由で syncAuthedUser が発火する
       onOpenChange(false);
     } catch (err) {
-      console.error('failed to sign in with custom token', err);
+      console.error('failed to redeem pairing code', err);
       setStatus('error');
-      setErrorMessage('認証に失敗しました。コードの有効期限が切れているか、正しくない可能性があります。');
+      if (isAxiosError(err) && err.response?.status === 404) {
+        setErrorMessage('コードが見つかりません。もう一度確認してください。');
+      } else if (isAxiosError(err) && err.response?.status === 403) {
+        setErrorMessage('コードの有効期限が切れているか、既に使用されています。');
+      } else {
+        setErrorMessage('認証に失敗しました。時間をおいて再度お試しください。');
+      }
     }
   };
 
@@ -116,18 +126,21 @@ export const PairReceiveDialog = ({ open, onOpenChange }: PairReceiveDialogProps
           ) : (
             <form className='flex flex-col gap-4' id='pair-receive-form' onSubmit={handleSubmit}>
               <p className='text-12px text-gray-600 sm:text-14px'>
-                認証済みデバイスの「他のデバイスへ引き継ぐ」で発行したコードを貼り付けるか、QR
+                認証済みデバイスの「他のデバイスへ引き継ぐ」で発行した 8 桁コードを入力するか、QR
                 コードを読み取ってください。
               </p>
               <div className='flex flex-col gap-2'>
-                <Label htmlFor={textareaId}>引き継ぎコード</Label>
-                <textarea
-                  className='h-24 w-full resize-none rounded border border-gray-300 p-2 font-mono text-10px sm:text-12px'
+                <Label htmlFor={codeInputId}>引き継ぎコード</Label>
+                <Input
+                  autoComplete='off'
+                  autoFocus
                   disabled={isVerifying}
-                  id={textareaId}
-                  onChange={e => setToken(e.target.value)}
+                  id={codeInputId}
+                  onChange={e => setCode(e.target.value)}
+                  placeholder='A9K3-P2Q7'
                   required
-                  value={token}
+                  spellCheck={false}
+                  value={code}
                 />
               </div>
               <Button
@@ -149,7 +162,7 @@ export const PairReceiveDialog = ({ open, onOpenChange }: PairReceiveDialogProps
               <Button disabled={isVerifying} onClick={() => onOpenChange(false)} type='button' variant='outline'>
                 キャンセル
               </Button>
-              <Button disabled={isVerifying || token.trim().length === 0} form='pair-receive-form' type='submit'>
+              <Button disabled={isVerifying || code.trim().length === 0} form='pair-receive-form' type='submit'>
                 {isVerifying ? '認証中...' : '認証する'}
               </Button>
             </>

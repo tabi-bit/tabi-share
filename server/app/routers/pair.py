@@ -1,66 +1,100 @@
-"""デバイス間引き継ぎ用の Firebase Custom Token 発行 (issue #194)。
+"""デバイス間引き継ぎ用のペアリングコード発行・引き換え (issue #194)。
 
-iOS PWA (ホーム画面追加) では Safari とストレージが分離され、メールリンクも
-常に Safari で開かれるため、メール認証によるリカバリが機能しない。
-認証済みデバイスで発行した Firebase Custom Token を別デバイスに転送
-(コピペ or QR) し、`signInWithCustomToken` で認証状態を移送することで、
-`onAuthStateChanged` 経由の `/auth/link` (パターン 2: マージ) が発火し
-匿名 session が同一 user_id に統合される。
+iOS PWA (ホーム画面追加) は Safari とストレージが分離され、メールリンクも常に
+Safari 側で開かれるため、認証によるリカバリが機能しない。この抜け穴を
+「認証済みデバイス → 8 桁コード発行 → 受信側デバイスでコード入力 → Firebase
+Custom Token 経由で認証状態を移送」のペアリング機構で塞ぐ。
+
+コード ↔ Custom Token のマッピングは Firestore に短命保存する (5 分、one-time)。
+Custom Token 自体は 700 文字超あり QR で扱いにくいので、8 桁コード表面 + 実体を
+Firestore に隠す設計。
+
+セキュリティ:
+- コード空間 = base32 の 32^8 ≈ 1 兆 (40 bits)
+- 5 分 TTL + one-time consume (Firestore transaction で atomic)
+- Firestore TTL policy で expires_at 経過ドキュメントは自動削除
 """
 
 import logging
+import secrets
+from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from firebase_admin import auth as fb_auth
+from firebase_admin import firestore
 from firebase_admin.exceptions import FirebaseError
+from google.cloud.firestore import Transaction, transactional
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import ensure_session
 from app.db_connection import get_db_session
-from app.errors import Forbidden
+from app.errors import Forbidden, NotFound
 from app.models import User
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["Pair"], prefix="/pair")
 
+FIRESTORE_COLLECTION = "pairing_codes"
+# 紛らわしい文字 (0/O, 1/I/L) を除いた 32 文字。base32 とはビットレイアウトが違うが
+# エントロピー空間は同等 (32^8 = 40 bits)。
+_CODE_ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ"
+_CODE_LENGTH = 8
+_CODE_TTL_MINUTES = 5
 
-class TransferTokenOut(BaseModel):
+
+class CreatePairingOut(BaseModel):
+    code: str
+    expires_at: datetime
+
+
+class RedeemPairingIn(BaseModel):
+    code: str
+
+
+class RedeemPairingOut(BaseModel):
     custom_token: str
 
 
+def _generate_code() -> str:
+    """`secrets.choice` を使った暗号学的乱数由来の 8 桁 base32 相当コードを生成"""
+    return "".join(secrets.choice(_CODE_ALPHABET) for _ in range(_CODE_LENGTH))
+
+
+def _normalize_code(raw: str) -> str:
+    """入力コードを正規化する (空白除去 + 大文字化)"""
+    return "".join(raw.split()).upper()
+
+
 @router.post(
-    "/transfer-token",
-    summary="デバイス間引き継ぎ用の Firebase Custom Token を発行する",
-    operation_id="pair-transfer-token",
-    response_model=TransferTokenOut,
+    "/create",
+    summary="デバイス引き継ぎ用のペアリングコードを発行する",
+    operation_id="pair-create",
+    response_model=CreatePairingOut,
 )
-async def create_transfer_token(
+async def create_pairing(
     request: Request,
     response: Response,
     db: Annotated[AsyncSession, Depends(get_db_session)],
-) -> TransferTokenOut:
-    """認証済み (firebase_uid あり) user 用に Firebase Custom Token を発行する。
+) -> CreatePairingOut:
+    """認証済み (`firebase_uid` あり) user 用に 8 桁コードを発行する。
 
-    Custom Token は 1 時間有効 (Firebase 仕様、変更不可)。受信側デバイスで
-    `signInWithCustomToken` に渡すことで、既存の `onAuthStateChanged` →
-    `/auth/link` (パターン 2: マージ) 経路がそのまま発火する。
+    Firestore に `{code, custom_token, expires_at, consumed_at: null}` を保存し、
+    表示用のコードだけを返す。Custom Token は受信側の /pair/redeem で交換する。
     """
     session = await ensure_session(request, response, db)
     user = await db.get(User, session.user_id)
     if user is None or user.firebase_uid is None:
-        raise Forbidden(message="メール認証が必要です")
+        raise Forbidden(message="ログインが必要です")
+
     try:
-        token_bytes: bytes = fb_auth.create_custom_token(user.firebase_uid)
+        custom_token_bytes: bytes = fb_auth.create_custom_token(user.firebase_uid)
     except FirebaseError as e:
-        # Firebase 側の一時的な障害
         logger.exception("failed to create custom token (FirebaseError)")
         raise Forbidden(message="Custom Token の発行に失敗しました") from e
     except ValueError as e:
-        # 署名用 SA credentials が使えない (ローカル ADC で signBlob 権限が無い等)
-        # 500 で長大な stack trace を返さず、環境設定エラーと分かる 503 にする
         logger.exception("failed to create custom token (signing not available)")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -69,5 +103,52 @@ async def create_transfer_token(
                 "サーバーの Firebase Admin 設定 (SA の signBlob 権限) を確認してください。"
             ),
         ) from e
-    await db.commit()
-    return TransferTokenOut(custom_token=token_bytes.decode())
+
+    code = _generate_code()
+    expires_at = datetime.now(UTC) + timedelta(minutes=_CODE_TTL_MINUTES)
+    firestore.client().collection(FIRESTORE_COLLECTION).document(code).set(
+        {
+            "custom_token": custom_token_bytes.decode(),
+            "expires_at": expires_at,
+            "consumed_at": None,
+        }
+    )
+    return CreatePairingOut(code=code, expires_at=expires_at)
+
+
+@router.post(
+    "/redeem",
+    summary="ペアリングコードを引き換えて Custom Token を取得する",
+    operation_id="pair-redeem",
+    response_model=RedeemPairingOut,
+)
+async def redeem_pairing(body: RedeemPairingIn) -> RedeemPairingOut:
+    """受信側デバイス (匿名でも可) がコードを引き換え Custom Token を受け取る。
+
+    Firestore トランザクションで期限・消費済みチェック + `consumed_at` 更新を
+    atomic に実行し、同一コードの二重使用を防止する。
+    """
+    code = _normalize_code(body.code)
+    doc_ref = firestore.client().collection(FIRESTORE_COLLECTION).document(code)
+    transaction = firestore.client().transaction()
+
+    @transactional
+    def _consume(tx: Transaction) -> str:
+        snapshot = doc_ref.get(transaction=tx)
+        if not snapshot.exists:
+            raise NotFound(message="コードが無効です")
+        data = snapshot.to_dict() or {}
+        expires_at = data.get("expires_at")
+        if expires_at is not None and expires_at < datetime.now(UTC):
+            raise Forbidden(message="コードの有効期限が切れています")
+        if data.get("consumed_at") is not None:
+            raise Forbidden(message="このコードは既に使用されています")
+        tx.update(doc_ref, {"consumed_at": datetime.now(UTC)})
+        token = data.get("custom_token")
+        if not isinstance(token, str):
+            # 想定外 (create 側で必ず str が入るはず)
+            raise Forbidden(message="コードデータが不正です")
+        return token
+
+    custom_token = _consume(transaction)
+    return RedeemPairingOut(custom_token=custom_token)

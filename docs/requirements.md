@@ -55,16 +55,17 @@
   - URL 共有相手には同等の編集権限を与える設計
 - **認可の仕組み**: HttpOnly Cookie に不透明トークン (session_id) を格納し、DB の `user_trip_access` テーブルで trip 単位のアクセス権を管理する（旧 `trip_ids` 配列 JWT からセッションキー方式へ移行、issue #194）
 - **セッション**: 長期間有効 (Cookie Max-Age = 30 日、アクセス毎に延長)
-- **メール認証** (オプション、Firebase Authentication のパスワードレス方式):
+- **Google 認証** (オプション、Firebase Authentication):
   - **バックアップ・追加機能** として位置付ける（編集の必須要件ではない）
   - 有効化することで以下ができるようになる:
     - デバイス間での旅程一覧同期
     - Cookie 消失 (ブラウザデータクリア、機種変更、iOS Safari の ITP 7 日パージ) 時のリカバリ
-  - 認証時は同一 `firebase_uid` の user に session を紐付けて統合する
-- **デバイス引き継ぎ** (Firebase Custom Token 経由):
-  - iOS PWA (ホーム画面追加) は Safari とストレージが分離され、メールリンクも常に Safari 側で開かれるため **メール認証によるリカバリが機能しない**。この抜け穴を塞ぐための機構
-  - 認証済みデバイスで発行した Firebase Custom Token (1 時間有効) を、別デバイスに QR コード or コピペで転送し、受け側で `signInWithCustomToken` により認証状態を移送する
-  - 受信側では既存の `/auth/link` (パターン 2: マージ) が発火し、匿名 session が同 user_id に統合される。追加の DB スキーマは不要
+  - `signInWithRedirect(GoogleAuthProvider)` で OAuth。認証時は同一 `firebase_uid` の user に session を紐付けて統合する
+- **デバイス引き継ぎ** (8 桁ペアリングコード + Firebase Custom Token):
+  - iOS PWA (ホーム画面追加) は Safari とストレージが分離され、OAuth リダイレクトも常に Safari 側で開かれるため **Google 認証によるリカバリが PWA では機能しない**。この抜け穴を塞ぐための機構
+  - 認証済みデバイスで 8 桁コード (base32 = 40 bits) を発行し、実体の Firebase Custom Token とのマッピングは Firestore に短命保存 (5 分 TTL + one-time consume)
+  - 受信側デバイスがコードを入力すると `POST /pair/redeem` で Custom Token を交換し、`signInWithCustomToken` で認証状態を移送
+  - 受信側は既存の `/auth/link` (パターン 2: マージ) が自動発火し、匿名 session が同 user_id に統合される。PostgreSQL 側の追加スキーマは不要 (Firestore に完結)
 
 ### Phase 2
 
@@ -112,14 +113,15 @@
 - **フレームワーク**: React + TypeScript + Vite
 - **UI/UX**: Shadcn/ui + Tailwind CSS
 - **ドラッグ&ドロップ**: @dnd-kit
-- **認証 (オプション)**: Firebase Authentication (パスワードレス、バックアップ用)
+- **認証 (オプション)**: Firebase Authentication (Google 認証、バックアップ用)
 
 #### バックエンド
 
 - **フレームワーク**: Python + FastAPI
 - **データベース**: PostgreSQL
 - **認可**: セッションキー方式 (HttpOnly Cookie の JWT に session_id、DB で `user_trip_access` を参照)
-- **認証 (オプション)**: Firebase Authentication (Firebase Admin SDK による ID トークン検証)
+- **認証 (オプション)**: Firebase Authentication (Firebase Admin SDK による ID トークン検証、Custom Token 発行)
+- **一時ストレージ**: Firestore (デバイス引き継ぎ用 pairing_codes コレクション、TTL 自動削除)
 - **リアルタイム通信**: WebSocket（Socket.io検討）
 - **プッシュ通知**: Firebase Cloud Messaging (FCM)
 
@@ -147,7 +149,7 @@
 - tripIdのハッシュ化によるURL推測防止 (認可の主軸)
 - HttpOnly Cookie による session_id 管理 (JavaScript からのアクセス防止)
 - HTTPS通信
-- メール認証 (オプション) は Firebase Authentication のパスワードレス方式
+- Google 認証 (オプション) は Firebase Authentication 経由
 - 並列アクセス時のアクセス権付与は `(user_id, trip_id)` 複合 PK + `ON CONFLICT DO NOTHING` で idempotent 化
 
 #### 可用性要件
@@ -167,7 +169,7 @@
 
 - URL (`/trip/[secureHashId]`) を知っている人は誰でも閲覧・編集可能
 - 初回アクセス時に匿名 session と共に `user_trip_access` へアクセス権が付与される
-- メール認証 (オプション) を経由すると、複数デバイスで同じ旅程一覧を共有できる
+- Google 認証 (オプション) を経由すると、複数デバイスで同じ旅程一覧を共有できる
 
 ### tripId仕様
 
@@ -191,7 +193,8 @@
 - 基本的なブロックUI実装
 - ドラッグ&ドロップ機能
 - セッションキー方式による認可 (issue #194)
-- メール認証 (Firebase Auth) をオプション機能として実装
+- Google 認証 (Firebase Auth) をオプション機能として実装
+- iOS PWA 向けデバイス引き継ぎ (8 桁コード + Firestore + Custom Token)
 
 ### Phase 2: 中核機能
 
@@ -213,7 +216,8 @@
 
 - Firebase Hosting: 無料枠内運用
 - Google Cloud Run: 従量課金 (通常運用で月数ドル程度)
-- Firebase Authentication: 無料枠内 (パスワードレスメール認証は月 10K auth まで無料)
+- Firebase Authentication: 無料枠内 (Google 認証は無制限で無料)
+- Firestore: 無料枠内 (書き込み 20K/日、読み取り 50K/日 まで無料)
 - Google Maps API: 無料枠内、制限機能実装
 
 ### 監視・ログ
@@ -228,7 +232,7 @@
 
 - Google Maps API無料枠内での運用
 - 個人開発のためミニマム構成
-- iOS Safari の ITP により、iOS からのアクセスでは HttpOnly Cookie が 7 日程度でパージされうる (Cloud Run + Firebase Hosting 構成の IP prefix 不一致による)。iOS Safari (通常ブラウザ) はメール認証がリカバリ手段になるが、**iOS PWA (ホーム画面追加) は Safari と分離されメールリンクも Safari で開かれるため、メール認証では復旧できない**。この抜け穴は Firebase Custom Token 経由の「デバイス引き継ぎ」でカバーする
+- iOS Safari の ITP により、iOS からのアクセスでは HttpOnly Cookie が 7 日程度でパージされうる (Cloud Run + Firebase Hosting 構成の IP prefix 不一致による)。iOS Safari (通常ブラウザ) は Google 認証がリカバリ手段になるが、**iOS PWA (ホーム画面追加) は Safari と分離され OAuth リダイレクトも Safari で開かれるため、Google 認証では復旧できない**。この抜け穴は 8 桁ペアリングコード + Firebase Custom Token 経由の「デバイス引き継ぎ」でカバーする
 
 ### ビジネス制約
 
@@ -239,4 +243,4 @@
 
 - リアルタイム同期における競合解決は後勝ちルール
 - 認可は URL の秘匿性 + session_id で担保する (認証は必須ではない)
-- メール認証 (オプション) はパスワードレス方式のみ (SNS 認証は未対応)
+- 認証 (オプション) は Google 認証のみ (SNS 認証は未対応、パスワード認証も未対応)

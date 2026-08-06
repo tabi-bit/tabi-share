@@ -3,7 +3,6 @@ import { Route, Routes } from 'react-router-dom';
 import { isOfflineReadAtom } from './atoms/network';
 import { NoIndex } from './components/NoIndex';
 import { Title } from './components/Title';
-import { MagicLinkEmailPromptDialog } from './dialogs/MagicLinkEmailPromptDialog';
 import { useAuthStateSync } from './hooks/useAuth';
 import { useFcmNavigationListener } from './hooks/useFcmNavigationListener';
 import { useForegroundNotificationToast } from './hooks/useForegroundNotificationToast';
@@ -57,7 +56,6 @@ const App = () => {
           }
         />
       </Routes>
-      <MagicLinkEmailPromptDialog />
     </>
   );
 };

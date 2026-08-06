@@ -10,41 +10,41 @@ interface PairTransferDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-interface TransferTokenOut {
-  custom_token: string;
+interface CreatePairingOut {
+  code: string;
+  expires_at: string;
 }
 
 type Status = 'loading' | 'ready' | 'error';
 
 /**
- * 認証済み (メール認証済み) user のための「他デバイスへ引き継ぐ」ダイアログ。
+ * 認証済み (Google 認証済み) user のための「他のデバイスへ引き継ぐ」ダイアログ。
  *
- * サーバーの `POST /pair/transfer-token` から Firebase Custom Token を取得し、
- * QR コードと textarea + コピーボタンで表示する。受信側デバイスで
- * `signInWithCustomToken` に渡すことで認証状態が移送される。
- * Custom Token は Firebase 仕様上 1 時間有効。
+ * サーバー `POST /pair/create` から 8 桁コードを受け取り、QR コード + 大きな数字表示 +
+ * コピーボタンで見せる。実体の Firebase Custom Token は Firestore にサーバー側で保存されており、
+ * 受信側の /pair/redeem で交換される。有効期限 5 分・one-time consume。
  */
 export const PairTransferDialog = ({ open, onOpenChange }: PairTransferDialogProps) => {
-  const [token, setToken] = useState<string | null>(null);
+  const [code, setCode] = useState<string | null>(null);
   const [status, setStatus] = useState<Status>('loading');
 
   useEffect(() => {
     if (!open) {
-      setToken(null);
+      setCode(null);
       setStatus('loading');
       return;
     }
     let cancelled = false;
     apiClient
-      .post<TransferTokenOut>('/pair/transfer-token')
+      .post<CreatePairingOut>('/pair/create')
       .then(res => {
         if (cancelled) return;
-        setToken(res.data.custom_token);
+        setCode(res.data.code);
         setStatus('ready');
       })
       .catch(err => {
         if (cancelled) return;
-        console.error('failed to fetch transfer token', err);
+        console.error('failed to create pairing code', err);
         setStatus('error');
       });
     return () => {
@@ -53,17 +53,22 @@ export const PairTransferDialog = ({ open, onOpenChange }: PairTransferDialogPro
   }, [open]);
 
   const handleCopy = async (): Promise<void> => {
-    if (token == null) return;
+    if (code == null) return;
     try {
-      await navigator.clipboard.writeText(token);
-      toast.success('引き継ぎコードをコピーしました');
+      await navigator.clipboard.writeText(code);
+      toast.success('コードをコピーしました');
     } catch {
       toast.error('コピーに失敗しました');
     }
   };
 
+  const formatCode = (value: string): string => {
+    // "A9K3P2Q7" → "A9K3-P2Q7" のように 4 桁ごとに区切って読みやすく
+    return value.length === 8 ? `${value.slice(0, 4)}-${value.slice(4)}` : value;
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog onOpenChange={onOpenChange} open={open}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>他のデバイスへ引き継ぐ</DialogTitle>
@@ -77,28 +82,26 @@ export const PairTransferDialog = ({ open, onOpenChange }: PairTransferDialogPro
               引き継ぎコードの発行に失敗しました。時間をおいて再度お試しください。
             </p>
           )}
-          {status === 'ready' && token != null && (
-            <div className='flex flex-col gap-4'>
-              <p className='text-12px text-gray-600 sm:text-14px'>
-                他のデバイス・PWA の「引き継ぎコードで受け取る」に貼り付けるか、下記の QR コードを読み取ってください。
+          {status === 'ready' && code != null && (
+            <div className='flex flex-col items-center gap-4'>
+              <p className='w-full text-12px text-gray-600 sm:text-14px'>
+                他のデバイス・PWA の「引き継ぎコードで受け取る」に入力するか、下記の QR コードを読み取ってください。
               </p>
-              <div className='flex justify-center'>
-                <QRCodeCanvas size={192} value={token} />
+              <div className='rounded bg-white p-2'>
+                <QRCodeCanvas size={192} value={code} />
               </div>
-              <textarea
-                className='h-24 w-full resize-none rounded border border-gray-300 p-2 font-mono text-10px sm:text-12px'
-                readOnly
-                value={token}
-              />
-              <div className='flex flex-col gap-1 text-10px text-gray-500 sm:text-12px'>
-                <span>⏱ 1 時間のみ有効です</span>
+              <p className='select-all font-mono text-24px font-semibold tracking-wider text-teal-800'>
+                {formatCode(code)}
+              </p>
+              <div className='flex w-full flex-col gap-1 text-10px text-gray-500 sm:text-12px'>
+                <span>⏱ 5 分間のみ有効です</span>
                 <span>⚠ 他人と共有しないでください</span>
               </div>
             </div>
           )}
         </DialogBody>
         <DialogFooter>
-          {status === 'ready' && token != null && (
+          {status === 'ready' && code != null && (
             <Button onClick={handleCopy} type='button'>
               コピー
             </Button>

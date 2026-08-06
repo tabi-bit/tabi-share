@@ -29,6 +29,7 @@ from .routers import (
     notification,
     notification_internal,
     pages,
+    pair,
     trips,
 )
 
@@ -117,6 +118,7 @@ app.include_router(pages.router)
 app.include_router(blocks.router)
 app.include_router(auth_router.router)
 app.include_router(me.router)
+app.include_router(pair.router)
 app.include_router(notification.router)
 app.include_router(notification_internal.router)
 

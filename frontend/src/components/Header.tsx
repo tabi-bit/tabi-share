@@ -11,6 +11,7 @@ import { tripAtom, tripModeAtom } from '@/atoms/tripPage';
 import { EditTripDialog } from '@/dialogs/EditTripDialog';
 import { formatTripRangeMD } from '@/lib/date';
 import { cn } from '@/lib/utils';
+import { HomeMenu } from './HomeMenu';
 import { Logo } from './Logo';
 import { NetworkStatusButton } from './NetworkStatusButton';
 import { NotificationToggleButton } from './NotificationToggleButton';
@@ -46,7 +47,10 @@ function HeaderLogoOnly({ className, ...props }: HeaderLogoOnlyProps) {
       {...props}
     >
       <Logo size='medium' className='mx-auto' />
-      <NetworkStatusButton className='absolute right-4' />
+      <div className='-translate-y-1/2 absolute top-1/2 right-2 flex items-center gap-1'>
+        <NetworkStatusButton />
+        <HomeMenu />
+      </div>
     </div>
   );
 }

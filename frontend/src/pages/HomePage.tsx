@@ -30,6 +30,12 @@ const HomePage = () => {
 
       <div className='flex flex-1 flex-col items-center p-4'>
         <div className='relative w-full max-w-2xl'>
+          {/* "同期" セクション (issue #194)。閉じるボタンあり、閉じたら Header メニューから再アクセス */}
+          <SyncSection />
+
+          {/* PWA インストール導線。閉じるボタンあり、閉じたら Header メニューから再アクセス */}
+          <PwaInstallBanner className='mb-4' />
+
           {/* ヘッダー行 */}
           <div className='mb-6 flex items-center justify-between'>
             <h2 className='font-bold text-2xl text-gray-800'>最近見た旅程一覧</h2>
@@ -37,9 +43,6 @@ const HomePage = () => {
               + 新しく旅に出る
             </Button>
           </div>
-
-          {/* 未認証時のみ表示される "同期" セクション (issue #194) */}
-          <SyncSection />
 
           {!(isLoading || hasTrips) && (
             <div className='relative flex flex-col items-center px-24 sm:px-0'>
@@ -52,9 +55,6 @@ const HomePage = () => {
               <CurvedArrow className='-top-6 absolute right-4 h-24 text-gray-400 sm:right-16' />
             </div>
           )}
-
-          {/* PWAインストールバナー */}
-          <PwaInstallBanner className='mt-4 mb-2' />
 
           {isLoading && (
             <div className='mt-8 flex justify-center'>

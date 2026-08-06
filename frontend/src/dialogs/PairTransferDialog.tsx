@@ -90,7 +90,7 @@ export const PairTransferDialog = ({ open, onOpenChange }: PairTransferDialogPro
               <div className='rounded bg-white p-2'>
                 <QRCodeCanvas size={192} value={code} />
               </div>
-              <p className='select-all font-mono text-24px font-semibold tracking-wider text-teal-800'>
+              <p className='select-all font-mono font-semibold text-24px text-teal-800 tracking-wider'>
                 {formatCode(code)}
               </p>
               <div className='flex w-full flex-col gap-1 text-10px text-gray-500 sm:text-12px'>

@@ -37,7 +37,7 @@ export const SyncSection = () => {
               <div className='flex-1'>
                 <h3 className='mb-1 font-semibold text-14px text-teal-800 sm:text-16px'>他のデバイスへ引き継ぐ</h3>
                 <p className='text-12px text-gray-600 sm:text-14px'>
-                  引き継ぎコードを発行して、iOS PWA など別のデバイスで同期を有効化します。
+                  引き継ぎコードを発行して、他のデバイスやアプリでも同じ一覧を見られるようにします。
                 </p>
               </div>
             </div>

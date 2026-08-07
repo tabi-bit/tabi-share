@@ -85,7 +85,7 @@ export const PairTransferDialog = ({ open, onOpenChange }: PairTransferDialogPro
           {status === 'ready' && code != null && (
             <div className='flex flex-col items-center gap-4'>
               <p className='w-full text-12px text-gray-600 sm:text-14px'>
-                他のデバイス・PWA の「引き継ぎコードで受け取る」に入力するか、下記の QR コードを読み取ってください。
+                他のデバイスやアプリで「引き継ぎコードで受け取る」に入力するか、下記の QR コードを読み取ってください。
               </p>
               <div className='rounded bg-white p-2'>
                 <QRCodeCanvas size={192} value={code} />

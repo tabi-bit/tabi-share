@@ -1,7 +1,7 @@
 """デバイス間引き継ぎ用のペアリングコード発行・引き換え (issue #194)。
 
-iOS PWA (ホーム画面追加) は Safari とストレージが分離され、メールリンクも常に
-Safari 側で開かれるため、認証によるリカバリが機能しない。この抜け穴を
+iOS のホーム画面追加アプリは Safari とストレージが分離され、OAuth リダイレクトも常に
+Safari 側で開かれるため、Google 認証によるリカバリが機能しない。この抜け穴を
 「認証済みデバイス → 8 桁コード発行 → 受信側デバイスでコード入力 → Firebase
 Custom Token 経由で認証状態を移送」のペアリング機構で塞ぐ。
 
@@ -10,9 +10,13 @@ Custom Token 自体は 700 文字超あり QR で扱いにくいので、8 桁�
 Firestore に隠す設計。
 
 セキュリティ:
-- コード空間 = base32 の 32^8 ≈ 1 兆 (40 bits)
+- コード空間 = 32^8 ≈ 1 兆 (40 bits)。SMS の 6 桁 OTP (20 bits) より強い
 - 5 分 TTL + one-time consume (Firestore transaction で atomic)
 - Firestore TTL policy で expires_at 経過ドキュメントは自動削除
+
+`firebase_admin` / `google-cloud-firestore` の API はいずれも同期ブロッキング I/O
+(特に `create_custom_token` は IAM signBlob への HTTP 呼び出しを伴う) なので、
+コルーチンから直接呼ばず `run_in_threadpool` 経由で実行しイベントループを止めない。
 """
 
 import logging
@@ -24,9 +28,10 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from firebase_admin import auth as fb_auth
 from firebase_admin import firestore
 from firebase_admin.exceptions import FirebaseError
-from google.cloud.firestore import Transaction, transactional
+from google.cloud.firestore import Client, Transaction, transactional
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.concurrency import run_in_threadpool
 
 from app.auth import ensure_session
 from app.db_connection import get_db_session
@@ -38,8 +43,8 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Pair"], prefix="/pair")
 
 FIRESTORE_COLLECTION = "pairing_codes"
-# 紛らわしい文字 (0/O, 1/I/L) を除いた 32 文字。base32 とはビットレイアウトが違うが
-# エントロピー空間は同等 (32^8 = 40 bits)。
+# 紛らわしい文字 (0/O, 1/I/L) を除いた 31 文字。表示上は 4 桁ずつハイフンで区切るが、
+# 保存・照合はハイフンを除いた素のコードで行う (_normalize_code 参照)。
 _CODE_ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ"
 _CODE_LENGTH = 8
 _CODE_TTL_MINUTES = 5
@@ -59,13 +64,37 @@ class RedeemPairingOut(BaseModel):
 
 
 def _generate_code() -> str:
-    """`secrets.choice` を使った暗号学的乱数由来の 8 桁 base32 相当コードを生成"""
+    """`secrets.choice` を使った暗号学的乱数由来の 8 桁コードを生成"""
     return "".join(secrets.choice(_CODE_ALPHABET) for _ in range(_CODE_LENGTH))
 
 
 def _normalize_code(raw: str) -> str:
-    """入力コードを正規化する (空白除去 + 大文字化)"""
-    return "".join(raw.split()).upper()
+    """入力コードを正規化する。
+
+    大文字化した上で、コード用アルファベットに含まれない文字 (ハイフン・空白等) を落とす。
+    UI は `A9K3-P2Q7` のように 4 桁ずつ区切って表示するため、画面の見た目通りに入力しても
+    引き換えできるようにする。
+    """
+    return "".join(c for c in raw.upper() if c in _CODE_ALPHABET)
+
+
+def _firestore_client() -> Client:
+    """Firestore クライアントを取得する。
+
+    `init_firebase_admin` が初期化を skip している場合 (`NOTIFICATIONS_ENABLED=false` 等)
+    default app が無く `ValueError` になる。設定不備であることが伝わるよう 503 に変換する。
+    """
+    try:
+        return firestore.client()
+    except ValueError as e:
+        logger.exception("Firestore is unavailable (Firebase Admin is not initialized)")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "デバイス引き継ぎ機能が利用できません。"
+                "サーバーの Firebase 設定を確認してください。"
+            ),
+        ) from e
 
 
 @router.post(
@@ -90,11 +119,14 @@ async def create_pairing(
         raise Forbidden(message="ログインが必要です")
 
     try:
-        custom_token_bytes: bytes = fb_auth.create_custom_token(user.firebase_uid)
+        custom_token_bytes: bytes = await run_in_threadpool(
+            fb_auth.create_custom_token, user.firebase_uid
+        )
     except FirebaseError as e:
         logger.exception("failed to create custom token (FirebaseError)")
         raise Forbidden(message="Custom Token の発行に失敗しました") from e
     except ValueError as e:
+        # 署名用 SA credentials が使えない (ローカル ADC で signBlob 権限が無い等)
         logger.exception("failed to create custom token (signing not available)")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -106,12 +138,14 @@ async def create_pairing(
 
     code = _generate_code()
     expires_at = datetime.now(UTC) + timedelta(minutes=_CODE_TTL_MINUTES)
-    firestore.client().collection(FIRESTORE_COLLECTION).document(code).set(
+    doc_ref = _firestore_client().collection(FIRESTORE_COLLECTION).document(code)
+    await run_in_threadpool(
+        doc_ref.set,
         {
             "custom_token": custom_token_bytes.decode(),
             "expires_at": expires_at,
             "consumed_at": None,
-        }
+        },
     )
     return CreatePairingOut(code=code, expires_at=expires_at)
 
@@ -129,8 +163,13 @@ async def redeem_pairing(body: RedeemPairingIn) -> RedeemPairingOut:
     atomic に実行し、同一コードの二重使用を防止する。
     """
     code = _normalize_code(body.code)
-    doc_ref = firestore.client().collection(FIRESTORE_COLLECTION).document(code)
-    transaction = firestore.client().transaction()
+    if not code:
+        # 正規化後に空になる入力 (記号のみ等)。Firestore は空 ID を受け付けないため先に弾く
+        raise NotFound(message="コードが無効です")
+
+    client = _firestore_client()
+    doc_ref = client.collection(FIRESTORE_COLLECTION).document(code)
+    transaction = client.transaction()
 
     @transactional
     def _consume(tx: Transaction) -> str:
@@ -150,5 +189,5 @@ async def redeem_pairing(body: RedeemPairingIn) -> RedeemPairingOut:
             raise Forbidden(message="コードデータが不正です")
         return token
 
-    custom_token = _consume(transaction)
+    custom_token: str = await run_in_threadpool(_consume, transaction)
     return RedeemPairingOut(custom_token=custom_token)

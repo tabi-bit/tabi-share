@@ -35,8 +35,14 @@ def _make_request(cookies: dict[str, str] | None = None) -> Request:
     return Request(scope)
 
 
-def _encode_new_session_jwt(session_id: str, **overrides) -> str:
-    """新方式: session_id を payload に持つ JWT を生成する"""
+def _encode_new_session_jwt(
+    session_id: str, key: str | None = None, **overrides
+) -> str:
+    """新方式: session_id を payload に持つ JWT を生成する。
+
+    `key` は署名鍵の差し替え用。`**overrides` に混ぜると payload 側にも展開されてしまい
+    (署名鍵が JWT の平文部分に載る)、明示引数として分離する。
+    """
     payload = {
         "session_id": session_id,
         "exp": datetime.now(UTC) + timedelta(seconds=settings.cookie_max_age),
@@ -44,7 +50,7 @@ def _encode_new_session_jwt(session_id: str, **overrides) -> str:
     }
     return pyjwt.encode(
         payload,
-        overrides.pop("key", settings.cookie_secret_key),
+        key or settings.cookie_secret_key,
         algorithm="HS256",
     )
 

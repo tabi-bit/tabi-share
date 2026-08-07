@@ -225,46 +225,59 @@ async def test_redeem_returns_custom_token(
 async def test_redeem_normalizes_input_code(
     client: AsyncClient, fake_firestore: _FakeFirestoreClient
 ):
-    """小文字・空白・ハイフンを含む入力も同じコードとして扱う"""
+    """小文字・空白・ハイフンを含む入力も同じコードとして扱う。
+
+    UI は `A9K3-P2Q7` のように 4 桁ずつ区切って表示するため、画面の見た目通りに
+    ハイフン込みで入力されるケースを必ず通す。
+    """
     fake_firestore.store["A9K3P2Q7"] = {
         "custom_token": "normalized-token",
         "expires_at": datetime.now(UTC) + timedelta(minutes=5),
         "consumed_at": None,
     }
 
-    r = await client.post("/pair/redeem", json={"code": "a9k3 p2q7"})
+    r = await client.post("/pair/redeem", json={"code": "  a9k3-p2q7 "})
     assert r.status_code == 200
     assert r.json() == {"custom_token": "normalized-token"}
+
+
+async def test_redeem_blank_after_normalize_returns_404(
+    client: AsyncClient, fake_firestore: _FakeFirestoreClient
+):
+    """正規化後に空になる入力は Firestore に触れず 404 (空 ID は SDK が受け付けないため)"""
+    r = await client.post("/pair/redeem", json={"code": "---"})
+    assert r.status_code == 404
 
 
 async def test_redeem_unknown_code_returns_404(
     client: AsyncClient, fake_firestore: _FakeFirestoreClient
 ):
-    r = await client.post("/pair/redeem", json={"code": "UNKNOWN1"})
+    # コードは _CODE_ALPHABET (紛らわしい 0/1/I/L/O を除いた 31 文字) のみで構成される
+    r = await client.post("/pair/redeem", json={"code": "ZZZZ9999"})
     assert r.status_code == 404
 
 
 async def test_redeem_expired_code_returns_403(
     client: AsyncClient, fake_firestore: _FakeFirestoreClient
 ):
-    fake_firestore.store["EXPIRED1"] = {
+    fake_firestore.store["EXPRD222"] = {
         "custom_token": "irrelevant",
         "expires_at": datetime.now(UTC) - timedelta(seconds=1),
         "consumed_at": None,
     }
 
-    r = await client.post("/pair/redeem", json={"code": "EXPIRED1"})
+    r = await client.post("/pair/redeem", json={"code": "EXPRD222"})
     assert r.status_code == 403
 
 
 async def test_redeem_already_consumed_returns_403(
     client: AsyncClient, fake_firestore: _FakeFirestoreClient
 ):
-    fake_firestore.store["USED0000"] = {
+    fake_firestore.store["USED2222"] = {
         "custom_token": "irrelevant",
         "expires_at": datetime.now(UTC) + timedelta(minutes=5),
         "consumed_at": datetime.now(UTC) - timedelta(seconds=10),
     }
 
-    r = await client.post("/pair/redeem", json={"code": "USED0000"})
+    r = await client.post("/pair/redeem", json={"code": "USED2222"})
     assert r.status_code == 403

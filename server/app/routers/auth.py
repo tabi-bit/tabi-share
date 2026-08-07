@@ -4,7 +4,7 @@
 "バックアップ・追加機能" 位置づけで、認証は編集の必須要件ではない (issue #194)。
 """
 
-from typing import Any
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from firebase_admin import auth as fb_auth
@@ -61,7 +61,7 @@ async def link_firebase(
     body: LinkFirebaseIn,
     request: Request,
     response: Response,
-    db: AsyncSession = Depends(get_db_session),
+    db: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> LinkFirebaseOut:
     """Firebase ID トークンを検証し、現在の session を認証済 user に統合する。
 

@@ -21,6 +21,17 @@ from app.schemas.trip import TripCreateIn
 settings = get_settings()
 
 
+def _session_id_of(token: str | None) -> str:
+    """Cookie の JWT から session_id を取り出す。
+
+    トークン文字列そのものを比較すると、`ensure_session` の Cookie ローリング更新で
+    `exp` (秒精度) が 1 増えたときに落ちて flaky になるため、payload で比較する。
+    """
+    assert token is not None
+    payload = pyjwt.decode(token, settings.cookie_secret_key, algorithms=["HS256"])
+    return payload["session_id"]
+
+
 def _make_legacy_cookie(trip_ids: list[int]) -> str:
     """旧形式 (trip_ids 配列) の JWT を生成する"""
     payload = {
@@ -86,13 +97,14 @@ async def test_legacy_cookie_migration_skipped_for_new_cookie(
     """新形式 Cookie は移行対象外 (そのままスルー)"""
     response = await client.post("/trips", json={"title": "x", "detail": ""})
     trip_id = response.json()["id"]
-    original_token = client.cookies.get(SESSION_COOKIE_NAME)
+    original_session_id = _session_id_of(client.cookies.get(SESSION_COOKIE_NAME))
 
-    # 同じクライアントで GET しても Cookie は変わらない (移行が走らない)
+    # 同じクライアントで GET しても session は差し替わらない (移行が走らない)
     r = await client.get(f"/trips/{trip_id}")
     assert r.status_code == 200
-    after_token = client.cookies.get(SESSION_COOKIE_NAME)
-    assert after_token == original_token
+    assert (
+        _session_id_of(client.cookies.get(SESSION_COOKIE_NAME)) == original_session_id
+    )
 
 
 async def test_legacy_cookie_migration_no_cookie_is_noop(

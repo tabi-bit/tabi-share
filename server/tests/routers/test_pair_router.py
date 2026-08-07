@@ -10,6 +10,7 @@ from typing import Any
 
 import pytest
 from firebase_admin.exceptions import FirebaseError
+from google.cloud.exceptions import Conflict
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -36,6 +37,12 @@ class _FakeDocument:
         self._key = key
 
     def set(self, data: dict[str, Any]) -> None:
+        self._store[self._key] = dict(data)
+
+    def create(self, data: dict[str, Any]) -> None:
+        """Firestore の create() 同様、既存ドキュメントがあれば Conflict を投げる"""
+        if self._key in self._store:
+            raise Conflict(f"document already exists: {self._key}")
         self._store[self._key] = dict(data)
 
     def get(self, transaction: Any = None) -> _FakeSnapshot:
@@ -156,6 +163,38 @@ async def test_create_pairing_returns_code_for_authed_user(
     stored = fake_firestore.store[code]
     assert stored["custom_token"] == "custom-token-abc"
     assert stored["consumed_at"] is None
+
+
+async def test_create_pairing_retries_on_code_collision(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+    fake_firestore: _FakeFirestoreClient,
+):
+    """コードが衝突したら採番し直し、既存ドキュメントは書き換えない。
+
+    set() だと衝突時に既存の未使用コードの custom_token を上書きしてしまい、
+    先のコードの持ち主が別 user として認証されうるため、create() + リトライにしている。
+    """
+    _mock_create_custom_token(monkeypatch, token=b"new-token")
+    fake_firestore.store["AAAA2222"] = {
+        "custom_token": "existing-token",
+        "expires_at": datetime.now(UTC) + timedelta(minutes=5),
+        "consumed_at": None,
+    }
+    # 1 回目は既存コードと衝突させ、2 回目で空きコードを引かせる
+    codes = iter(["AAAA2222", "BBBB3333"])
+    monkeypatch.setattr("app.routers.pair._generate_code", lambda: next(codes))
+
+    session = await _make_authed_session(db_session, firebase_uid="uid-collision")
+    client.cookies.set(SESSION_COOKIE_NAME, _make_session_cookie_value(session.id))
+
+    r = await client.post("/pair/create")
+    assert r.status_code == 200
+    assert r.json()["code"] == "BBBB3333"
+    # 既存コードのトークンは無傷
+    assert fake_firestore.store["AAAA2222"]["custom_token"] == "existing-token"
+    assert fake_firestore.store["BBBB3333"]["custom_token"] == "new-token"
 
 
 async def test_create_pairing_forbidden_for_anonymous_session(

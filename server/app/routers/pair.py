@@ -28,6 +28,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from firebase_admin import auth as fb_auth
 from firebase_admin import firestore
 from firebase_admin.exceptions import FirebaseError
+from google.cloud.exceptions import Conflict
 from google.cloud.firestore import Client, Transaction, transactional
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -48,6 +49,8 @@ FIRESTORE_COLLECTION = "pairing_codes"
 _CODE_ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ"
 _CODE_LENGTH = 8
 _CODE_TTL_MINUTES = 5
+# コード衝突時に採番し直す上限。空間が 31^8 なので通常 1 回で成功する
+_CODE_CREATE_MAX_ATTEMPTS = 5
 
 
 class CreatePairingOut(BaseModel):
@@ -136,18 +139,31 @@ async def create_pairing(
             ),
         ) from e
 
-    code = _generate_code()
+    client = _firestore_client()
     expires_at = datetime.now(UTC) + timedelta(minutes=_CODE_TTL_MINUTES)
-    doc_ref = _firestore_client().collection(FIRESTORE_COLLECTION).document(code)
-    await run_in_threadpool(
-        doc_ref.set,
-        {
-            "custom_token": custom_token_bytes.decode(),
-            "expires_at": expires_at,
-            "consumed_at": None,
-        },
+    document = {
+        "custom_token": custom_token_bytes.decode(),
+        "expires_at": expires_at,
+        "consumed_at": None,
+    }
+    # set() は既存ドキュメントを置換するため、コードが衝突すると発行済みで未使用の
+    # コードの custom_token を別 user のもので上書きしてしまう (先のコードの持ち主が
+    # 別 user として認証されうる)。create() で既存を壊さないようにし、衝突したら採番し直す。
+    for _ in range(_CODE_CREATE_MAX_ATTEMPTS):
+        code = _generate_code()
+        doc_ref = client.collection(FIRESTORE_COLLECTION).document(code)
+        try:
+            await run_in_threadpool(doc_ref.create, document)
+        except Conflict:
+            logger.warning("pairing code collided, regenerating")
+            continue
+        return CreatePairingOut(code=code, expires_at=expires_at)
+
+    logger.error("failed to allocate a unique pairing code")
+    raise HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail="引き継ぎコードを発行できませんでした。時間をおいて再度お試しください。",
     )
-    return CreatePairingOut(code=code, expires_at=expires_at)
 
 
 @router.post(

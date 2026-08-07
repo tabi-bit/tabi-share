@@ -60,7 +60,8 @@
   - 有効化することで以下ができるようになる:
     - デバイス間での旅程一覧同期
     - Cookie 消失 (ブラウザデータクリア、機種変更、iOS Safari の ITP 7 日パージ) 時のリカバリ
-  - `signInWithRedirect(GoogleAuthProvider)` で OAuth。認証時は同一 `firebase_uid` の user に session を紐付けて統合する
+  - `signInWithPopup(GoogleAuthProvider)` で OAuth。認証時は同一 `firebase_uid` の user に session を紐付けて統合する
+    - `signInWithRedirect` は使わない: redirect フローは authDomain (`<project>.firebaseapp.com`) 上のクロスオリジン iframe に依存し、サードパーティストレージをブロックするブラウザ (Safari 16.1+ / Firefox 109+ / Chrome M115+) で `getRedirectResult` が黙って null を返す。authDomain を自ドメインに変える回避策は Hosting preview チャンネルの URL が動的で OAuth リダイレクト URI を事前登録できないため採れない
 - **デバイス引き継ぎ** (8 桁ペアリングコード + Firebase Custom Token):
   - iOS PWA (ホーム画面追加) は Safari とストレージが分離され、OAuth リダイレクトも常に Safari 側で開かれるため **Google 認証によるリカバリが PWA では機能しない**。この抜け穴を塞ぐための機構
   - 認証済みデバイスで 8 桁コード (base32 = 40 bits) を発行し、実体の Firebase Custom Token とのマッピングは Firestore に短命保存 (5 分 TTL + one-time consume)

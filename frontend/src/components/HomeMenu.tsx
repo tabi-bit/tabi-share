@@ -1,7 +1,6 @@
 import { useAtomValue } from 'jotai';
 import { Download, LogInIcon, MoreVerticalIcon, SendIcon, SmartphoneIcon } from 'lucide-react';
 import { useState } from 'react';
-import { toast } from 'sonner';
 import { authUserAtom } from '@/atoms/auth';
 import { Button } from '@/components/ui/button';
 import {
@@ -30,19 +29,6 @@ export const HomeMenu = ({ className }: { className?: string }) => {
   const [transferOpen, setTransferOpen] = useState(false);
   const [receiveOpen, setReceiveOpen] = useState(false);
 
-  const handleGoogleSignIn = async (): Promise<void> => {
-    try {
-      await signInWithGoogle();
-    } catch (err) {
-      console.error('failed to start Google sign-in', err);
-      toast.error('Google 認証を開始できませんでした');
-    }
-  };
-
-  const handleInstall = async (): Promise<void> => {
-    await installApp();
-  };
-
   // authUser が undefined (初期化前) の間はメニュー項目は仮描画 (Google 認証・受け取り経路として)
   const isAuthed = authUser != null;
 
@@ -63,7 +49,7 @@ export const HomeMenu = ({ className }: { className?: string }) => {
             </DropdownMenuItem>
           ) : (
             <>
-              <DropdownMenuItem onSelect={handleGoogleSignIn}>
+              <DropdownMenuItem onSelect={() => void signInWithGoogle()}>
                 <LogInIcon className='size-4' />
                 Google で同期する
               </DropdownMenuItem>
@@ -77,7 +63,7 @@ export const HomeMenu = ({ className }: { className?: string }) => {
             <>
               <DropdownMenuSeparator />
               <DropdownMenuLabel>アプリ</DropdownMenuLabel>
-              <DropdownMenuItem onSelect={handleInstall}>
+              <DropdownMenuItem onSelect={() => void installApp()}>
                 <Download className='size-4' />
                 アプリとしてインストール
               </DropdownMenuItem>

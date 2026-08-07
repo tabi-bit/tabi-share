@@ -1,7 +1,6 @@
 import { useAtomValue } from 'jotai';
 import { LogInIcon, SmartphoneIcon, X } from 'lucide-react';
 import { useState } from 'react';
-import { toast } from 'sonner';
 import { authUserAtom } from '@/atoms/auth';
 import { Button } from '@/components/ui/button';
 import { PairReceiveDialog } from '@/dialogs/PairReceiveDialog';
@@ -26,15 +25,6 @@ export const SyncSection = () => {
 
   // 初期化前 (onAuthStateChanged 未発火) は表示しない
   if (authUser === undefined) return null;
-
-  const handleGoogleSignIn = async (): Promise<void> => {
-    try {
-      await signInWithGoogle();
-    } catch (err) {
-      console.error('failed to start Google sign-in', err);
-      toast.error('Google 認証を開始できませんでした');
-    }
-  };
 
   if (authUser !== null) {
     if (!transferDismiss.isLoaded || transferDismiss.dismissed) return null;
@@ -97,7 +87,7 @@ export const SyncSection = () => {
             <Button onClick={() => setReceiveOpen(true)} size='sm' variant='outline'>
               引き継ぎコードで受け取る
             </Button>
-            <Button onClick={handleGoogleSignIn} size='sm'>
+            <Button onClick={() => void signInWithGoogle()} size='sm'>
               Google で同期する
             </Button>
           </div>

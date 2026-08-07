@@ -21,7 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.db_connection import get_db_session
-from app.errors import Forbidden, NotFound
+from app.errors import Forbidden
 from app.models import Block, Page, User, UserSession, UserTripAccess
 
 # ---- Basic 認証 ----
@@ -196,7 +196,7 @@ async def _has_trip_access(
 async def require_trip_access(
     trip_id: int,
     request: Request,
-    db: AsyncSession = Depends(get_db_session),
+    db: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> int:
     """パスパラメータの trip_id へのアクセス権を検証する。"""
     if not await _has_trip_access(db, decode_session_id(request), trip_id):
@@ -213,6 +213,10 @@ async def require_page_access(
 
     trip_id 解決と権限判定を JOIN 1 発で行う (ページ・ブロック CRUD は最頻出
     エンドポイントのため、認可の DB 往復数を最小化する)。
+
+    行が無い場合も権限が無い場合も一律 `Forbidden` を返す。page_id は連番の整数なので、
+    404 と 403 を出し分けると Cookie を持たない第三者が ID の実在を判別できてしまう。
+    `require_trip_access` も存在確認をせず常に `Forbidden` を返しており、挙動を揃える。
     """
     session_id = decode_session_id(request)
     stmt = select(
@@ -226,9 +230,7 @@ async def require_page_access(
         .label("has_access"),
     ).where(Page.id == page_id)
     row = (await db.execute(stmt)).one_or_none()
-    if row is None:
-        raise NotFound(message="Page not found")
-    if not row.has_access:
+    if row is None or not row.has_access:
         raise Forbidden()
     return row.trip_id
 
@@ -238,7 +240,10 @@ async def require_block_access(
     block_id: int,
     request: Request,
 ) -> int:
-    """block_id から trip_id を解決し、アクセス権を検証する。JOIN 1 発。"""
+    """block_id から trip_id を解決し、アクセス権を検証する。JOIN 1 発。
+
+    `require_page_access` と同じ理由で、行が無い場合も権限が無い場合も `Forbidden` に寄せる。
+    """
     session_id = decode_session_id(request)
     stmt = (
         select(
@@ -255,8 +260,6 @@ async def require_block_access(
         .where(Block.id == block_id)
     )
     row = (await db.execute(stmt)).one_or_none()
-    if row is None:
-        raise NotFound(message="Block not found")
-    if not row.has_access:
+    if row is None or not row.has_access:
         raise Forbidden()
     return row.trip_id

@@ -148,7 +148,10 @@ async def test_create_block_non_existent_page(
     client: AsyncClient, db_session: AsyncSession
 ):
     """
-    POST /pages/{page_id}/blocks で存在しないpage_idが与えられた場合に 404 が返ることを検証
+    POST /pages/{page_id}/blocks で存在しないpage_idが与えられた場合に 403 が返ることを検証
+
+    page_id は連番なので、存在しない ID を 404、権限が無い ID を 403 と出し分けると
+    第三者が ID の実在を判別できてしまう。認可層で一律 Forbidden に寄せている。
     """
     block_data = {
         "title": "test block",
@@ -158,8 +161,7 @@ async def test_create_block_non_existent_page(
         "block_type": "event",
     }
     response = await client.post("/pages/999/blocks", json=block_data)
-    assert response.status_code == 404
-    assert response.json()["message"] == "Page not found"
+    assert response.status_code == 403
 
 
 async def test_read_blocks(
@@ -196,11 +198,10 @@ async def test_read_blocks(
 
 async def test_get_block_non_existent_id(client: AsyncClient, db_session: AsyncSession):
     """
-    GET /blocks/{block_id} で存在しないIDが与えられた場合に 404 が返ることを検証
+    GET /blocks/{block_id} で存在しないIDが与えられた場合に 403 が返ることを検証 (ID 実在の秘匿)
     """
     response = await client.get("/blocks/999")
-    assert response.status_code == 404
-    assert response.json()["message"] == "Block not found"
+    assert response.status_code == 403
 
 
 async def test_update_block(
@@ -239,7 +240,7 @@ async def test_update_block_non_existent_id(
     client: AsyncClient, db_session: AsyncSession
 ):
     """
-    PUT /blocks/{block_id} で存在しないIDが与えられた場合に 404 が返ることを検証
+    PUT /blocks/{block_id} で存在しないIDが与えられた場合に 403 が返ることを検証 (ID 実在の秘匿)
     """
     update_data = {
         "title": "non existent",
@@ -248,8 +249,7 @@ async def test_update_block_non_existent_id(
         "block_type": "event",
     }
     response = await client.put("/blocks/999", json=update_data)
-    assert response.status_code == 404
-    assert response.json()["message"] == "Block not found"
+    assert response.status_code == 403
 
 
 async def test_update_block_invalid_input(
@@ -302,8 +302,9 @@ async def test_delete_block(
     assert response.status_code == 204
 
     # --- 削除されたことを確認 ---
+    # 削除済み block は認可層で解決できず Forbidden になる (ID 実在の秘匿)
     response = await authed_client.get(f"/blocks/{block_id}")
-    assert response.status_code == 404
+    assert response.status_code == 403
 
 
 # ---- 未認可アクセス 403 テスト ----

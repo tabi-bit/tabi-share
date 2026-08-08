@@ -13,7 +13,10 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import SESSION_COOKIE_NAME, generate_session_id
+from app.cruds import trips as trips_cruds
 from app.models import User, UserSession
+from app.routers.auth import _insert_or_get_user_id
+from app.schemas.trip import TripCreateIn
 from tests.conftest import _make_session_cookie_value
 
 
@@ -73,10 +76,6 @@ async def test_link_merges_into_existing_user(
     existing = User(firebase_uid="firebase-uid-existing")
     db_session.add(existing)
     await db_session.flush()
-
-    # マージ対象の trip を作成 (users を先に作った後で trip を FK 有効な状態で追加)
-    from app.cruds import trips as trips_cruds
-    from app.schemas.trip import TripCreateIn
 
     trip_shared = await trips_cruds.create_trip(
         db=db_session, trip=TripCreateIn(title="shared", detail=""), url_id="shared"
@@ -170,6 +169,127 @@ async def test_link_is_idempotent_on_reauth(
     assert len(users) == 1  # 増減なし
 
 
+async def _make_authed_session(db: AsyncSession, firebase_uid: str) -> UserSession:
+    """認証済み user + session を作成して session を返す"""
+    user = User(firebase_uid=firebase_uid)
+    db.add(user)
+    await db.flush()
+    session = UserSession(id=generate_session_id(), user_id=user.id)
+    db.add(session)
+    await db.commit()
+    return session
+
+
+async def _grant_access(db: AsyncSession, user_id: int, trip_id: int) -> None:
+    """アクセス権を仕込む"""
+    await db.execute(
+        text("INSERT INTO user_trip_access (user_id, trip_id) VALUES (:uid, :tid)"),
+        {"uid": user_id, "tid": trip_id},
+    )
+    await db.commit()
+
+
+async def _trip_ids_of(db: AsyncSession, user_id: int) -> list[int]:
+    """user が持つ trip_id 一覧を返す"""
+    rows = await db.execute(
+        text(
+            "SELECT trip_id FROM user_trip_access WHERE user_id = :uid ORDER BY trip_id"
+        ),
+        {"uid": user_id},
+    )
+    return list(rows.scalars())
+
+
+async def test_link_switches_to_unknown_account_without_touching_current_user(
+    client: AsyncClient, db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+):
+    """パターン 4 (切り替え先 user 無し): 認証済み session に別 uid が来ても元アカウントは無傷 (issue #223)"""
+    session = await _make_authed_session(db_session, firebase_uid="uid-current")
+    current_user_id = session.user_id
+    trip_id = await trips_cruds.create_trip(
+        db=db_session, trip=TripCreateIn(title="x", detail=""), url_id="switch-new"
+    )
+    await _grant_access(db_session, current_user_id, trip_id)
+
+    _mock_verify_id_token(monkeypatch, uid="uid-other")
+    client.cookies.set(SESSION_COOKIE_NAME, _make_session_cookie_value(session.id))
+
+    r = await client.post("/auth/link", json={"id_token": "any"})
+    assert r.status_code == 200
+    assert r.json() == {"firebase_uid": "uid-other"}
+
+    # 元アカウントは firebase_uid を奪われず、旅程も保持したまま存在し続ける
+    current_uid = (
+        await db_session.execute(
+            text("SELECT firebase_uid FROM users WHERE id = :uid"),
+            {"uid": current_user_id},
+        )
+    ).scalar()
+    assert current_uid == "uid-current"
+    assert await _trip_ids_of(db_session, current_user_id) == [trip_id]
+
+    # session は新規作成された切り替え先 user を指し、旅程はマージされていない
+    new_user_id = (
+        await db_session.execute(
+            text("SELECT user_id FROM sessions WHERE id = :sid"), {"sid": session.id}
+        )
+    ).scalar()
+    assert new_user_id != current_user_id
+    new_uid = (
+        await db_session.execute(
+            text("SELECT firebase_uid FROM users WHERE id = :uid"), {"uid": new_user_id}
+        )
+    ).scalar()
+    assert new_uid == "uid-other"
+    assert await _trip_ids_of(db_session, new_user_id) == []
+
+
+async def test_link_switches_to_existing_account_without_merging(
+    client: AsyncClient, db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+):
+    """パターン 4 (切り替え先 user あり): 元アカウントは削除もマージもされない (issue #223)"""
+    session = await _make_authed_session(db_session, firebase_uid="uid-current-2")
+    current_user_id = session.user_id
+    other = User(firebase_uid="uid-other-2")
+    db_session.add(other)
+    await db_session.flush()
+    other_user_id = other.id
+
+    trip_current = await trips_cruds.create_trip(
+        db=db_session, trip=TripCreateIn(title="cur", detail=""), url_id="switch-cur"
+    )
+    trip_other = await trips_cruds.create_trip(
+        db=db_session, trip=TripCreateIn(title="oth", detail=""), url_id="switch-oth"
+    )
+    await _grant_access(db_session, current_user_id, trip_current)
+    await _grant_access(db_session, other_user_id, trip_other)
+
+    _mock_verify_id_token(monkeypatch, uid="uid-other-2")
+    client.cookies.set(SESSION_COOKIE_NAME, _make_session_cookie_value(session.id))
+
+    r = await client.post("/auth/link", json={"id_token": "any"})
+    assert r.status_code == 200
+
+    # 元アカウントは残存し、旅程も他アカウントに混ざっていない
+    assert await _trip_ids_of(db_session, current_user_id) == [trip_current]
+    assert await _trip_ids_of(db_session, other_user_id) == [trip_other]
+    current_uid = (
+        await db_session.execute(
+            text("SELECT firebase_uid FROM users WHERE id = :uid"),
+            {"uid": current_user_id},
+        )
+    ).scalar()
+    assert current_uid == "uid-current-2"
+
+    # session だけが切り替え先へ張り替わる (session_id は維持)
+    session_user_id = (
+        await db_session.execute(
+            text("SELECT user_id FROM sessions WHERE id = :sid"), {"sid": session.id}
+        )
+    ).scalar()
+    assert session_user_id == other_user_id
+
+
 async def test_link_without_cookie_creates_anonymous_session_and_promotes(
     client: AsyncClient, monkeypatch: pytest.MonkeyPatch
 ):
@@ -196,3 +316,47 @@ async def test_link_invalid_id_token_returns_401(
 
     r = await client.post("/auth/link", json={"id_token": "invalid"})
     assert r.status_code == 401
+
+
+async def test_link_switch_is_idempotent(
+    client: AsyncClient, db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+):
+    """パターン 4 を 2 回叩いても 2 回目はパターン 3 に落ち、user は増えない"""
+    _mock_verify_id_token(monkeypatch, uid="uid-switch-twice")
+    session = await _make_authed_session(db_session, firebase_uid="uid-before-switch")
+    client.cookies.set(SESSION_COOKIE_NAME, _make_session_cookie_value(session.id))
+
+    assert (
+        await client.post("/auth/link", json={"id_token": "any"})
+    ).status_code == 200
+    assert (
+        await client.post("/auth/link", json={"id_token": "any"})
+    ).status_code == 200
+
+    user_count = (await db_session.execute(text("SELECT COUNT(*) FROM users"))).scalar()
+    assert user_count == 2  # 元アカウント + 切り替え先のみ
+    session_uid = (
+        await db_session.execute(
+            text(
+                "SELECT u.firebase_uid FROM users u "
+                "JOIN sessions s ON s.user_id = u.id WHERE s.id = :sid"
+            ),
+            {"sid": session.id},
+        )
+    ).scalar()
+    assert session_uid == "uid-switch-twice"
+
+
+async def test_insert_or_get_user_id_returns_existing_on_conflict(
+    db_session: AsyncSession,
+):
+    """ON CONFLICT DO NOTHING で 0 行になった場合も SELECT フォールバックで同じ id を返す"""
+    first = await _insert_or_get_user_id(db_session, "uid-conflict")
+    second = await _insert_or_get_user_id(db_session, "uid-conflict")
+    assert first == second
+    duplicated = (
+        await db_session.execute(
+            text("SELECT COUNT(*) FROM users WHERE firebase_uid = 'uid-conflict'")
+        )
+    ).scalar()
+    assert duplicated == 1

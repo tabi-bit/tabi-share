@@ -484,6 +484,23 @@ curl -X POST https://<staging-cloud-run-url>/internal/notify/tick \
 - **iOS Safari 実機**: localhost からの PWA install が事実上できないため、通知系は **staging 環境で verify する**
 - 5 分前通知の end-to-end 確認は **staging (Cloud Scheduler + Cloud Run 揃った環境) で行う**のが本命
 
+### 10.7 通知デバッグページ (`/debug/notify`)
+
+実機で DevTools を繋げないとき用。[デバッグモード](debug_logger.md)を有効にすると、ホームの
+3 点リーダに「デバッグ > 通知デバッグ」が出る (PWA は URL 直打ちできないため導線が必須)。
+デバッグモードが無効なときはルート自体がホームへリダイレクトする。
+
+| セクション | 用途 |
+|---|---|
+| 環境 | display-mode / permission / FCM token / **build ID** (診断ログの SW 行とズレていれば古い SW が動いたまま) |
+| Service Worker | 登録ごとの scope / script / state / push endpoint。PWA とブラウザで endpoint が一致 = ストレージ共有 |
+| ローカル通知 | FCM を経由せず scope 別に `showNotification`。icon 有無・画像を絶対 URL にするかも切り替えられる |
+| サーバ経路 | その context の token だけで購読 / 解除 / テスト送信。**裏に回したら送信**は hidden になった瞬間に送るので、SW 経路 (可視クライアント 0) を確実に踏める |
+
+**経路の見分け方**: FCM SW は可視クライアントが 1 つでもあると自分では表示せずページに postMessage
+する (`@firebase/messaging` の `onPush`)。診断ログに `[FCM] foreground message` があればページ経路、
+無ければ SW 経路。前景/背景で見た目が食い違うときはここを最初に見る。
+
 ## 11. 運用
 
 ### 11.1 通知機能の一時停止

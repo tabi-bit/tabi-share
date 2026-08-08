@@ -1,5 +1,7 @@
 import { useEffect } from 'react';
+import { debugLog } from '@/lib/debugLogger';
 import { subscribeForegroundMessages } from '@/lib/messaging';
+import { getDisplayMode } from '@/lib/platform';
 
 /**
  * フォアグラウンド (タブがアクティブ) で FCM メッセージを受け取った際に、
@@ -18,6 +20,14 @@ export const useForegroundNotificationToast = () => {
 
     subscribeForegroundMessages(async payload => {
       const { title, body, kind, tripId, urlId, blockId, icon } = payload;
+      // FCM SW は可視クライアントが 1 つでもあると自分では表示せずページに postMessage する。
+      // この行が残っていれば「SW ではなくページが表示した」と判別できる。
+      // 通知本文 (title/body) は通常利用でも端末に残るため載せない
+      void debugLog('FCM', 'foreground message', {
+        kind,
+        displayMode: getDisplayMode(),
+        visibility: document.visibilityState,
+      });
       if (!title) return;
       if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
 

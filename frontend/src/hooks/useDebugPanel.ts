@@ -9,7 +9,8 @@ import { debugPanelEnabledAtom } from '@/atoms/debug';
  * 詳細は [@docs/debug_logger.md](../../../docs/debug_logger.md)。
  */
 
-const DEBUG_PARAM = 'debug';
+/** 有効化状態は atom の effect 反映を待つ必要があるため、初回描画で判定したい側にも公開する */
+export const DEBUG_PARAM = 'debug';
 
 /** ロゴ連打で切り替えるまでのタップ数と、連打とみなすタップ間隔 */
 const REQUIRED_TAPS = 7;

@@ -3,6 +3,12 @@ export const isIOS = (): boolean => {
   return /iPad|iPhone|iPod/.test(ua) || (ua.includes('Mac') && 'ontouchend' in document);
 };
 
+const DISPLAY_MODES = ['standalone', 'fullscreen', 'minimal-ui', 'browser'] as const;
+
+/** PWA として開いているかブラウザタブかを診断ログ / デバッグ画面で見分けるための表示 */
+export const getDisplayMode = (): string =>
+  DISPLAY_MODES.find(mode => window.matchMedia(`(display-mode: ${mode})`).matches) ?? 'unknown';
+
 export const isPWAInstalled = (): boolean => {
   if (window.matchMedia('(display-mode: standalone)').matches) return true;
   if (window.matchMedia('(display-mode: fullscreen)').matches) return true;

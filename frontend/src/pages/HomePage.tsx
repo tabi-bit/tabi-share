@@ -9,13 +9,13 @@ import { PwaInstallBanner } from '@/components/PwaInstallBanner';
 import { SyncSection } from '@/components/SyncSection';
 import { Button } from '@/components/ui/button';
 import { AddTripDialog } from '@/dialogs/AddTripDialog';
-import { useVisitedTrips } from '@/hooks/useVisitedTrips';
+import { useMyTrips } from '@/hooks/useMyTrips';
 import { formatTripRangeYMD } from '@/lib/date';
 import { sortTripsByLastEdited } from '@/lib/sortTrips';
 import { cn } from '@/lib/utils';
 
 const HomePage = () => {
-  const { trips, isLoading } = useVisitedTrips();
+  const { trips, isLoading } = useMyTrips();
   const navigate = useNavigate();
   const [addTripDialogOpen, setAddTripDialogOpen] = useState(false);
   const isOffline = useAtomValue(isOfflineReadAtom);

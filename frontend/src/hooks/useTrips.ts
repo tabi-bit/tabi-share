@@ -2,9 +2,9 @@ import dayjs from 'dayjs';
 import { toast } from 'sonner';
 import useSWR, { type SWRConfiguration, useSWRConfig } from 'swr';
 import useSWRMutation from 'swr/mutation';
-import z from 'zod';
 import { apiClient, fetcher } from '@/lib/apiClient';
 import { getErrorMessage } from '@/lib/errors';
+import { removeTrip, revalidateTripLists, tripDetailKey, writeTrip } from '@/lib/tripCache';
 import { blockToApi } from '@/types';
 import { pageFromApi, pageMutationToApi } from '@/types/page';
 import {
@@ -15,7 +15,6 @@ import {
   tripFromApi,
   tripMutationToApi,
 } from '@/types/trip';
-import { VISITED_TRIPS_CACHE_KEY } from './useVisitedTrips';
 
 const TRIPS_BASE_PATH = '/trips';
 
@@ -23,50 +22,13 @@ const TRIPS_BASE_PATH = '/trips';
  * URLのIDを指定して単一のTripを取得するフック
  */
 export const useTripByUrlId = (urlId: Trip['urlId'] | null, options?: Pick<SWRConfiguration, 'refreshInterval'>) => {
-  const { mutate } = useSWRConfig();
   const { data, error, isLoading } = useSWR<Trip>(
-    urlId ? `${TRIPS_BASE_PATH}/url/${urlId}` : null,
+    urlId ? tripDetailKey(urlId) : null,
     async (url: string) => {
       const res = await fetcher(url);
       return tripFromApi.parse(res);
     },
-    {
-      ...options,
-      onSuccess: trip => {
-        if (trip) {
-          // /trips/{id} のキャッシュを更新
-          mutate(`${TRIPS_BASE_PATH}/${trip.id}`, trip, { revalidate: false });
-        }
-      },
-    }
-  );
-
-  return {
-    trip: data,
-    error,
-    isLoading,
-  };
-};
-
-/**
- * IDを指定して単一のTripを取得するフック
- */
-export const useTrip = (id: Trip['id'] | null) => {
-  const { mutate } = useSWRConfig();
-  const { data, error, isLoading } = useSWR<Trip>(
-    id ? `${TRIPS_BASE_PATH}/${id}` : null,
-    async (url: string) => {
-      const res = await fetcher(url);
-      return tripFromApi.parse(res);
-    },
-    {
-      onSuccess: trip => {
-        if (trip) {
-          // /trips/url/{urlId} のキャッシュを更新
-          mutate(`${TRIPS_BASE_PATH}/url/${trip.urlId}`, trip, { revalidate: false });
-        }
-      },
-    }
+    options
   );
 
   return {
@@ -82,6 +44,8 @@ type CreateTripArg = TripMutation;
  * 新しいTripを作成する
  */
 export const useCreateTrip = () => {
+  const { mutate } = useSWRConfig();
+
   const createTrip = async (url: string, { arg: tripData }: { arg: CreateTripArg }) => {
     const apiData = tripMutationToApi.parse(tripData);
     const response = await apiClient.post(url, apiData);
@@ -116,6 +80,7 @@ export const useCreateTrip = () => {
     TRIPS_BASE_PATH,
     createTrip,
     {
+      onSuccess: () => revalidateTripLists(mutate),
       onError: err => toast.error(getErrorMessage(err)),
     }
   );
@@ -128,63 +93,32 @@ export const useCreateTrip = () => {
   };
 };
 
-type UpdateTripArg = { id: Trip['id']; data: TripMutation };
+type UpdateTripArg = { trip: Trip; data: TripMutation };
 
 /**
  * Tripを更新するためのフック
  */
 export const useUpdateTrip = () => {
-  const { mutate, cache } = useSWRConfig();
+  const { mutate } = useSWRConfig();
 
   const updateTripFetcher = async (_key: string | null, { arg }: { arg: UpdateTripArg }) => {
-    const { id, data } = arg;
-    const apiData = tripMutationToApi.parse(data);
-    const response = await apiClient.put(`${TRIPS_BASE_PATH}/${id}`, apiData);
+    const apiData = tripMutationToApi.parse(arg.data);
+    const response = await apiClient.put(`${TRIPS_BASE_PATH}/${arg.trip.id}`, apiData);
     return tripFromApi.parse(response.data);
   };
 
-  // useVisitedTrips の SWR cache (`[VISITED_TRIPS_CACHE_KEY, ...urlIds]`) は個別 /trips/url/:urlId とは別キーで
-  // 自動追従しない。HomePage の期間バッジ等が古いまま残らないよう、ここから明示的に置換する
-  const updateVisitedTripsCache = (trip: Trip) => {
-    mutate(
-      key => Array.isArray(key) && key[0] === VISITED_TRIPS_CACHE_KEY,
-      (currentTrips: Trip[] | undefined) => {
-        if (!currentTrips) return currentTrips;
-        return currentTrips.map(t => (t.id === trip.id ? trip : t));
-      },
-      { revalidate: false }
-    );
-  };
-
   const { trigger, isMutating, error, data } = useSWRMutation(TRIPS_BASE_PATH, updateTripFetcher, {
-    // サーバーレスポンスで個別キャッシュ（id ベース・urlId ベース）を確定
-    onSuccess: (updatedTrip: Trip) => {
-      mutate(`${TRIPS_BASE_PATH}/${updatedTrip.id}`, updatedTrip, { revalidate: false });
-      mutate(`${TRIPS_BASE_PATH}/url/${updatedTrip.urlId}`, updatedTrip, { revalidate: false });
-      updateVisitedTripsCache(updatedTrip);
-    },
+    onSuccess: (updatedTrip: Trip) => writeTrip(mutate, updatedTrip),
   });
 
   const updateTrip = async (arg: UpdateTripArg) => {
-    const idKey = `${TRIPS_BASE_PATH}/${arg.id}`;
-    // 既存キャッシュから urlId を引いて、id ベースと urlId ベース両方の個別キャッシュを楽観更新する
-    const cachedTrip = (cache.get(idKey)?.data ?? null) as Trip | null;
-    const urlKey = cachedTrip?.urlId ? `${TRIPS_BASE_PATH}/url/${cachedTrip.urlId}` : null;
-    const optimisticTrip = { ...(cachedTrip ?? {}), ...arg.data, id: arg.id } as Trip;
-
-    // 個別キャッシュの楽観的更新（リスト /trips は未使用のため対象外）
-    mutate(idKey, optimisticTrip, { revalidate: false });
-    if (urlKey) mutate(urlKey, optimisticTrip, { revalidate: false });
-    updateVisitedTripsCache(optimisticTrip);
+    writeTrip(mutate, { ...arg.trip, ...arg.data });
 
     return trigger(arg, {
       revalidate: false,
       onError: (err: unknown) => {
         toast.error(getErrorMessage(err));
-        mutate(idKey); // 個別データのロールバック（再検証）
-        if (urlKey) mutate(urlKey);
-        // visitedTrips は revalidate して同期（fetcher が urlIds 全件を取得するので失敗時のみ）
-        mutate(key => Array.isArray(key) && key[0] === VISITED_TRIPS_CACHE_KEY);
+        writeTrip(mutate, arg.trip);
       },
     });
   };
@@ -197,7 +131,7 @@ export const useUpdateTrip = () => {
   };
 };
 
-type DeleteTripArg = { id: Trip['id']; urlId: Trip['urlId'] };
+type DeleteTripArg = Pick<Trip, 'id' | 'urlId'>;
 
 /**
  * Tripを削除する
@@ -206,38 +140,19 @@ export const useDeleteTrip = () => {
   const { mutate, cache } = useSWRConfig();
 
   const deleteTripFetcher = async (_: string | null, { arg }: { arg: DeleteTripArg }) => {
-    z.number().parse(arg.id);
     await apiClient.delete(`${TRIPS_BASE_PATH}/${arg.id}`);
-    return undefined;
   };
 
-  const { trigger, isMutating, error } = useSWRMutation(
-    TRIPS_BASE_PATH, // リストのキー（削除完了後のリスト自動再検証のため）
-    deleteTripFetcher,
-    {
-      onError: (err: unknown) => toast.error(getErrorMessage(err)),
-    }
-  );
+  const { trigger, isMutating, error } = useSWRMutation(TRIPS_BASE_PATH, deleteTripFetcher, {
+    onError: (err: unknown) => {
+      toast.error(getErrorMessage(err));
+      revalidateTripLists(mutate);
+    },
+  });
 
-  const deleteTrip = async (arg: DeleteTripArg) => {
-    // リスト側の楽観的更新
-    await trigger(arg, {
-      optimisticData: (currentTrips: Trip[] | undefined) => {
-        if (!currentTrips) return [];
-        return currentTrips.filter(trip => trip.id !== arg.id);
-      },
-      revalidate: true, // 念のためリストをサーバーと同期する（不要ならfalse）
-      rollbackOnError: true,
-    });
-
-    // 個別キャッシュを id/urlId 両方削除する。残すと再訪時に削除済み Trip が描画される。
-    // mutate は購読中コンポーネントへの通知用で、IndexedDB まで消せるのは cache.delete だけ
-    const idKey = `${TRIPS_BASE_PATH}/${arg.id}`;
-    const urlKey = `${TRIPS_BASE_PATH}/url/${arg.urlId}`;
-    mutate(idKey, undefined, false);
-    cache.delete(idKey);
-    mutate(urlKey, undefined, false);
-    cache.delete(urlKey);
+  const deleteTrip = async (trip: DeleteTripArg) => {
+    removeTrip(mutate, cache, trip);
+    await trigger(trip, { revalidate: false });
   };
 
   return {

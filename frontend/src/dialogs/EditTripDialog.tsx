@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { LazyMarkdownEditor } from '@/components/ui/markdown/LazyMarkdownEditor';
 import { useDeleteTrip, useUpdateTrip } from '@/hooks/useTrips';
-import { useVisitedTrips } from '@/hooks/useVisitedTrips';
 import { useConfirm } from '@/lib/confirm';
 import { isValidWalicaUrl } from '@/lib/walica';
 import { TRIP_TITLE_MAX_LENGTH } from '@/types';
@@ -31,7 +30,6 @@ export const EditTripDialog = ({ open, onOpenChange, trip, onDeleted }: EditTrip
   const [walicaUrl, setWalicaUrl] = useState(trip.walicaUrl ?? '');
   const { updateTrip } = useUpdateTrip();
   const { deleteTrip } = useDeleteTrip();
-  const { removeVisitedTrip } = useVisitedTrips();
   const confirm = useConfirm();
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
 
@@ -64,7 +62,6 @@ export const EditTripDialog = ({ open, onOpenChange, trip, onDeleted }: EditTrip
       deleteTrip({ id: trip.id, urlId: trip.urlId }).catch(() => {
         // エラーは useDeleteTrip の onError がトーストで通知するため握り潰す
       });
-      removeVisitedTrip(trip.urlId);
       onDeleted?.();
       onOpenChange(false);
     } finally {
@@ -82,7 +79,7 @@ export const EditTripDialog = ({ open, onOpenChange, trip, onDeleted }: EditTrip
     }
 
     updateTrip({
-      id: trip.id,
+      trip,
       data: {
         title: trimmedTitle,
         detail: trimmedDetail || undefined,

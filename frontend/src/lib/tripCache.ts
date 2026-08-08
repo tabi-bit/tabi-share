@@ -42,11 +42,17 @@ export const removeTrip = (mutate: ScopedMutator, cache: Cache, trip: Pick<Trip,
   mutate(MY_ARCHIVED_TRIPS_KEY, (trips?: Trip[]) => exclude(trips, trip.id), { revalidate: false });
 };
 
-/** アーカイブ状態の変更を 2 つの一覧キャッシュに反映する。 */
+/**
+ * アーカイブ状態の変更を 2 つの一覧キャッシュに反映する。
+ *
+ * 移動先も含めて再検証しない。この関数は PATCH の送信前に呼ぶため、再検証すると
+ * 更新前のサーバー状態で楽観更新を打ち消してしまう。移動後の状態は決定的なので
+ * 楽観更新をそのまま正とし、以降は SWR の通常の再検証に委ねる。
+ */
 export const applyTripArchived = (mutate: ScopedMutator, trip: Trip, archived: boolean): void => {
   const [from, to] = archived ? [MY_TRIPS_KEY, MY_ARCHIVED_TRIPS_KEY] : [MY_ARCHIVED_TRIPS_KEY, MY_TRIPS_KEY];
   mutate(from, (trips?: Trip[]) => exclude(trips, trip.id), { revalidate: false });
-  mutate(to, (trips?: Trip[]) => upsert(trips, trip));
+  mutate(to, (trips?: Trip[]) => upsert(trips, trip), { revalidate: false });
 };
 
 /** 一覧キャッシュを再検証する（Trip 追加時など、手元に確定データが無い場合）。 */

@@ -20,7 +20,7 @@
 
 - **基本**: SWRのキャッシュキーには、APIのエンドポイントURLをそのまま使用します。
 - **親子関係**: `tripId`に紐づくPage一覧（`/trips/:tripId/pages`）のように、他のデータに依存する場合は、親IDが`null`の間はリクエストが実行されないよう、キーを `null` に設定します。
-- **複数キーでの同一データアクセス**: `useTrip(id)`と`useTripByUrlId(urlId)`のように、異なるキーで同一リソースにアクセスする可能性があります。この場合、片方のフックでデータを取得した際に、もう一方のキーのキャッシュも`mutate`関数で手動更新し、キャッシュの同期を保ちます（`useTrips.ts`参照）。
+- **複数キーに載るリソース**: Trip は一覧（`/me/trips`・`/me/trips?archived=true`）と詳細（`/trips/url/:urlId`）の3キーに跨ります。キーの知識は `@/lib/tripCache` に集約してあるので、呼び出し側で個別に`mutate`せず `writeTrip` / `removeTrip` / `applyTripArchived` / `revalidateTripLists` を使います。
 
 ### 2. APIクライアントとバリデーション
 
@@ -88,8 +88,9 @@ Reactの規則に従い、カスタムフックの関数名は必ず `use` か�
 
 - **`useTrips.ts`**:
   - 基本的なCRUDS操作。
-  - `useTrip` と `useTripByUrlId` における複数キーでのキャッシュ同期。
-  - `useUpdateTrip` における `populateCache` を利用したリスト更新。
+  - `tripCache` を介した複数キーのキャッシュ同期。
+- **`useMyTrips.ts`**:
+  - ホーム一覧の取得（`/me/trips`）とアーカイブ状態の切り替え。
 - **`usePages.ts`**:
   - 親子関係（Trip -> Page）を持つデータのCRUDS操作。
   - `updatePage` / `deletePage` における、個別・リスト両キャッシュの楽観的更新パターン。

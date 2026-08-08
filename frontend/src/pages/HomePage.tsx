@@ -5,6 +5,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { isOfflineReadAtom } from '@/atoms/network';
+import { FetchErrorView } from '@/components/FetchErrorView';
 import { Header } from '@/components/Header';
 import { PwaInstallBanner } from '@/components/PwaInstallBanner';
 import { SyncSection } from '@/components/SyncSection';
@@ -26,8 +27,8 @@ const HomePage = () => {
 
   // 通常一覧とアーカイブ済みを常に両方持つ。トグルの件数表示と、
   // 「元に戻す」で移動先リストが即座に整合することの両方に必要
-  const { trips: activeTrips, isLoading: isActiveLoading } = useMyTrips();
-  const { trips: archivedTrips, isLoading: isArchivedLoading } = useMyTrips(true);
+  const { trips: activeTrips, isLoading: isActiveLoading, error: activeError } = useMyTrips();
+  const { trips: archivedTrips, isLoading: isArchivedLoading, error: archivedError } = useMyTrips(true);
   const { setArchived } = useArchiveTrip();
 
   const navigate = useNavigate();
@@ -38,6 +39,7 @@ const HomePage = () => {
 
   const trips = isArchivedView ? archivedTrips : activeTrips;
   const isLoading = isArchivedView ? isArchivedLoading : isActiveLoading;
+  const error = isArchivedView ? archivedError : activeError;
   const archivedCount = archivedTrips?.length ?? 0;
   const hasTrips = trips != null && trips.length > 0;
   const sortedTrips = hasTrips ? sortTripsByLastEdited(trips) : trips;
@@ -59,15 +61,30 @@ const HomePage = () => {
   }, [isArchivedView, archivedTrips, setSearchParams]);
 
   const leaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => () => clearTimeout(leaveTimerRef.current ?? undefined), []);
+  const pendingArchiveRef = useRef<(() => void) | null>(null);
+
+  // 退出アニメーションの待機中に画面を離れても、アーカイブ自体は取りこぼさず送る
+  useEffect(
+    () => () => {
+      if (leaveTimerRef.current == null) return;
+      clearTimeout(leaveTimerRef.current);
+      pendingArchiveRef.current?.();
+    },
+    []
+  );
 
   const handleToggleArchive = (trip: Trip) => {
     if (leavingTripId != null) return;
 
     const nextArchived = !isArchivedView;
+    const send = () => {
+      leaveTimerRef.current = null;
+      pendingArchiveRef.current = null;
+      void setArchived(trip, nextArchived);
+    };
     const commit = () => {
       setLeavingTripId(null);
-      void setArchived(trip, nextArchived);
+      send();
       toast(`「${trip.title}」を${nextArchived ? 'アーカイブしました' : '旅程一覧に戻しました'}`, {
         action: { label: '元に戻す', onClick: () => void setArchived(trip, !nextArchived) },
       });
@@ -78,6 +95,7 @@ const HomePage = () => {
       return;
     }
     setLeavingTripId(trip.id);
+    pendingArchiveRef.current = send;
     leaveTimerRef.current = setTimeout(commit, LEAVE_ANIMATION_MS);
   };
 
@@ -128,7 +146,9 @@ const HomePage = () => {
             )}
           </div>
 
-          {!(isLoading || hasTrips) &&
+          {error != null && !isLoading && <FetchErrorView error={error} />}
+
+          {!(isLoading || hasTrips || error != null) &&
             (isArchivedView ? (
               <p className='mt-8 text-center text-gray-500'>アーカイブした旅程はありません。</p>
             ) : (

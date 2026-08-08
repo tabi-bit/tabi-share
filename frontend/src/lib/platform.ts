@@ -18,3 +18,8 @@ export const needsIOSInstallForNotification = (): boolean => {
 export const isNotificationSupported = (): boolean => {
   return 'Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window;
 };
+
+/** iOS Safari のタブは Notification / PushManager 未露出だが、install すれば購読できるのでボタンは出す */
+export const shouldShowNotificationButton = (): boolean => {
+  return isNotificationSupported() || needsIOSInstallForNotification();
+};

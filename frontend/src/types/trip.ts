@@ -25,17 +25,18 @@ export type Trip = z.infer<typeof TripSchema>;
 
 // --- API層のスキーマ ---
 
+/** 入力欄の maxLength に使う値。サーバー側の上限 (200) とは別で、UI 都合の制限 */
 export const TRIP_TITLE_MAX_LENGTH = 32;
 
 /**
  * APIから返ってくる生のデータ形式を表すスキーマ
+ *
+ * title に上限を課さない。サーバーの上限は 200 文字で、超えるデータが 1 件でも
+ * あると一覧全体の parse が落ちて「旅程がありません」表示になってしまう
  */
 const ApiTripSchema = z.object({
   id: z.number(),
-  title: z
-    .string()
-    .min(1)
-    .max(TRIP_TITLE_MAX_LENGTH, { message: `タイトルは最大${TRIP_TITLE_MAX_LENGTH}文字です` }),
+  title: z.string().min(1),
   detail: z.string().nullish(),
   people_num: z.number().nullish(),
   url_id: z.string().max(100),

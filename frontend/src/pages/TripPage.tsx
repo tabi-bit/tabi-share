@@ -19,7 +19,6 @@ import { useEditModeBackGuard } from '@/hooks/useEditModeBackGuard';
 import { useFocusBlockOnMount } from '@/hooks/useFocusBlockOnMount';
 import { usePages } from '@/hooks/usePages';
 import { useTripByUrlId } from '@/hooks/useTrips';
-import { useVisitedTrips } from '@/hooks/useVisitedTrips';
 import { isNotFoundError } from '@/lib/errors';
 import { cn } from '@/lib/utils';
 import { EditTripLayout } from './TripPage/EditTripLayout';
@@ -47,7 +46,6 @@ const TripPage = () => {
   const refreshInterval = isOffline ? 0 : mode === 'edit' ? 5000 : 0;
   const { trip, error: tripError, isLoading: isTripLoading } = useTripByUrlId(urlId ?? null, { refreshInterval });
   const { pages, error: pagesError, isLoading: isPagesLoading } = usePages(trip?.id ?? null, { refreshInterval });
-  const { addVisitedTrip } = useVisitedTrips();
   const { storedPageId, isActivePageInitialized, saveActivePageId } = useActivePage(trip?.id ?? null);
   useFocusBlockOnMount();
   useEditModeBackGuard();
@@ -116,13 +114,6 @@ const TripPage = () => {
       setMode('view');
     }
   }, [isOffline, mode, setMode]);
-
-  // Tripが読み込まれたら訪問済みリストに追加
-  useEffect(() => {
-    if (trip) {
-      addVisitedTrip(trip.urlId);
-    }
-  }, [trip, addVisitedTrip]);
 
   // 削除済み・存在しない旅程URL（自身の削除操作、共有相手による削除、ブックマーク等）はトップへ逃がす
   useEffect(() => {

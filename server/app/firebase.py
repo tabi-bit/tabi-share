@@ -39,7 +39,12 @@ def _webpush_notification(
 
 
 def init_firebase_admin() -> None:
-    """Firebase Admin SDK を初期化する。既に初期化済みなら no-op。"""
+    """Firebase Admin SDK を初期化する。既に初期化済みなら no-op。
+
+    `FIREBASE_ADMIN_SA_EMAIL` を指定すると `create_custom_token` などの署名系 API が
+    メタデータサーバー経由での自動 SA 検出を skip して IAM SignBlob API を使うようになる。
+    (ローカルで SA impersonate 経由で試すためのオプション、Cloud Run 通常運用では未指定で動く)
+    """
     settings = get_settings()
 
     if firebase_admin._apps:
@@ -49,8 +54,15 @@ def init_firebase_admin() -> None:
         logger.info("Firebase Admin SDK init skipped (NOTIFICATIONS_ENABLED=false)")
         return
 
-    firebase_admin.initialize_app()
-    logger.info("Firebase Admin SDK initialized with ADC")
+    options: dict[str, Any] = {}
+    if settings.firebase_admin_sa_email:
+        options["serviceAccountId"] = settings.firebase_admin_sa_email
+
+    firebase_admin.initialize_app(options=options or None)
+    logger.info(
+        "Firebase Admin SDK initialized with ADC (serviceAccountId=%s)",
+        settings.firebase_admin_sa_email or "auto",
+    )
 
 
 def send_fcm(

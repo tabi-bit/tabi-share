@@ -13,13 +13,15 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.pool import NullPool
 
-from app.auth import SESSION_COOKIE_NAME
+from app import db_connection
+from app.auth import SESSION_COOKIE_NAME, generate_session_id
 from app.config import get_settings
 from app.cruds import blocks as blocks_cruds
 from app.cruds import pages as pages_cruds
 from app.cruds import trips as trips_cruds
 from app.db_connection import Base, get_db_session
 from app.main import app
+from app.models import User, UserSession, UserTripAccess
 from app.observability import setup_sqlalchemy_instrumentation
 from app.schemas.block import Block as BlockSchema
 from app.schemas.block import BlockCreate
@@ -57,6 +59,10 @@ async def override_get_db_session():
 
 app.dependency_overrides[get_db_session] = override_get_db_session
 
+# LegacyCookieMigrationMiddleware は Depends を経由せず db_connection.AsyncSessionLocal を
+# 属性 lookup で参照している。テスト用エンジンで動かすため、ここで factory を差し替える。
+db_connection.AsyncSessionLocal = TestingAsyncSessionLocal
+
 
 @pytest_asyncio.fixture(scope="function", autouse=True)
 async def setup_database():
@@ -71,7 +77,9 @@ async def setup_database():
         async with test_engine.begin() as conn:
             await conn.execute(
                 text(
-                    "TRUNCATE TABLE blocks, locations, pages, trips RESTART IDENTITY CASCADE"
+                    "TRUNCATE TABLE user_trip_access, sessions, users, "
+                    "blocks, locations, pages, trips "
+                    "RESTART IDENTITY CASCADE"
                 )
             )
     except Exception as e:
@@ -94,13 +102,26 @@ async def client():
         yield c
 
 
-def _make_session_cookie_value(trip_ids: list[int]) -> str:
-    """テスト用: trip_ids 配列を持つ署名付きセッション Cookie (JWT) の値を生成する"""
+def _make_session_cookie_value(session_id: str) -> str:
+    """テスト用: session_id を持つ署名付きセッション Cookie (JWT) の値を生成する"""
     payload = {
-        "trip_ids": sorted(trip_ids),
+        "session_id": session_id,
         "exp": datetime.now(UTC) + timedelta(seconds=settings.cookie_max_age),
     }
     return pyjwt.encode(payload, settings.cookie_secret_key, algorithm="HS256")
+
+
+async def _create_session_with_trip_access(db: AsyncSession, trip_id: int) -> str:
+    """テスト用: 匿名 user + session + user_trip_access を作成して session_id を返す"""
+    user = User()
+    db.add(user)
+    await db.flush()
+
+    session_id = generate_session_id()
+    db.add(UserSession(id=session_id, user_id=user.id))
+    db.add(UserTripAccess(user_id=user.id, trip_id=trip_id))
+    await db.commit()
+    return session_id
 
 
 @pytest_asyncio.fixture
@@ -143,10 +164,13 @@ async def test_create_block(
 
 
 @pytest_asyncio.fixture
-async def authed_client(client: AsyncClient, test_create_trip: Trip) -> AsyncClient:
-    """test_create_trip で作成された Trip へのアクセス権 Cookie を持つクライアント"""
+async def authed_client(
+    client: AsyncClient, db_session: AsyncSession, test_create_trip: Trip
+) -> AsyncClient:
+    """test_create_trip で作成された Trip へのアクセス権を持つ session Cookie を発行"""
+    session_id = await _create_session_with_trip_access(db_session, test_create_trip.id)
     client.cookies.set(
         SESSION_COOKIE_NAME,
-        _make_session_cookie_value([test_create_trip.id]),
+        _make_session_cookie_value(session_id),
     )
     return client

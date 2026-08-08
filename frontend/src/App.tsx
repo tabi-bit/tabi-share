@@ -3,6 +3,7 @@ import { Route, Routes } from 'react-router-dom';
 import { isOfflineReadAtom } from './atoms/network';
 import { NoIndex } from './components/NoIndex';
 import { Title } from './components/Title';
+import { useAuthStateSync } from './hooks/useAuth';
 import { useFcmNavigationListener } from './hooks/useFcmNavigationListener';
 import { useForegroundNotificationToast } from './hooks/useForegroundNotificationToast';
 import { useNetworkToast } from './hooks/useNetworkToast';
@@ -21,6 +22,7 @@ const App = () => {
   usePageTracking();
   useForegroundNotificationToast();
   useFcmNavigationListener();
+  useAuthStateSync();
 
   return (
     <>

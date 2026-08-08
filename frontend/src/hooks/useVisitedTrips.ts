@@ -24,6 +24,21 @@ const saveUrlIdsToDB = async (urlIds: string[]): Promise<void> => {
 };
 
 /**
+ * 外部 (Firebase Auth 認証後の /me/trips fetch 等) から取得した urlId 一覧を
+ * IndexedDB の訪問済みリストに union で merge する。差分があった場合のみ
+ * useVisitedTrips 側に "visitedTripsChanged" custom event で通知して再読込を促す。
+ */
+export const mergeServerVisitedTripUrlIds = async (serverUrlIds: string[]): Promise<void> => {
+  const current = await getUrlIdsFromDB();
+  const currentSet = new Set(current);
+  const added = serverUrlIds.filter(id => !currentSet.has(id));
+  if (added.length === 0) return;
+  const merged = [...current, ...added];
+  await saveUrlIdsToDB(merged);
+  window.dispatchEvent(new CustomEvent('visitedTripsChanged'));
+};
+
+/**
  * localStorage → IndexedDB の一回限りマイグレーション。
  * localStorageにデータがあればIndexedDBに移行し、localStorageから削除する。
  * TODO: IndexedDB完全移行後、この関数とLEGACY_STORAGE_KEYを削除する
@@ -64,6 +79,20 @@ export const useVisitedTrips = () => {
     init().catch(() => {
       setIsInitialized(true);
     });
+  }, []);
+
+  // 外部からの merge (Firebase Auth 認証後の /me/trips 反映等) で IndexedDB が
+  // 更新された時、custom event 経由で再読み込みして state に反映する。
+  useEffect(() => {
+    const handleExternalUpdate = () => {
+      getUrlIdsFromDB()
+        .then(setUrlIds)
+        .catch(() => {
+          // fire-and-forget
+        });
+    };
+    window.addEventListener('visitedTripsChanged', handleExternalUpdate);
+    return () => window.removeEventListener('visitedTripsChanged', handleExternalUpdate);
   }, []);
 
   // urlIds変更時にIndexedDBへ永続化（state updater内の副作用を避ける）

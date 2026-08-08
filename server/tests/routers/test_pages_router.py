@@ -79,11 +79,13 @@ async def test_read_pages(
 
 async def test_get_page_non_existent_id(client: AsyncClient, db_session: AsyncSession):
     """
-    GET /pages/{page_id} で存在しないIDが与えられた場合に 404 が返ることを検証
+    GET /pages/{page_id} で存在しないIDが与えられた場合に 403 が返ることを検証
+
+    page_id は連番なので、存在しない ID を 404、権限が無い ID を 403 と出し分けると
+    第三者が ID の実在を判別できてしまう。認可層で一律 Forbidden に寄せている。
     """
     response = await client.get("/pages/999")
-    assert response.status_code == 404
-    assert response.json()["message"] == "Page not found"
+    assert response.status_code == 403
 
 
 async def test_update_page(
@@ -107,12 +109,11 @@ async def test_update_page_non_existent_id(
     client: AsyncClient, db_session: AsyncSession
 ):
     """
-    PUT /pages/{page_id} で存在しないIDが与えられた場合に 404 が返ることを検証
+    PUT /pages/{page_id} で存在しないIDが与えられた場合に 403 が返ることを検証 (ID 実在の秘匿)
     """
     update_data = {"title": "non existent"}
     response = await client.put("/pages/999", json=update_data)
-    assert response.status_code == 404
-    assert response.json()["message"] == "Page not found"
+    assert response.status_code == 403
 
 
 async def test_update_page_invalid_input(
@@ -139,8 +140,9 @@ async def test_delete_page(
     assert response.status_code == 204
 
     # --- 削除されたことを確認 ---
+    # 削除で user_trip_access ごと辿れなくなるため、認可層が先に Forbidden を返す
     response = await authed_client.get(f"/pages/{test_create_page.id}")
-    assert response.status_code == 404
+    assert response.status_code == 403
 
 
 # ---- 未認可アクセス 403 テスト ----

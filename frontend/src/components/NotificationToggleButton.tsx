@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { useTripSubscription } from '@/hooks/useTripSubscription';
 import { useConfirm } from '@/lib/confirm';
 import { fetchFcmToken, requestNotificationPermission } from '@/lib/messaging';
-import { isNotificationSupported, needsIOSInstallForNotification } from '@/lib/platform';
+import { needsIOSInstallForNotification, shouldShowNotificationButton } from '@/lib/platform';
 import { cn } from '@/lib/utils';
 import { IOSInstallInstructionDialog } from './IOSInstallInstructionDialog';
 import { Button } from './ui/button';
@@ -91,6 +91,12 @@ export const NotificationToggleButton = ({ tripId, tripHasStartDate, className }
   const handleClick = useCallback(async () => {
     if (tripId == null || isPending) return;
 
+    // iOS Safari は PWA install 後でないと permission リクエスト自体できない
+    if (needsIOSInstallForNotification()) {
+      setIosDialogOpen(true);
+      return;
+    }
+
     if (isSubscribed) {
       setIsPending(true);
       try {
@@ -108,12 +114,6 @@ export const NotificationToggleButton = ({ tripId, tripHasStartDate, className }
       } finally {
         setIsPending(false);
       }
-      return;
-    }
-
-    // iOS Safari は PWA install 後でないと permission リクエスト自体不可なので誘導ダイアログへ
-    if (needsIOSInstallForNotification()) {
-      setIosDialogOpen(true);
       return;
     }
 
@@ -185,10 +185,7 @@ export const NotificationToggleButton = ({ tripId, tripHasStartDate, className }
     }
   }, [tripId, isPending, isSubscribed, tripHasStartDate, subscribe, unsubscribe, confirm, handleTestSend]);
 
-  // Web Push 非対応ブラウザではボタン自体を出さない (macOS Safari 非 PWA / insecure context 等)。
-  // iOS Safari (未 install) は Notification API は生えている前提でここでは弾かず、
-  // click 時に needsIOSInstallForNotification() で install 誘導ダイアログへ回す。
-  if (!isNotificationSupported()) return null;
+  if (!shouldShowNotificationButton()) return null;
 
   const showLoading = isLoading || isPending;
   return (

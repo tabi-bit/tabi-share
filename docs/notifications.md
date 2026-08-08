@@ -488,13 +488,14 @@ curl -X POST https://<staging-cloud-run-url>/internal/notify/tick \
 
 実機で DevTools を繋げないとき用。[デバッグモード](debug_logger.md)を有効にすると、ホームの
 3 点リーダに「デバッグ > 通知デバッグ」が出る (PWA は URL 直打ちできないため導線が必須)。
+デバッグモードが無効なときはルート自体がホームへリダイレクトする。
 
 | セクション | 用途 |
 |---|---|
 | 環境 | display-mode / permission / FCM token / **build ID** (診断ログの SW 行とズレていれば古い SW が動いたまま) |
 | Service Worker | 登録ごとの scope / script / state / push endpoint。PWA とブラウザで endpoint が一致 = ストレージ共有 |
 | ローカル通知 | FCM を経由せず scope 別に `showNotification`。icon 有無・画像を絶対 URL にするかも切り替えられる |
-| サーバ経路 | その context の token だけで購読 / 解除 / テスト送信。**10 秒後に送信**は裏に回す猶予を作って SW 経路を狙うためのもの |
+| サーバ経路 | その context の token だけで購読 / 解除 / テスト送信。**裏に回したら送信**は hidden になった瞬間に送るので、SW 経路 (可視クライアント 0) を確実に踏める |
 
 **経路の見分け方**: FCM SW は可視クライアントが 1 つでもあると自分では表示せずページに postMessage
 する (`@firebase/messaging` の `onPush`)。診断ログに `[FCM] foreground message` があればページ経路、

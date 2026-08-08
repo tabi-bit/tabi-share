@@ -21,9 +21,9 @@ export const useForegroundNotificationToast = () => {
     subscribeForegroundMessages(async payload => {
       const { title, body, kind, tripId, urlId, blockId, icon } = payload;
       // FCM SW は可視クライアントが 1 つでもあると自分では表示せずページに postMessage する。
-      // この行が残っていれば「SW ではなくページが表示した」と判別できる
+      // この行が残っていれば「SW ではなくページが表示した」と判別できる。
+      // 通知本文 (title/body) は通常利用でも端末に残るため載せない
       void debugLog('FCM', 'foreground message', {
-        title,
         kind,
         displayMode: getDisplayMode(),
         visibility: document.visibilityState,

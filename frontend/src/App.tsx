@@ -1,11 +1,11 @@
 import { useAtomValue } from 'jotai';
-import { Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useSearchParams } from 'react-router-dom';
 import { isOfflineReadAtom } from './atoms/network';
 import { DebugLogPanel } from './components/DebugLogPanel';
 import { NoIndex } from './components/NoIndex';
 import { Title } from './components/Title';
 import { useAuthStateSync } from './hooks/useAuth';
-import { useDebugPanel } from './hooks/useDebugPanel';
+import { DEBUG_PARAM, useDebugPanel } from './hooks/useDebugPanel';
 import { useFcmNavigationListener } from './hooks/useFcmNavigationListener';
 import { useForegroundNotificationToast } from './hooks/useForegroundNotificationToast';
 import { useNetworkToast } from './hooks/useNetworkToast';
@@ -18,6 +18,18 @@ import { NotifyDebugPage } from './pages/NotifyDebugPage';
 import { TripPage } from './pages/TripPage';
 
 const isProduction = detectEnv() === 'production';
+
+/**
+ * デバッグモードが無効なら描画せずホームへ返す。メニューを隠すだけでは URL 直打ちで開けてしまい、
+ * FCM token / push endpoint / 購読操作が通常利用者に露出する (NoIndex はアクセス制御ではない)。
+ *
+ * `?debug=1` を同時に見るのは、atom への反映が effect 経由で初回描画に間に合わないため。
+ */
+const DebugOnly = ({ enabled, children }: { enabled: boolean; children: React.ReactNode }) => {
+  const [searchParams] = useSearchParams();
+  if (!(enabled || searchParams.get(DEBUG_PARAM) === '1')) return <Navigate replace to='/' />;
+  return <>{children}</>;
+};
 
 const App = () => {
   const isOffline = useAtomValue(isOfflineReadAtom);
@@ -54,10 +66,10 @@ const App = () => {
         <Route
           path='/debug/notify'
           element={
-            <>
+            <DebugOnly enabled={isDebugPanelEnabled}>
               <NoIndex />
               <NotifyDebugPage />
-            </>
+            </DebugOnly>
           }
         />
         <Route

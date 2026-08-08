@@ -1,5 +1,5 @@
 import { CheckIcon, CopyIcon, RefreshCwIcon } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,8 +19,18 @@ import { getDisplayMode, isIOS, isNotificationSupported, isPWAInstalled } from '
 
 /** サーバ (`_frontend_base`) が icon/badge に使う絶対 URL。非 production は stg 固定 */
 const SERVER_ASSET_BASE = 'https://st.tabishare.net';
-/** テスト送信は即時配信なので、SW 経路を試すには裏に回す猶予が要る */
-const BACKGROUND_TEST_DELAY_SECONDS = 10;
+
+/** 旅程 URL 貼り付け / urlId 直打ちのどちらも受ける。trailing slash と query は落とす */
+const extractUrlId = (input: string): string | null => {
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+  try {
+    const segments = new URL(trimmed, window.location.origin).pathname.split('/').filter(Boolean);
+    return segments.length > 0 ? segments[segments.length - 1] : null;
+  } catch {
+    return null;
+  }
+};
 
 type RegistrationInfo = {
   registration: ServiceWorkerRegistration;
@@ -122,6 +132,9 @@ const NotifyDebugPage = () => {
   const [urlId, setUrlId] = useState('');
   const [serverStatus, setServerStatus] = useState('(未実行)');
 
+  /** 「裏に回したら送信」の待機解除。離脱時に listener を残さないため ref で持つ */
+  const disarmRef = useRef<(() => void) | null>(null);
+
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
     let cancelled = false;
@@ -133,23 +146,25 @@ const NotifyDebugPage = () => {
     };
   }, []);
 
+  useEffect(() => () => disarmRef.current?.(), []);
+
   const env: [string, string][] = [
-    ['env', detectEnv()],
-    ['build ID', DEBUG_LOG_VERSION],
-    ['display-mode', getDisplayMode()],
+    ['環境', detectEnv()],
+    ['ビルドID', DEBUG_LOG_VERSION],
+    ['表示モード', getDisplayMode()],
     ['PWA', String(isPWAInstalled())],
     ['iOS', String(isIOS())],
     ['通知サポート', String(isNotificationSupported())],
-    ['permission', typeof Notification === 'undefined' ? '(Notification なし)' : Notification.permission],
-    ['origin', window.location.origin],
-    ['controller', navigator.serviceWorker?.controller?.scriptURL ?? '(なし)'],
-    ['userAgent', navigator.userAgent],
+    ['通知許可', typeof Notification === 'undefined' ? '(Notification なし)' : Notification.permission],
+    ['オリジン', window.location.origin],
+    ['制御中のSW', navigator.serviceWorker?.controller?.scriptURL ?? '(なし)'],
+    ['UA', navigator.userAgent],
   ];
 
   const buildDump = (): string =>
     [
       ...env.map(([label, value]) => `${label}: ${value}`),
-      `fcmToken: ${token}`,
+      `FCMトークン: ${token}`,
       '',
       ...registrations.flatMap(info => [
         `scope: ${info.scope}`,
@@ -176,24 +191,16 @@ const NotifyDebugPage = () => {
     await info.registration.showNotification(`debug ${path}`, options);
   };
 
-  /**
-   * この context の token でサーバ経路を叩く。
-   * delaySeconds を入れると、押してから裏に回す時間を作れる (可視クライアント 0 = SW 経路)。
-   */
-  const callServer = async (
-    action: 'status' | 'subscribe' | 'unsubscribe' | 'test',
-    delaySeconds = 0
-  ): Promise<void> => {
-    for (let remaining = delaySeconds; remaining > 0; remaining--) {
-      setServerStatus(`${remaining} 秒後に送信 — 今すぐアプリを裏に回して`);
-      await new Promise(resolve => window.setTimeout(resolve, 1000));
-    }
+  /** この context の token でサーバ経路を叩く */
+  const callServer = async (action: 'status' | 'subscribe' | 'unsubscribe' | 'test'): Promise<void> => {
     setServerStatus('実行中...');
     try {
+      const id = extractUrlId(urlId);
+      if (!id) throw new Error('旅程の URL か urlId を入力して');
       const fcmToken = await fetchFcmToken();
       if (!fcmToken) throw new Error('FCM トークンが取れない');
       setToken(fcmToken);
-      const trip = await apiClient.get(`/trips/url/${urlId.trim().split('/').pop()}`);
+      const trip = await apiClient.get(`/trips/url/${id}`);
       const tripId = Number(trip.data.id);
       const headers = { 'X-FCM-Token': fcmToken };
 
@@ -216,6 +223,28 @@ const NotifyDebugPage = () => {
     }
   };
 
+  /**
+   * 「裏に回したら送信」。SW 経路 (可視クライアント 0) を狙うための仕掛け。
+   *
+   * タイマーで遅延させると background では throttle されて送信タイミングが読めないので、
+   * hidden になった瞬間を visibilitychange で捉えて送る。判定条件そのものを trigger にするので
+   * 待ち時間の見積もりが要らない。
+   */
+  const armBackgroundTest = (): void => {
+    disarmRef.current?.();
+    const onVisibilityChange = (): void => {
+      if (document.visibilityState !== 'hidden') return;
+      disarmRef.current?.();
+      void callServer('test');
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    disarmRef.current = () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      disarmRef.current = null;
+    };
+    setServerStatus('待機中 — アプリを裏に回すと送信します');
+  };
+
   return (
     <div className='min-h-dvh bg-teal-50/50 pb-16'>
       <div className='mx-auto max-w-2xl p-3'>
@@ -234,7 +263,7 @@ const NotifyDebugPage = () => {
           {env.map(([label, value]) => (
             <Row key={label} label={label} value={value} />
           ))}
-          <Row label='fcmToken' value={token} />
+          <Row label='FCMトークン' value={token} />
           <Button
             className='mt-2'
             size='sm'
@@ -253,10 +282,13 @@ const NotifyDebugPage = () => {
         <Section title='Service Worker' hint={`${registrations.length} 件`} defaultOpen>
           {registrations.map(info => (
             <div key={info.scope} className='mb-2 last:mb-0'>
-              <Row label='scope' value={`${new URL(info.scope).pathname}${info.isController ? ' (controller)' : ''}`} />
-              <Row label='script' value={info.scriptURL} />
-              <Row label='states' value={info.states} />
-              <Row label='endpoint' value={info.endpoint} />
+              <Row
+                label='スコープ'
+                value={`${new URL(info.scope).pathname}${info.isController ? ' (controller)' : ''}`}
+              />
+              <Row label='スクリプト' value={info.scriptURL} />
+              <Row label='状態' value={info.states} />
+              <Row label='エンドポイント' value={info.endpoint} />
             </div>
           ))}
         </Section>
@@ -299,8 +331,8 @@ const NotifyDebugPage = () => {
             <Button size='sm' onClick={() => void callServer('test')}>
               テスト送信
             </Button>
-            <Button size='sm' onClick={() => void callServer('test', BACKGROUND_TEST_DELAY_SECONDS)}>
-              {BACKGROUND_TEST_DELAY_SECONDS} 秒後に送信
+            <Button size='sm' onClick={armBackgroundTest}>
+              裏に回したら送信
             </Button>
           </div>
           <Row label='結果' value={serverStatus} />

@@ -20,21 +20,31 @@ logger = logging.getLogger(__name__)
 def _webpush_notification(
     icon_url: str | None,
     badge_url: str | None,
+    tag: str | None,
+    renotify: bool,
 ) -> messaging.WebpushNotification | None:
-    """通知の見た目属性を組み立てる。
+    """WebpushNotification を組み立てる (icon/badge は docs §5、tag/renotify は §5b)。
 
-    - icon: 通知本体の大アイコン (192px、フルカラー)
-    - badge: Android status bar 等の小モノクロアイコン (96px、透過 PNG のシルエット、OS 側で
-      アクセントカラーへリカラーされる)。icon と同じ URL を渡すと Android で四角い塗りになるため分離する。
-    どちらも None なら Chrome デフォルト。
+    tag なしなら renotify は強制 False (Web spec で no-op なため)。全部 None/False なら
+    None を返して Chrome デフォルト表示にする。
     """
-    if not icon_url and not badge_url:
+    if not icon_url and not badge_url and not tag:
         return None
-    return messaging.WebpushNotification(icon=icon_url, badge=badge_url)
+    return messaging.WebpushNotification(
+        icon=icon_url,
+        badge=badge_url,
+        tag=tag,
+        renotify=bool(tag) and renotify,
+    )
 
 
 def init_firebase_admin() -> None:
-    """Firebase Admin SDK を初期化する。既に初期化済みなら no-op。"""
+    """Firebase Admin SDK を初期化する。既に初期化済みなら no-op。
+
+    `FIREBASE_ADMIN_SA_EMAIL` を指定すると `create_custom_token` などの署名系 API が
+    メタデータサーバー経由での自動 SA 検出を skip して IAM SignBlob API を使うようになる。
+    (ローカルで SA impersonate 経由で試すためのオプション、Cloud Run 通常運用では未指定で動く)
+    """
     settings = get_settings()
 
     if firebase_admin._apps:
@@ -44,8 +54,15 @@ def init_firebase_admin() -> None:
         logger.info("Firebase Admin SDK init skipped (NOTIFICATIONS_ENABLED=false)")
         return
 
-    firebase_admin.initialize_app()
-    logger.info("Firebase Admin SDK initialized with ADC")
+    options: dict[str, Any] = {}
+    if settings.firebase_admin_sa_email:
+        options["serviceAccountId"] = settings.firebase_admin_sa_email
+
+    firebase_admin.initialize_app(options=options or None)
+    logger.info(
+        "Firebase Admin SDK initialized with ADC (serviceAccountId=%s)",
+        settings.firebase_admin_sa_email or "auto",
+    )
 
 
 def send_fcm(
@@ -57,11 +74,14 @@ def send_fcm(
     link: str | None = None,
     icon_url: str | None = None,
     badge_url: str | None = None,
+    tag: str | None = None,
+    renotify: bool = False,
 ) -> str | None:
     """FCM に単発送信する。
 
     - NOTIFICATIONS_ENABLED=false なら log のみで送信スキップ (返り値 None)。
     - TTL=300 秒必須: デフォルトの 4 週間だとオフライン復帰時に 5 分前通知が今頃届く事故になる。
+    - tag/renotify: docs §5b (rolling next indicator)。
     """
     settings = get_settings()
 
@@ -78,7 +98,7 @@ def send_fcm(
         data=data or {},
         webpush=messaging.WebpushConfig(
             headers={"Urgency": "high", "TTL": "300"},
-            notification=_webpush_notification(icon_url, badge_url),
+            notification=_webpush_notification(icon_url, badge_url, tag, renotify),
             fcm_options=messaging.WebpushFCMOptions(link=link) if link else None,
         ),
     )
@@ -95,6 +115,8 @@ def _build_message(
     link: str | None,
     icon_url: str | None = None,
     badge_url: str | None = None,
+    tag: str | None = None,
+    renotify: bool = False,
 ) -> messaging.Message:
     return messaging.Message(
         token=token,
@@ -102,7 +124,7 @@ def _build_message(
         data=data or {},
         webpush=messaging.WebpushConfig(
             headers={"Urgency": "high", "TTL": "300"},
-            notification=_webpush_notification(icon_url, badge_url),
+            notification=_webpush_notification(icon_url, badge_url, tag, renotify),
             fcm_options=messaging.WebpushFCMOptions(link=link) if link else None,
         ),
     )

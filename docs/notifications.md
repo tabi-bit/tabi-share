@@ -88,7 +88,7 @@ CREATE INDEX idx_blocks_start_time ON blocks(start_time);
 ```sql
 -- DB は Page.date で粗く絞るだけ (±1 日)。Block.start_time の time-of-day を
 -- Page.date + subscriber TZ で組み立てる細かい window 判定は Python 側で行う。
-SELECT b.*, p.date, s.fcm_token, s.minutes_before, s.timezone, t.url_id, t.title
+SELECT b.*, p.date, s.fcm_token, s.minutes_before, s.timezone, t.id, t.url_id
 FROM blocks b
   JOIN pages p ON b.page_id = p.id
   JOIN trips t ON p.trip_id = t.id
@@ -161,34 +161,90 @@ tick が 60 秒を超えると次 tick と重なる。閾値と対処:
 
 ## 5. 通知内容フォーマット
 
+### 用語
+
+| 用語 | 説明 |
+|---|---|
+| **candidate** | tick で FCM 送信対象と判定された `(block, subscription)` 結合行。cruds の `NotificationCandidate` |
+| **next block** | candidate の block。通知 Title / Body 1 行目に表示される「現在アラート予定」 |
+| **upcoming block (後続予定)** | Body 3 行目以降に載せる、同一 page 内で next block の絶対時刻**以降**の block (最大 2 件)。関数 `_collect_upcoming_blocks` |
+| **earlier upcoming** | §5b の延期判定で「同一 trip 内で candidate より**前**に start 予定の未 start block」。関数 `_has_earlier_upcoming_in_same_trip` |
+| **rolling next indicator** | `tag=trip-{tripId}` で trip 内の通知を 1 通に集約する設計思想 (§5b) |
+
+### 例
+
 ```text
-[Schedule (event/stay) — location あり]
-  Title:  next 12:00
-  Body:   昼食
-          場所: 湯畑亭
-          草津温泉プロジェクト
+[Schedule (event/stay) — location あり、後続 2 件あり]
+  Title:  next 昼食
+  Body:   ▶ 12:00 昼食
+          　📍 湯畑亭
+          ▶ 13:30 チェックイン
+          ▶ 15:00 温泉入湯
 
-[Move — location のみ (現状 UI では destination 未実装)]
-  Title:  next 14:30
-  Body:   駐車場まで移動
-          場所: 湯畑亭
-          草津温泉プロジェクト
+[Move — location + destination、後続 1 件]
+  Title:  next 駐車場まで移動
+  Body:   ▶ 14:30 駐車場まで移動
+          　📍 湯畑亭 → 駐車場
+          ▶ 15:00 温泉入湯
 
-[Move — destination も実装された将来形]
-  Title:  next 09:12
-  Body:   新宿から草津へ
-          東京駅 → 新宿駅
-          草津温泉プロジェクト
+[旅程末尾 — 後続 0 件]
+  Title:  next 就寝
+  Body:   ▶ 21:00 就寝
+          　📍 旅館
 ```
 
-- **Title**: `next HH:MM` 固定 (popup 4 字で "next" が見える、通知センター 10 字で完全表示)
-- **Body**: 改行区切りで **block 名 → 場所行 → trip 名**。省略表示でも block 名が最上部に残る
+- **Title**: `next {block_title}` (Issue #218)。5 分前通知は「これから直近で始まる予定」の意味論なので、時刻より block 名の情報量を優先。通知プレビュー / lock screen で「何の予定」が即座に判る
+  - Title 切れ域: Safari macOS ~34 chars → block 名 ~29 chars 使える。日本語の一般的な block 名 (< 15 chars) はほぼ全環境で完全表示
+- **Body**: 改行区切りで **`▶ HH:MM block 名` → 場所行 → 後続予定 (`▶ HH:MM ...`)**。全予定を `▶` で統一
+  - 1 行目 `▶ HH:MM {block 名}` → 現在アラート予定
+  - 2 行目 <code>　📍 {場所}</code> → 全角スペース (U+3000) で**インデントして「現在の予定の詳細」を視覚的に示す**
+  - 3 行目以降 `▶ HH:MM {block 名}` → 後続予定
+  - `▶` は play button のメタファーで「これから始まる予定」の意味論と一致
 - **場所行のルール** (`_format_location_line`):
-  - `location` + `destination` 両方あり → `{location} → {destination}`
-  - `destination` のみ → `→ {destination}`
-  - `location` のみ → `場所: {location}`
+  - `location` + `destination` 両方あり → `📍 {location} → {destination}`
+  - `destination` のみ → `→ {destination}` (📍 なし、行き先だけの表記)
+  - `location` のみ → `📍 {location}`
   - どちらも無し → 行ごと省略
+  - どの表記でも `format_body` 側で全角スペースを prefix してインデント表示にする
+- **後続予定** (`_format_scheduled_line`、Issue #218):
+  - 同一 page 内で next block の絶対時刻**以降** (同時刻の他 block を含む) を上限 **2 件** 表示
+  - 表記は `▶ HH:MM ブロック名` (場所や交通アイコンは省略、簡潔性優先)
+  - 絶対時刻順で早い順に並べる
+  - 深夜またぎ (`Page.date=X` で time-of-day が朝の block) は「X 日の朝」として絶対時刻化されるため、絶対時刻順で見ると 22:00 の前に来ることがある。既存の `Block.start_time` モデル (§3) の挙動に従うのみ
+  - 上限 2 件の判断根拠: iOS ~4 行 / Chrome Windows 4 行 / Safari macOS 121 chars の展開時 body 制限に、後続 2 件フルで収まる件数
+  - **同時刻の他 block を含める理由**: end_time null と duration あり block 等で同一 `start_time` は実運用で発生する。同時刻 A/B は同一 tag で片方だけが通知センターに残るが、勝者側の body に他方が upcoming として現れて情報損失を防ぐ
+- **trip 名を body に含めない** (Issue #218):
+  - tag=`trip-{tripId}` で通知が 1 通に集約されるため、通知内での trip 識別は不要
+  - 削除により body 4 行に収まり iOS 展開時に後続 2 件目まで完全表示
+  - 複数 trip を同時進行するユーザは通知タップで該当 trip へ deep link されるため実害小
+- **場所行のインデント** (全角スペース U+3000):
+  - Web Notification 仕様上、body の leading whitespace は保持される規定 (実装依存)。U+3000 は ASCII whitespace 外のため、`String.trim()` 系で除去されにくい
+  - 万一 iOS 等で削られた場合、`📍` プレフィックス自体が視覚的マーカーになるので情報損失は限定的 (実機検証で挙動確認)
 - **時刻**: 購読端末の `timezone` (IANA TZ) で整形。サーバはグローバル対応
+
+### 5b. tag / renotify (Issue #218)
+
+**Rolling next indicator**: 通知センターに「その trip で次に来る予定」を常に 1 件だけ表示する。古い / 時刻変更された通知は自動置換する。
+
+- **tag**: 同一 tag の既存通知を置換する識別子 (Web Notification API 仕様)
+  - 5 分前通知: `trip-{tripId}` (tick 経路)
+  - テスト送信: `test-{tripId}` (本運用と分離、テスト後に本運用通知で消えないため)
+  - `tripId` は数値 PK。frontend foreground toast の payload にも `tripId` を含めて同じ tag を組む
+- **renotify**: `true` (置換時に vibrate/sound を再アラート、iOS では best-effort)
+- **延期 heuristic** (`_has_earlier_upcoming_in_same_trip`): tag が trip 単位のため、A@01:00 の 5 分前通知が届いた直後に B@01:02 の 5 分前通知が送られると B が A を start 前に上書きしてしまう。これを防ぐため、tick で candidate 送信前に「同一 trip 内に `now < absolute_start < candidate.absolute_start` の block が存在するか」を判定し、存在すれば candidate を **後 tick に延期**する。
+  - 判定は **trip スコープ** (cross-page 含む)。tag=trip-{tripId} で cross-page も同じ通知として集約されるため、判定単位も一致させる。日跨ぎ (23:58 → 00:01) や long `minutes_before` 購読でも安全
+  - 先行 block が start する (`absolute_start <= now`) と次 tick で earliest 判定から抜け、candidate が送信可能になる
+  - 先行 block の body には後続予定として candidate が upcoming で載っているため、ユーザは先行通知を見た時点で候補予定の存在を認識できる (rolling next 思想と整合)
+  - **trade-off**: gap が tick 間隔 (1 分) 以下で scheduler jitter や tick 1 回のスキップが重なると、candidate が無送信・無ログで消失しうる (実運用で希、無対応)
+- **既知制約**:
+  - **iOS Safari (PWA) の renotify は仕様準拠でない可能性**: renotify が効かなくても tag による置換は効くので、silent replace 相当になる (docs §6 参照)
+  - **同時刻 block の順序逆転**: 同一 trip 内の同時刻 A/B は延期対象に含めず両方送信するため、FCM 配送順で「main」がどちらになるかは非決定的 (ただし body に他方が upcoming で載るので情報損失はゼロ、docs §5 参照)
+  - **cross-tick 順序逆転**: 遅い tick (60 秒超) の送信が次 tick の送信を後追いして、古い通知が新しい通知を上書きする可能性 (稀、`elapsed_ms >= 45000` の warning で検知)
+  - **プラットフォーム別 body 長制限**: iOS ~4 行 / Chrome Windows 4 行 / Firefox macOS 50 chars 等で末尾が切れる。設計は先頭に大事な情報 (block 名 / 場所) を配置してこれを許容
+  - **未タップの古い block 通知は消える**: 「見逃した予定への気付き」は失われる (rolling next の思想上の trade-off)
+  - **`kind` 将来拡張時 (例 `at_start`)**: 同一 trip tag で置換されるため、`before_5min` と `at_start` が同時期に来ると片方が消える (対応は拡張時に再検討)
+- **sent_notifications テーブルとの関係**: tag は表示側の集約機能。送信ロック単位は `(block_id, fcm_token, kind)` のまま変更なし
+- **実装**: `WebpushNotification(tag=..., renotify=...)` を FCM Admin SDK 経由で送信 (`server/app/firebase.py`)。フォアグラウンド toast は `useForegroundNotificationToast` で同じ tag を組んで `registration.showNotification` を呼ぶ
 - **Icon** (通知本体の大アイコン、192px、フルカラー): block_type / transportation_type 別 (`frontend/public/icons/notify/*.png`)
   - `move` + transportation → `car` / `train` / `shinkansen` / `bus` / `walk` / `bicycle` / `ship` / `flight` の 8 種
   - それ以外 (`event` / `stay`) → `schedule` (地図ピン)
@@ -196,7 +252,7 @@ tick が 60 秒を超えると次 tick と重なる。閾値と対処:
   - 素材: FA (frontend/src/assets/icons) + Lucide MapPin。オレンジバッジ (`#f4a261`) + 白抜き
 - **Badge** (Android status bar 等の小モノクロアイコン、96px、透過 PNG): `badge.png` を全通知で共通使用。紙飛行機シルエット (favicon 由来)、OS 側でアクセントカラーへリカラーされる。icon と別 URL にしないと Android で四角い塗りになる
 - 生成スクリプト: `scripts/gen_notification_icons.py`
-- **Deep link**: `/trip/{urlId}?focusBlock={blockId}` (該当ブロックにスクロール、Phase 2 で完全実装)
+- **Deep link**: `/trip/{urlId}?focusBlock={blockId}`。SW `notificationclick` (`frontend/public/firebase-messaging-sw.js`) が受け、既存 PWA/tab (focused > visible > 任意) に postMessage で client-side navigate、無ければ `clients.openWindow`。client 側は `useFocusBlockOnMount` で `useBlock(id)` から pageId を得て page 切替 → `[data-block-id]` を rAF 待機して `scrollIntoView` (center)。処理後 `focusBlock` は replaceState で除去。
 
 ## 6. プラットフォーム対応
 

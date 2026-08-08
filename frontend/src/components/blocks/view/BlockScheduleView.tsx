@@ -55,6 +55,7 @@ export function BlockScheduleView({ block, isNow, className }: BlockScheduleView
   return (
     <div
       ref={resizeRef}
+      data-block-id={block.id}
       className={cn(
         'relative flex w-full flex-col gap-2 rounded-lg bg-linear-to-r from-teal-400 px-4 py-2',
         isHovered ? 'to-teal-400' : 'to-teal-500',

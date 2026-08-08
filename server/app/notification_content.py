@@ -1,53 +1,57 @@
 """通知本文のフォーマット。
 
-- Title: `next HH:MM` (常に固定形式、日本語 UI 内で英字プレフィックスで視認性を上げる)
-- Body: 改行区切りの複数行。省略表示でも block 名が最上部で残るように block_title を先頭に置く。
+- Title: `next {block_title}` (5 分前通知の semantic 上、時刻は暗黙で block 名を優先表示)
+- Body: 改行区切りの複数行。予定行 (`▶ HH:MM ブロック名`) と場所行を交ぜて構成。
 """
 
+from collections.abc import Iterable
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
+# 場所行のインデント (docs §5)。U+3000 は ASCII whitespace 判定外で trim されにくい。
+_INDENT = "　"
 
-def format_title(start_time: datetime, subscriber_timezone: str) -> str:
-    """`next HH:MM` を購読端末のタイムゾーンで整形して返す。"""
-    tz = ZoneInfo(subscriber_timezone)
-    local = start_time.astimezone(tz)
-    return f"next {local.strftime('%H:%M')}"
+
+def format_title(block_title: str) -> str:
+    """通知 Title `next {block_title}` を組み立てる (docs §5)。"""
+    return f"next {block_title}"
 
 
 def _format_location_line(location_name: str | None, destination_name: str | None) -> str | None:
-    """場所行 (body の 2 行目) を組み立て。両方 null なら None を返して省略する。
-
-    現状 UI では destination_name は常に null (destination_location を設定する UI 未実装) だが、
-    将来対応時は `{location} → {destination}` の遷移表示に自動で切り替わる。
-    """
+    """場所行を組み立てる (docs §5)。両方 null なら None。"""
     if destination_name and location_name:
-        return f"{location_name} → {destination_name}"
+        return f"📍 {location_name} → {destination_name}"
     if destination_name:
         return f"→ {destination_name}"
     if location_name:
-        return f"場所: {location_name}"
+        return f"📍 {location_name}"
     return None
+
+
+def _format_scheduled_line(start_time: datetime, block_title: str, tz: ZoneInfo) -> str:
+    """予定 1 行 `▶ HH:MM {title}` を組み立てる (next block / upcoming block 共通)。"""
+    local = start_time.astimezone(tz)
+    return f"▶ {local.strftime('%H:%M')} {block_title}"
 
 
 def format_body(
     *,
     block_title: str,
+    start_time: datetime,
     location_name: str | None,
     destination_name: str | None,
-    trip_title: str,
+    subscriber_timezone: str,
+    upcoming: Iterable[tuple[datetime, str]] = (),
 ) -> str:
-    """Body を改行区切りで組み立てる。
+    """通知 Body を組み立てる (docs §5)。"""
+    tz = ZoneInfo(subscriber_timezone)
+    lines = [_format_scheduled_line(start_time, block_title, tz)]
 
-    - 1 行目: block_title (schedule / move 共通で block 名を先頭に)
-    - 2 行目: 場所行 (`_format_location_line` 参照、両方 null なら省略)
-    - 3 行目: trip 名
-
-    Chrome / iOS の通知は 2〜3 行までしか展開表示しないので、重要度順に並べる。
-    """
-    lines = [block_title]
     location_line = _format_location_line(location_name, destination_name)
     if location_line:
-        lines.append(location_line)
-    lines.append(trip_title)
+        lines.append(f"{_INDENT}{location_line}")
+
+    for up_time, up_title in upcoming:
+        lines.append(_format_scheduled_line(up_time, up_title, tz))
+
     return "\n".join(lines)

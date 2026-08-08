@@ -64,6 +64,14 @@ export default defineConfig({
       workbox: {
         navigateFallback: '/index.html',
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        // firebase-messaging-sw.js は別 scope で登録される独立 SW。VitePWA sw.js の
+        // precache に紛れ込むと、Chrome の register 時に fetch handler が cache 経由で
+        // 古い版を返し続けて更新が実機に届かなくなる。glob から除外必須。
+        globIgnores: ['**/firebase-messaging-sw.js'],
+        // /__/ は Firebase Hosting の予約パス (auth ハンドラ・init.json)。authDomain を
+        // 自ドメインにしたことで Google 認証の popup / iframe が同一オリジンを開くようになり、
+        // navigateFallback が横取りすると SPA が返って認証が 404 で失敗する。
+        navigateFallbackDenylist: [/^\/firebase-messaging-sw\.js$/, /^\/__\//],
       },
     }),
   ],

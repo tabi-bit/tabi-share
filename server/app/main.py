@@ -1,6 +1,7 @@
 import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from typing import Annotated
 
 from fastapi import Depends, FastAPI, Query
 from fastapi.exceptions import RequestValidationError
@@ -18,9 +19,19 @@ from app.errors import (
     validation_exception_handler,
 )
 from app.firebase import init_firebase_admin
+from app.middleware.legacy_cookie_migration import LegacyCookieMigrationMiddleware
 from app.observability import setup_observability
 
-from .routers import blocks, notification, notification_internal, pages, trips
+from .routers import (
+    auth as auth_router,
+    blocks,
+    me,
+    notification,
+    notification_internal,
+    pages,
+    pair,
+    trips,
+)
 
 settings = get_settings()
 
@@ -49,7 +60,7 @@ app = FastAPI(
 
 @app.get("/docs", include_in_schema=False)
 async def swagger_ui(
-    _: None = Depends(require_basic_auth),
+    _: Annotated[None, Depends(require_basic_auth)],
 ) -> HTMLResponse:
     """
     説明:
@@ -61,7 +72,7 @@ async def swagger_ui(
 
 @app.get("/redoc", include_in_schema=False)
 async def redoc(
-    _: None = Depends(require_basic_auth),
+    _: Annotated[None, Depends(require_basic_auth)],
 ) -> HTMLResponse:
     """
     説明:
@@ -73,7 +84,7 @@ async def redoc(
 
 @app.get("/openapi.json", include_in_schema=False)
 async def openapi_schema(
-    _: None = Depends(require_basic_auth),
+    _: Annotated[None, Depends(require_basic_auth)],
 ) -> JSONResponse:
     """
     説明:
@@ -84,6 +95,12 @@ async def openapi_schema(
         get_openapi(title=app.title, version=app.version, routes=app.routes)
     )
 
+
+# issue #194 の移行期間限定のミドルウェア。旧形式 (trip_ids 配列) の Cookie を
+# 検出したら透過的に新形式 (session_id) へ移行する。CORS より内側 (inner) に
+# 置くことで preflight (Cookie 無) はスルーされる。
+# 削除タイミング: リリース 2-3 ヶ月後を目安に、この 1 行とファイル一式を削除する。
+app.add_middleware(LegacyCookieMigrationMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
@@ -99,6 +116,9 @@ setup_observability(app, engine)
 app.include_router(trips.router)
 app.include_router(pages.router)
 app.include_router(blocks.router)
+app.include_router(auth_router.router)
+app.include_router(me.router)
+app.include_router(pair.router)
 app.include_router(notification.router)
 app.include_router(notification_internal.router)
 
@@ -109,7 +129,9 @@ app.add_exception_handler(RequestValidationError, validation_exception_handler)
 
 @app.get("/health", tags=["Health"])
 async def health_check(
-    delay: float = Query(0, ge=0, le=30, description="デバッグ用: レスポンス遅延(秒)"),
+    delay: Annotated[
+        float, Query(ge=0, le=30, description="デバッグ用: レスポンス遅延(秒)")
+    ] = 0,
 ):
     """Renderのヘルスチェック用エンドポイント"""
     if delay > 0:

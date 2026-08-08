@@ -3,7 +3,7 @@ import { vi } from 'vitest';
 
 import { sortBlocks } from '@/lib/sortBlocks';
 import type { Block, ScheduleBlock, TransportationBlock } from '@/types/block';
-import { buildTimelineItems, groupByStartTime, ViewTimeline } from './ViewTimeline';
+import { buildTimelineItems, groupOverlappingBlocks, ViewTimeline } from './ViewTimeline';
 
 vi.mock('../blocks/view/BlockScheduleView', () => ({
   BlockScheduleView: ({ block, isNow }: { block: ScheduleBlock; isNow?: boolean }) => (
@@ -55,14 +55,14 @@ const countBorderDashed = (container: HTMLElement): number => {
   return container.querySelectorAll('.border-dashed').length;
 };
 
-describe('groupByStartTime', () => {
+describe('groupOverlappingBlocks', () => {
   it('空配列を渡すと空配列を返す', () => {
-    expect(groupByStartTime([])).toEqual([]);
+    expect(groupOverlappingBlocks([])).toEqual([]);
   });
 
   it('単一ブロックは1グループになり、groupEnd は endTime と一致する', () => {
     const block = makeSchedule(1, at(9), at(10));
-    const groups = groupByStartTime([block]);
+    const groups = groupOverlappingBlocks([block]);
 
     expect(groups).toHaveLength(1);
     expect(groups[0].blocks).toEqual([block]);
@@ -72,10 +72,10 @@ describe('groupByStartTime', () => {
     expect(groups[0].containerBlocks).toEqual([block]);
   });
 
-  it('異なる startTime のブロックは別々のグループに分かれる', () => {
+  it('時間帯が重ならない異なる startTime のブロックは別々のグループに分かれる', () => {
     const a = makeSchedule(1, at(9), at(10));
     const b = makeSchedule(2, at(11), at(12));
-    const groups = groupByStartTime([a, b]);
+    const groups = groupOverlappingBlocks([a, b]);
 
     expect(groups).toHaveLength(2);
     expect(groups[0].blocks).toEqual([a]);
@@ -85,7 +85,7 @@ describe('groupByStartTime', () => {
   it('同一 startTime の複数ブロックは1グループにまとめられる', () => {
     const a = makeSchedule(1, at(9), at(10));
     const b = makeSchedule(2, at(9), at(11));
-    const groups = groupByStartTime([a, b]);
+    const groups = groupOverlappingBlocks([a, b]);
 
     expect(groups).toHaveLength(1);
     expect(groups[0].blocks).toHaveLength(2);
@@ -96,7 +96,7 @@ describe('groupByStartTime', () => {
     const headerCandidate = makeSchedule(1, at(9), null, 'header');
     const other = makeSchedule(2, at(9), at(10), 'other');
     // sortBlocks 後は endTime=null が先頭になる前提
-    const groups = groupByStartTime([headerCandidate, other]);
+    const groups = groupOverlappingBlocks(sortBlocks([headerCandidate, other]));
 
     expect(groups).toHaveLength(1);
     expect(groups[0].headerBlock).toBe(headerCandidate);
@@ -106,7 +106,7 @@ describe('groupByStartTime', () => {
   it('グループの全ブロックが endTime=null のとき groupEnd は null になる', () => {
     const a = makeSchedule(1, at(9), null);
     const b = makeSchedule(2, at(9), null);
-    const groups = groupByStartTime([a, b]);
+    const groups = groupOverlappingBlocks([a, b]);
 
     expect(groups).toHaveLength(1);
     expect(groups[0].groupEnd).toBeNull();
@@ -116,10 +116,76 @@ describe('groupByStartTime', () => {
     const a = makeSchedule(1, at(9), at(10));
     const b = makeSchedule(2, at(9), at(13));
     const c = makeSchedule(3, at(9), at(11));
-    const groups = groupByStartTime([a, b, c]);
+    const groups = groupOverlappingBlocks([a, b, c]);
 
     expect(groups).toHaveLength(1);
     expect(groups[0].groupEnd).toEqual(at(13));
+  });
+
+  // --- issue #220: 途中ブロックのグルーピング (containment / partial overlap) ---
+
+  it('長いブロックの区間内で始まる別ブロックは同じグループに取り込まれる (containment)', () => {
+    // 車移動 10:00-14:00 の内側で始まる 天満橋着 10:30 のケース
+    const container = makeTransport(1, at(10), at(14), '車移動');
+    const inner = makeSchedule(2, at(10, 30), null, '天満橋着');
+    const groups = groupOverlappingBlocks(sortBlocks([container, inner]));
+
+    expect(groups).toHaveLength(1);
+    expect(groups[0].blocks).toEqual([container, inner]);
+    // container 側は endTime を持つので headerBlock にはならない
+    expect(groups[0].headerBlock).toBeNull();
+    expect(groups[0].containerBlocks).toEqual([container, inner]);
+    expect(groups[0].groupStart).toEqual(at(10));
+    expect(groups[0].groupEnd).toEqual(at(14));
+  });
+
+  it('部分的にオーバーラップするブロックは同じグループに取り込まれ groupEnd が伸びる', () => {
+    const a = makeSchedule(1, at(10), at(12));
+    const b = makeSchedule(2, at(11), at(13));
+    const groups = groupOverlappingBlocks(sortBlocks([a, b]));
+
+    expect(groups).toHaveLength(1);
+    expect(groups[0].groupEnd).toEqual(at(13));
+  });
+
+  it('3つ以上のブロックが連鎖して重なる場合、全て 1 グループに集約される (sweep-line)', () => {
+    const a = makeSchedule(1, at(10), at(12));
+    const b = makeSchedule(2, at(11), at(14));
+    const c = makeSchedule(3, at(13), at(15));
+    const groups = groupOverlappingBlocks(sortBlocks([a, b, c]));
+
+    expect(groups).toHaveLength(1);
+    expect(groups[0].blocks).toEqual([a, b, c]);
+    expect(groups[0].groupEnd).toEqual(at(15));
+  });
+
+  it('隣接する (前グループの終端 = 次ブロックの開始) は同じグループにしない', () => {
+    const a = makeSchedule(1, at(10), at(11));
+    const b = makeSchedule(2, at(11), at(12));
+    const groups = groupOverlappingBlocks(sortBlocks([a, b]));
+
+    expect(groups).toHaveLength(2);
+  });
+
+  it('headerBlock (endTime=null) のみで開始したグループには同時刻ブロックしか合流しない', () => {
+    // 9:00 の point event と、後続の 10:00-11:00 ブロック
+    const header = makeSchedule(1, at(9), null);
+    const later = makeSchedule(2, at(10), at(11));
+    const groups = groupOverlappingBlocks(sortBlocks([header, later]));
+
+    expect(groups).toHaveLength(2);
+    expect(groups[0].headerBlock).toBe(header);
+    expect(groups[1].blocks).toEqual([later]);
+  });
+
+  it('長いブロックの内側で発生する endTime=null は container 側に入る (headerBlock にはならない)', () => {
+    const container = makeTransport(1, at(10), at(14), '車移動');
+    const inner = makeSchedule(2, at(10, 30), null, '天満橋着');
+    const groups = groupOverlappingBlocks(sortBlocks([container, inner]));
+
+    // opener (container) が endTime を持つので、後続の null は headerBlock ではなく container 側
+    expect(groups[0].headerBlock).toBeNull();
+    expect(groups[0].containerBlocks).toContain(inner);
   });
 });
 
@@ -435,7 +501,7 @@ describe('buildTimelineItems - NOW 挿入位置', () => {
     location: null,
   });
   const buildFromBlocks = (blocks: Block[], now: Date | null) =>
-    buildTimelineItems(groupByStartTime(sortBlocks(blocks)), now);
+    buildTimelineItems(groupOverlappingBlocks(sortBlocks(blocks)), now);
 
   it('明示的 gap 内で ratio が gap アイテムに乗って計算される', () => {
     const a = makeSchedule(1, at(10), at(11));

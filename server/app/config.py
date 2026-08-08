@@ -53,6 +53,12 @@ class Settings(BaseSettings):
     # デフォルト False (FCM 送信スキップ、log 出力のみ)。ローカルで実 FCM を試す場合は
     # `.env` で true に切替 (docs/notifications.md §10.4)。Cloud Run では deploy-backend.yml で設定する。
     notifications_enabled: bool = False
+    # Firebase Admin SDK が `create_custom_token` で使う SA email。
+    # 空文字なら SDK のメタデータサーバー経由での自動検出に任せる (Cloud Run 上の通常経路)。
+    # 明示指定するとメタデータ経由の SA 検出を skip して IAM SignBlob API を使うため、
+    # ローカルで自分の user credentials に `iam.serviceAccountTokenCreator` を SA に対して
+    # 付与すれば手元で signBlob 経由で試せる。
+    firebase_admin_sa_email: str = ""
     # Cloud Scheduler → Cloud Run tick エンドポイントの OIDC 検証用
     notify_tick_allowed_audience: str = ""
     notify_tick_allowed_sa_email: str = ""

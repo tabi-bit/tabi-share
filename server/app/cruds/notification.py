@@ -18,6 +18,9 @@ from app.schemas.notification import DeviceSubscriptionCreate
 
 _KIND_BEFORE = "before_5min"
 
+# body に載せる upcoming block の上限。iOS 4 行制限に収まる件数 (docs §5)。
+_MAX_UPCOMING_BLOCKS = 2
+
 
 async def upsert_subscription(
     db: AsyncSession,
@@ -183,8 +186,9 @@ class NotificationCandidate:
     fcm_token: str
     minutes_before: int
     timezone: str
+    trip_id: int
     trip_url_id: str
-    trip_title: str
+    upcoming_blocks: list[tuple[datetime, str]]  # docs §5 の upcoming block (絶対 UTC, title)
 
 
 def _compose_absolute_start(
@@ -236,14 +240,15 @@ async def list_notification_candidates(db: AsyncSession) -> list[NotificationCan
             Block.block_type.label("block_type"),
             Block.transportation_type.label("transportation_type"),
             Block.start_time.label("start_time"),
+            Block.page_id.label("page_id"),
             Block.location_id,
             Block.destination_location_id,
             Page.date.label("page_date"),
             DeviceSubscription.fcm_token.label("fcm_token"),
             DeviceSubscription.minutes_before.label("minutes_before"),
             DeviceSubscription.timezone.label("timezone"),
+            Trip.id.label("trip_id"),
             Trip.url_id.label("trip_url_id"),
-            Trip.title.label("trip_title"),
         )
         .select_from(Block)
         .join(Page, Block.page_id == Page.id)
@@ -299,6 +304,54 @@ async def list_notification_candidates(db: AsyncSession) -> list[NotificationCan
         ).all()
         location_name_map = {row.id: row.name for row in loc_rows}
 
+    # upcoming block (page 単位、docs §5) と延期判定 (trip 単位、docs §5b) 双方に使う sibling を 1 クエリで取得。
+    trip_ids = {r["trip_id"] for r in filtered}
+    trip_blocks_map: dict[int, list[tuple[int, date, datetime, str]]] = {}
+    page_blocks_map: dict[int, list[tuple[int, datetime, str]]] = {}
+    if trip_ids:
+        tb_rows = (
+            await db.execute(
+                select(
+                    Block.id,
+                    Block.page_id,
+                    Page.trip_id,
+                    Page.date.label("page_date"),
+                    Block.start_time,
+                    Block.title,
+                )
+                .join(Page, Block.page_id == Page.id)
+                .where(
+                    Page.trip_id.in_(trip_ids),
+                    Page.date.is_not(None),
+                    Page.date >= date_lower,
+                    Page.date <= date_upper,
+                )
+            )
+        ).all()
+        for row in tb_rows:
+            trip_blocks_map.setdefault(row.trip_id, []).append(
+                (row.id, row.page_date, row.start_time, row.title)
+            )
+            page_blocks_map.setdefault(row.page_id, []).append(
+                (row.id, row.start_time, row.title)
+            )
+
+    # 延期 heuristic (docs §5b): earlier upcoming があれば rolling next tag の上書きを避けるため後 tick に延期。
+    filtered = [
+        r
+        for r in filtered
+        if not _has_earlier_upcoming_in_same_trip(
+            trip_blocks=trip_blocks_map.get(r["trip_id"], []),
+            tz_name=r["timezone"],
+            candidate_block_id=r["block_id"],
+            candidate_absolute_start=r["absolute_start"],
+            now_utc=now_utc,
+        )
+    ]
+
+    if not filtered:
+        return []
+
     return [
         NotificationCandidate(
             block_id=r["block_id"],
@@ -317,8 +370,62 @@ async def list_notification_candidates(db: AsyncSession) -> list[NotificationCan
             fcm_token=r["fcm_token"],
             minutes_before=r["minutes_before"],
             timezone=r["timezone"],
+            trip_id=r["trip_id"],
             trip_url_id=r["trip_url_id"],
-            trip_title=r["trip_title"],
+            upcoming_blocks=_collect_upcoming_blocks(
+                page_blocks=page_blocks_map.get(r["page_id"], []),
+                current_block_id=r["block_id"],
+                page_date=r["page_date"],
+                tz_name=r["timezone"],
+                after_utc=r["absolute_start"],
+            ),
         )
         for r in filtered
     ]
+
+
+def _has_earlier_upcoming_in_same_trip(
+    *,
+    trip_blocks: list[tuple[int, date, datetime, str]],
+    tz_name: str,
+    candidate_block_id: int,
+    candidate_absolute_start: datetime,
+    now_utc: datetime,
+) -> bool:
+    """candidate より前に start する未 start block (earlier upcoming) が同 trip にあれば True (docs §5b)。
+
+    同時刻 (`b_abs == candidate_absolute_start`) は含めない (上書き競合は受容、docs §5b)。
+    """
+    for bid, page_date, start_time, _title in trip_blocks:
+        if bid == candidate_block_id:
+            continue
+        b_abs = _compose_absolute_start(page_date, start_time, tz_name)
+        if b_abs is None:
+            continue
+        if now_utc < b_abs < candidate_absolute_start:
+            return True
+    return False
+
+
+def _collect_upcoming_blocks(
+    *,
+    page_blocks: list[tuple[int, datetime, str]],
+    current_block_id: int,
+    page_date: date,
+    tz_name: str,
+    after_utc: datetime,
+) -> list[tuple[datetime, str]]:
+    """same-page 内で `after_utc` 以降の block を絶対時刻順で上位 N 件返す (docs §5 の upcoming block)。
+
+    同時刻の他 block も含める (上書き競合時の情報損失を防ぐ、docs §5b)。
+    """
+    upcoming: list[tuple[datetime, str]] = []
+    for block_id, start_time, title in page_blocks:
+        if block_id == current_block_id:
+            continue
+        absolute = _compose_absolute_start(page_date, start_time, tz_name)
+        if absolute is None or absolute < after_utc:
+            continue
+        upcoming.append((absolute, title))
+    upcoming.sort(key=lambda item: item[0])
+    return upcoming[:_MAX_UPCOMING_BLOCKS]

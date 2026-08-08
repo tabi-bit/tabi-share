@@ -25,10 +25,10 @@ vi.mock('@/lib/messaging', () => ({
   requestNotificationPermission: () => mockRequestNotificationPermission(),
 }));
 
-const mockIsNotificationSupported = vi.fn();
+const mockShouldShowButton = vi.fn();
 const mockNeedsIOSInstall = vi.fn();
 vi.mock('@/lib/platform', () => ({
-  isNotificationSupported: () => mockIsNotificationSupported(),
+  shouldShowNotificationButton: () => mockShouldShowButton(),
   needsIOSInstallForNotification: () => mockNeedsIOSInstall(),
 }));
 
@@ -64,16 +64,23 @@ describe('NotificationToggleButton', () => {
     mockConfirm.mockResolvedValue(true);
     mockFetchFcmToken.mockResolvedValue('token-abc');
     mockRequestNotificationPermission.mockResolvedValue('granted');
-    mockIsNotificationSupported.mockReturnValue(true);
+    mockShouldShowButton.mockReturnValue(true);
     mockNeedsIOSInstall.mockReturnValue(false);
     setNotificationPermission('default');
   });
 
   describe('OFF → ON (購読フロー)', () => {
-    it('ブラウザ非対応時はボタン自体を出さない', () => {
-      mockIsNotificationSupported.mockReturnValue(false);
+    it('ブラウザ非対応かつ iOS 以外ならボタン自体を出さない', () => {
+      mockShouldShowButton.mockReturnValue(false);
       render(<NotificationToggleButton tripId={1} tripHasStartDate={true} />);
       expect(screen.queryByRole('button', { name: '通知を有効にする' })).toBeNull();
+    });
+
+    it('iOS 非 PWA (Notification API 未露出) でもボタンを出す', () => {
+      mockShouldShowButton.mockReturnValue(true);
+      mockNeedsIOSInstall.mockReturnValue(true);
+      render(<NotificationToggleButton tripId={1} tripHasStartDate={true} />);
+      expect(screen.getByRole('button', { name: '通知を有効にする' })).toBeInTheDocument();
     });
 
     it('OS 設定で既に denied なら OS 設定への誘導トーストを出し requestPermission を呼ばない', async () => {

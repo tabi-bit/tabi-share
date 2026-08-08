@@ -3,14 +3,11 @@ import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, type User } fr
 import { useSetAtom } from 'jotai';
 import { useEffect } from 'react';
 import { toast } from 'sonner';
+import { type ScopedMutator, useSWRConfig } from 'swr';
 import { authUserAtom } from '@/atoms/auth';
 import { apiClient } from '@/lib/apiClient';
 import { getFirebaseAuth } from '@/lib/firebase';
-import { mergeServerVisitedTripUrlIds } from './useVisitedTrips';
-
-interface MyTripsOut {
-  url_ids: string[];
-}
+import { revalidateTripLists } from '@/lib/tripCache';
 
 /**
  * Firebase Auth 状態を Jotai atom に反映し、sign-in 検出時にサーバー側の
@@ -21,21 +18,22 @@ interface MyTripsOut {
  */
 export const useAuthStateSync = (): void => {
   const setAuthUser = useSetAtom(authUserAtom);
+  const { mutate } = useSWRConfig();
 
   useEffect(() => {
     const auth = getFirebaseAuth();
     const unsubscribe = onAuthStateChanged(auth, user => {
       setAuthUser(user);
       if (user !== null) {
-        void syncAuthedUser(user);
+        void syncAuthedUser(user, mutate);
       }
     });
     return () => unsubscribe();
-  }, [setAuthUser]);
+  }, [setAuthUser, mutate]);
 };
 
 /**
- * sign-in ユーザーに対してサーバー側の session を紐付け、旅程一覧を IndexedDB に同期する。
+ * sign-in ユーザーに対してサーバー側の session を紐付け、旅程一覧を再取得する。
  *
  * `onAuthStateChanged` から呼ばれ、以下 2 系統で発火する:
  * - Google 認証で新規 sign-in した直後 (popup 完了 or Pair 引き継ぎ)
@@ -43,12 +41,11 @@ export const useAuthStateSync = (): void => {
  *
  * `/auth/link` は冪等なので、同じ user で複数回叩いても副作用は起きない。
  */
-const syncAuthedUser = async (user: User): Promise<void> => {
+const syncAuthedUser = async (user: User, mutate: ScopedMutator): Promise<void> => {
   try {
     const idToken = await user.getIdToken();
     await apiClient.post('/auth/link', { id_token: idToken });
-    const { data } = await apiClient.get<MyTripsOut>('/me/trips');
-    await mergeServerVisitedTripUrlIds(data.url_ids);
+    revalidateTripLists(mutate);
   } catch (err) {
     console.error('failed to sync authed user', err);
     toast.error('旅程の同期に失敗しました。時間をおいて再度お試しください。');

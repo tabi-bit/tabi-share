@@ -78,5 +78,8 @@ export class OfflineError extends AppError {
 /** OfflineError の型ガード */
 export const isOfflineError = (err: unknown): err is OfflineError => err instanceof OfflineError;
 
+/** 削除済み・存在しないリソースの型ガード */
+export const isNotFoundError = (err: unknown): err is AppError => err instanceof AppError && err.statusCode === 404;
+
 /** axios の型ガード（インターセプターから使用） */
 export const isAxiosError = axios.isAxiosError;

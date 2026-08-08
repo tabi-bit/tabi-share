@@ -54,6 +54,7 @@
   - グループ利用（家族/友人）を前提とし、編集の絞り込みは行わない
   - URL 共有相手には同等の編集権限を与える設計
 - **認可の仕組み**: HttpOnly Cookie に不透明トークン (session_id) を格納し、DB の `user_trip_access` テーブルで trip 単位のアクセス権を管理する（旧 `trip_ids` 配列 JWT からセッションキー方式へ移行、issue #194）
+- **旅程一覧の取得元**: `GET /me/trips` のみ（issue #191 でローカルの訪問済み台帳を廃止）。訪問記録は `GET /trips/url/{urlId}` の副作用としてサーバー側で付与されるため、未認証で Cookie を失うと一覧も失われる（復旧は Google 認証 / ペアリング / URL の再共有）
 - **セッション**: 長期間有効 (Cookie Max-Age = 30 日、アクセス毎に延長)
 - **Google 認証** (オプション、Firebase Authentication):
   - **バックアップ・追加機能** として位置付ける（編集の必須要件ではない）
@@ -61,12 +62,13 @@
     - デバイス間での旅程一覧同期
     - Cookie 消失 (ブラウザデータクリア、機種変更、iOS Safari の ITP 7 日パージ) 時のリカバリ
   - `signInWithPopup(GoogleAuthProvider)` で OAuth。認証時は同一 `firebase_uid` の user に session を紐付けて統合する
+    - ただし統合の対象は**匿名 user のみ**。既に別アカウントで認証済みの session に別 `firebase_uid` が来た場合は「アカウント切り替え」として session の紐付け先を変えるだけにし、元アカウントの昇格・マージ・削除は行わない (issue #223)
     - `signInWithRedirect` は使わない: redirect フローは authDomain (`<project>.firebaseapp.com`) 上のクロスオリジン iframe に依存し、サードパーティストレージをブロックするブラウザ (Safari 16.1+ / Firefox 109+ / Chrome M115+) で `getRedirectResult` が黙って null を返す。authDomain を自ドメインに変える回避策は Hosting preview チャンネルの URL が動的で OAuth リダイレクト URI を事前登録できないため採れない
 - **デバイス引き継ぎ** (8 桁ペアリングコード + Firebase Custom Token):
   - iOS PWA (ホーム画面追加) は Safari とストレージが分離され、OAuth リダイレクトも常に Safari 側で開かれるため **Google 認証によるリカバリが PWA では機能しない**。この抜け穴を塞ぐための機構
   - 認証済みデバイスで 8 桁コード (base32 = 40 bits) を発行し、実体の Firebase Custom Token とのマッピングは Firestore に短命保存 (5 分 TTL + one-time consume)
   - 受信側デバイスがコードを入力すると `POST /pair/redeem` で Custom Token を交換し、`signInWithCustomToken` で認証状態を移送
-  - 受信側は既存の `/auth/link` (パターン 2: マージ) が自動発火し、匿名 session が同 user_id に統合される。PostgreSQL 側の追加スキーマは不要 (Firestore に完結)
+  - 受信側は既存の `/auth/link` が自動発火し、匿名 session なら同 user_id に統合される (パターン 2: マージ)。受信側が既に別アカウントで認証済みだった場合は切り替え扱いになる。PostgreSQL 側の追加スキーマは不要 (Firestore に完結)
 
 ### Phase 2
 
@@ -94,7 +96,7 @@
 
 #### 追加管理機能
 
-- **旅程一覧のアーカイブ**: `user_trip_access.archived` フラグでの一覧非表示
+- **旅程一覧のアーカイブ** (issue #191): `user_trip_access.archived` フラグでの一覧非表示。user 単位の状態なので共有相手の一覧には影響しない
 - **外部URL管理**: Walica等の割り勘サービスURL管理
 - **旅行メタ情報管理**: 旅行名、期間、参加者、テーマ等
 - **予約情報統合管理**: 各施設の予約情報の一元管理

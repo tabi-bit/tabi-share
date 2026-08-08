@@ -18,6 +18,7 @@
     "formatWithErrors": false
   },
   "javascript": {
+    "globals": ["__BUILD_ID__"],
     "formatter": {
       "enabled": true,
       "quoteStyle": "single",

@@ -7,10 +7,10 @@
 
 // --- 診断ロガー (client 側 lib/debugLogger.ts と同じ DB / store に書く) ---
 // SW は importScripts で compat SDK を読む都合 ES module import が使えないため、client 側と
-// 同じロジックを duplicate して持つ (詳細は docs/debug_logger.md)。診断コードを直したら
-// DEBUG_LOG_VERSION を bump する。ログ各行に埋め込まれるので、実機で古い SW が動いているのか
-// 新しい SW が動いているのかを共有ログから判別できる。
-const DEBUG_LOG_VERSION = 'v01-sw';
+// 同じロジックを duplicate して持つ (詳細は docs/debug_logger.md)。
+// __BUILD_ID__ は vite.config.ts の stampServiceWorkerBuildId が build / dev 配信時に置換する。
+// ログ各行に埋め込まれるので、client 側の行と値がズレていれば古い SW が動いたままだと判る。
+const DEBUG_LOG_VERSION = '__BUILD_ID__';
 const DEBUG_DB = 'app-debug-log';
 const DEBUG_STORE = 'entries';
 const DEBUG_MAX = 500;

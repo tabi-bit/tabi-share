@@ -13,11 +13,11 @@ const STORE_NAME = 'entries';
 const MAX_ENTRIES = 500;
 
 /**
- * 診断コードを修正するたびに手動で bump する。ログの各行に埋め込まれるので、共有されたログが
- * どのバージョンの環境で取られたものかを判別できる。SW は更新が非同期でユーザ操作依存なため、
- * firebase-messaging-sw.js 側の DEBUG_LOG_VERSION (`-sw`) とは別採番で構わない。
+ * ビルドごとに変わる ID (vite.config.ts の define で注入)。ログの各行に埋め込まれるので、
+ * SW 側の行と値がズレていれば「古い SW が動いたまま」と判別できる。SW の更新は非同期で
+ * ユーザ操作に依存するため、この判別が実機診断では効く。
  */
-export const DEBUG_LOG_VERSION = 'v01-cl';
+export const DEBUG_LOG_VERSION = __BUILD_ID__;
 
 interface LogEntry {
   ts: number;

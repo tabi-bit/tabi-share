@@ -51,10 +51,25 @@ SW は `importScripts` で firebase compat SDK を読む都合上 ES module impo
 同一の DB (`app-debug-log`) / store (`entries`) に書くので、client 側の Copy Logs で
 SW のログもまとめて取得できる。
 
-## DEBUG_LOG_VERSION
+## DEBUG_LOG_VERSION (build ID)
 
-client (`v01-cl`) と SW (`v01-sw`) にそれぞれハードコードされた定数で、ログの各行に埋め込まれる。
-**診断コードを修正したら手動で bump する**。
+ビルドごとに変わるランダム ID (`randomUUID` の先頭 8 桁) が、client と SW の**両方に同じ値で**
+埋め込まれ、ログの各行に載る。手動更新は不要。
 
-SW の更新は非同期でユーザー操作に依存するため、共有されたログを見たときに「client は新しいが
-SW は古い版が動いている」といったズレを判別するのが目的。client と SW で別採番でよい。
+```text
+[2026-08-08T12:34:56.789Z] [faeba6fb] [SW] notificationclick | {...}
+                            ^^^^^^^^ build ID
+```
+
+SW の更新は非同期でユーザー操作に依存するため、**client の行と SW の行で値がズレていれば
+「古い SW が動いたまま」**と判別できる。これが実機診断で一番効く情報になる。
+
+### 埋め込みの仕組み
+
+| 対象 | 方法 |
+| --- | --- |
+| client | `vite.config.ts` の `define` で `__BUILD_ID__` を置換 |
+| SW | `public/` は Vite が無変換でコピーするため `define` が効かない。`stampServiceWorkerBuildId` プラグインが build 時 (`closeBundle`) と dev 配信時 (middleware) に `__BUILD_ID__` トークンを置換する |
+
+ID はビルド単位で変わるので、同一コミットを再ビルドすると別の値になる。コミットとの対応を
+取りたい場合は `vite.config.ts` の `BUILD_ID` を git SHA に差し替えればよい（1行）。

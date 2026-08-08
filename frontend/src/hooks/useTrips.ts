@@ -197,17 +197,17 @@ export const useUpdateTrip = () => {
   };
 };
 
-type DeleteTripArg = Trip['id'];
+type DeleteTripArg = { id: Trip['id']; urlId: Trip['urlId'] };
 
 /**
  * Tripを削除する
  */
 export const useDeleteTrip = () => {
-  const { mutate } = useSWRConfig();
+  const { mutate, cache } = useSWRConfig();
 
-  const deleteTripFetcher = async (_: string | null, { arg: id }: { arg: DeleteTripArg }) => {
-    z.number().parse(id);
-    await apiClient.delete(`${TRIPS_BASE_PATH}/${id}`);
+  const deleteTripFetcher = async (_: string | null, { arg }: { arg: DeleteTripArg }) => {
+    z.number().parse(arg.id);
+    await apiClient.delete(`${TRIPS_BASE_PATH}/${arg.id}`);
     return undefined;
   };
 
@@ -219,19 +219,25 @@ export const useDeleteTrip = () => {
     }
   );
 
-  const deleteTrip = async (id: DeleteTripArg) => {
+  const deleteTrip = async (arg: DeleteTripArg) => {
     // リスト側の楽観的更新
-    await trigger(id, {
+    await trigger(arg, {
       optimisticData: (currentTrips: Trip[] | undefined) => {
         if (!currentTrips) return [];
-        return currentTrips.filter(trip => trip.id !== id);
+        return currentTrips.filter(trip => trip.id !== arg.id);
       },
       revalidate: true, // 念のためリストをサーバーと同期する（不要ならfalse）
       rollbackOnError: true,
     });
 
-    // 個別キャッシュ（/trips/:id）の削除
-    mutate(`${TRIPS_BASE_PATH}/${id}`, undefined, false);
+    // 個別キャッシュを id/urlId 両方削除する。残すと再訪時に削除済み Trip が描画される。
+    // mutate は購読中コンポーネントへの通知用で、IndexedDB まで消せるのは cache.delete だけ
+    const idKey = `${TRIPS_BASE_PATH}/${arg.id}`;
+    const urlKey = `${TRIPS_BASE_PATH}/url/${arg.urlId}`;
+    mutate(idKey, undefined, false);
+    cache.delete(idKey);
+    mutate(urlKey, undefined, false);
+    cache.delete(urlKey);
   };
 
   return {

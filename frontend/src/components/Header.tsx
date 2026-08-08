@@ -210,7 +210,7 @@ function HeaderFull({ className, scrollContainer, isDraggingRef, ...props }: Omi
         open={editTripDialogOpen}
         onOpenChange={setEditTripDialogOpen}
         trip={trip}
-        onDeleted={() => navigate('/')}
+        onDeleted={() => navigate('/', { replace: true })}
       />
 
       {/* Walica iframe ビューア */}

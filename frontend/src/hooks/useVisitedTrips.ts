@@ -1,8 +1,8 @@
-import { isAxiosError } from 'axios';
 import { useEffect, useState } from 'react';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/apiClient';
 import { db } from '@/lib/db';
+import { isNotFoundError } from '@/lib/errors';
 import { type Trip, tripFromApi } from '@/types/trip';
 
 const VISITED_TRIPS_KEY = 'visitedTripUrlIds';
@@ -127,21 +127,25 @@ export const useVisitedTrips = () => {
     error,
     isLoading: swrIsLoading,
   } = useSWR<Trip[]>(isInitialized && urlIds.length > 0 ? [VISITED_TRIPS_CACHE_KEY, ...urlIds] : null, async () => {
+    const deletedUrlIds = new Set<string>();
     const results = await Promise.all(
       urlIds.map(async urlId => {
         try {
           const res = await fetcher(`/trips/url/${urlId}`);
           return tripFromApi.parse(res);
         } catch (err) {
-          // 404 "Trip not found" の場合は訪問済みリストから除去
-          if (isAxiosError(err) && err.response?.status === 404 && err.response.data?.detail === 'Trip not found') {
-            const current = await getUrlIdsFromDB();
-            await saveUrlIdsToDB(current.filter(id => id !== urlId));
-          }
+          if (isNotFoundError(err)) deletedUrlIds.add(urlId);
           return null;
         }
       })
     );
+
+    // 削除済み Trip を訪問済みリストから除去する。
+    // 404 ごとに read-modify-write すると互いの結果を打ち消し合うため、まとめて1回だけ書き込む
+    if (deletedUrlIds.size > 0) {
+      const current = await getUrlIdsFromDB();
+      await saveUrlIdsToDB(current.filter(id => !deletedUrlIds.has(id)));
+    }
     return results.filter((trip): trip is Trip => trip !== null);
   });
 

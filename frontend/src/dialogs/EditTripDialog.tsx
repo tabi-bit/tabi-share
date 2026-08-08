@@ -61,7 +61,9 @@ export const EditTripDialog = ({ open, onOpenChange, trip, onDeleted }: EditTrip
         variant: 'destructive',
       });
       if (!ok) return;
-      deleteTrip(trip.id);
+      deleteTrip({ id: trip.id, urlId: trip.urlId }).catch(() => {
+        // エラーは useDeleteTrip の onError がトーストで通知するため握り潰す
+      });
       removeVisitedTrip(trip.urlId);
       onDeleted?.();
       onOpenChange(false);

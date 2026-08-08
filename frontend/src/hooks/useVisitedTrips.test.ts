@@ -119,6 +119,48 @@ describe('useVisitedTrips', () => {
     });
   });
 
+  // #187: apiClient が AxiosError を AppError に変換するため、旧 isAxiosError 判定では除去できていなかった
+  it('取得が404になったurlIdは訪問済みリストから除去される', async () => {
+    mockDbGet.mockResolvedValue({ key: 'visitedTripUrlIds', value: ['deleted-1', 'alive-1'] });
+    server.use(
+      http.get('*/trips/url/:urlId', ({ params }) => {
+        if (params.urlId === 'deleted-1') {
+          return HttpResponse.json({ message: 'Trip not found', code: 'not_found', detail: null }, { status: 404 });
+        }
+        return HttpResponse.json({
+          id: 1,
+          title: 'mock',
+          detail: null,
+          people_num: null,
+          url_id: String(params.urlId),
+          start_date: null,
+          end_date: null,
+          walica_url: null,
+          created_at: '2026-01-01T00:00:00+09:00',
+          last_edited_at: '2026-01-01T00:00:00+09:00',
+        });
+      })
+    );
+
+    const { result } = renderHook(() => useVisitedTrips());
+
+    await waitFor(() => {
+      expect(mockDbPut).toHaveBeenCalledWith(expect.objectContaining({ key: 'visitedTripUrlIds', value: ['alive-1'] }));
+    });
+    expect(result.current.trips?.map(trip => trip.urlId)).toEqual(['alive-1']);
+
+    // 除去が state にも反映されていないと、後続の追加で永続化 effect が 404 の ID を復活させる
+    act(() => {
+      result.current.addVisitedTrip('new-url');
+    });
+
+    await waitFor(() => {
+      expect(mockDbPut).toHaveBeenCalledWith(
+        expect.objectContaining({ key: 'visitedTripUrlIds', value: ['alive-1', 'new-url'] })
+      );
+    });
+  });
+
   it('localStorageにデータがある場合、IndexedDBへマイグレーションされる', async () => {
     localStorage.setItem('visitedTripUrlIds', JSON.stringify(['migrated-1']));
     // IndexedDBは空

@@ -1,7 +1,8 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { Plus } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
+import { toast } from 'sonner';
 import { isOfflineReadAtom } from '@/atoms/network';
 import { selectedPageIdAtom, tripAtom, tripModeAtom, tripPagesAtom } from '@/atoms/tripPage';
 import { FetchErrorView } from '@/components/FetchErrorView';
@@ -14,10 +15,12 @@ import { TimelineSkeleton } from '@/components/timeline';
 import { Button } from '@/components/ui/button';
 import { useActivePage } from '@/hooks/useActivePage';
 import { useDragAutoScroll } from '@/hooks/useDragAutoScroll';
+import { useEditModeBackGuard } from '@/hooks/useEditModeBackGuard';
 import { useFocusBlockOnMount } from '@/hooks/useFocusBlockOnMount';
 import { usePages } from '@/hooks/usePages';
 import { useTripByUrlId } from '@/hooks/useTrips';
 import { useVisitedTrips } from '@/hooks/useVisitedTrips';
+import { isNotFoundError } from '@/lib/errors';
 import { cn } from '@/lib/utils';
 import { EditTripLayout } from './TripPage/EditTripLayout';
 import { ViewTripLayout } from './TripPage/ViewTripLayout';
@@ -38,6 +41,7 @@ const TripPage = () => {
   const setAddPageDialogOpen = useSetAtom(addPageDialogOpenAtom);
   const [minLoadingComplete, setMinLoadingComplete] = useState(false);
   const { urlId } = useParams<{ urlId: string }>();
+  const navigate = useNavigate();
 
   const isOffline = useAtomValue(isOfflineReadAtom);
   const refreshInterval = isOffline ? 0 : mode === 'edit' ? 5000 : 0;
@@ -46,9 +50,12 @@ const TripPage = () => {
   const { addVisitedTrip } = useVisitedTrips();
   const { storedPageId, isActivePageInitialized, saveActivePageId } = useActivePage(trip?.id ?? null);
   useFocusBlockOnMount();
+  useEditModeBackGuard();
 
   const isLoading = isTripLoading || isPagesLoading || !minLoadingComplete;
   const isError = tripError || pagesError;
+  // pages 側は存在しない trip でも 403 を返すため、404 判定は trip の取得結果で行う
+  const isTripNotFound = isNotFoundError(tripError);
 
   // マウント解除時に atom をリセット
   useEffect(() => {
@@ -103,28 +110,6 @@ const TripPage = () => {
     }
   }, [mode]);
 
-  // Editモード中のブラウザバックを阻止し、Viewモードに戻す
-  useEffect(() => {
-    if (mode !== 'edit') return;
-
-    history.pushState({ editMode: true }, '', location.href);
-    let poppedByBack = false;
-
-    const handlePopState = () => {
-      poppedByBack = true;
-      setMode('view');
-    };
-
-    window.addEventListener('popstate', handlePopState);
-    return () => {
-      window.removeEventListener('popstate', handlePopState);
-      // ボタン等でViewに戻った場合、pushStateで追加したエントリを消す
-      if (!poppedByBack) {
-        history.back();
-      }
-    };
-  }, [mode, setMode]);
-
   // オフライン時は編集モードを強制解除
   useEffect(() => {
     if (isOffline && mode === 'edit') {
@@ -139,7 +124,16 @@ const TripPage = () => {
     }
   }, [trip, addVisitedTrip]);
 
-  if (isError) {
+  // 削除済み・存在しない旅程URL（自身の削除操作、共有相手による削除、ブックマーク等）はトップへ逃がす
+  useEffect(() => {
+    if (!isTripNotFound) return;
+    // StrictMode の二重実行やポーリング再失敗でトーストが重ならないよう id で dedupe する
+    toast.error('旅程が見つかりませんでした', { id: 'trip-not-found' });
+    navigate('/', { replace: true });
+  }, [isTripNotFound, navigate]);
+
+  // 404 はトップへ遷移するだけなのでエラー表示は出さず、遷移までスケルトンを見せる
+  if (isError && !isTripNotFound) {
     return (
       <div className='flex h-dvh w-full flex-col'>
         <HeaderSkeleton />
@@ -150,7 +144,7 @@ const TripPage = () => {
     );
   }
 
-  if (isLoading) {
+  if (isLoading || isTripNotFound) {
     return (
       <div className='flex h-dvh w-full flex-col'>
         <HeaderSkeleton />

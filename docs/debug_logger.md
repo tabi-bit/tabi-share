@@ -5,7 +5,7 @@ IndexedDB にログを貯め、画面上のボタンで一括コピーする。
 
 ## 有効化 / 無効化
 
-有効化手段は 2 つある。どちらでも画面右下に **Copy Logs / Clear** パネルが出る。
+有効化手段は 2 つある。どちらでも画面右下に **ログをコピー / ログを消去** パネルが出る。
 
 ### 1. ロゴを 7 回連打
 
@@ -48,8 +48,12 @@ clearAllLogs(): Promise<void>
 SW は `importScripts` で firebase compat SDK を読む都合上 ES module import が使えないため、
 共通モジュール化には build 側の設定が必要になる。duplicate 運用を継続する。
 
-同一の DB (`app-debug-log`) / store (`entries`) に書くので、client 側の Copy Logs で
+同一の DB (`app-debug-log`) / store (`entries`) に書くので、client 側の「ログをコピー」で
 SW のログもまとめて取得できる。
+
+`debugLog` は IndexedDB の commit (`tx.oncomplete`) まで待って resolve する。SW から呼ぶ場合は
+**返り値の Promise を必ず `event.waitUntil()` に載せること**。載せないと commit 前に worker が
+終了してログが消える（診断が一番欲しい early return 経路ほど worker が早く止まる）。
 
 ## DEBUG_LOG_VERSION (build ID)
 

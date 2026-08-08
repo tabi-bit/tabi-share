@@ -58,33 +58,42 @@ const safeSerialize = (data: unknown): unknown => {
   }
 };
 
+/**
+ * commit 完了 (tx.oncomplete) まで待って resolve する。SW 側から呼ぶ際に
+ * `event.waitUntil` へ渡せないと、worker 終了で書き込みが消えるため。
+ */
 export const debugLog = async (tag: string, message: string, data?: unknown): Promise<void> => {
   try {
     const db = await getDb();
-    const tx = db.transaction(STORE_NAME, 'readwrite');
-    const store = tx.objectStore(STORE_NAME);
-    const entry: LogEntry = {
-      ts: Date.now(),
-      version: DEBUG_LOG_VERSION,
-      tag,
-      message,
-      data: safeSerialize(data),
-    };
-    store.add(entry);
-    const countReq = store.count();
-    countReq.onsuccess = () => {
-      const excess = countReq.result - MAX_ENTRIES;
-      if (excess <= 0) return;
-      const cursorReq = store.openCursor();
-      let remaining = excess;
-      cursorReq.onsuccess = e => {
-        const cursor = (e.target as IDBRequest<IDBCursorWithValue | null>).result;
-        if (!cursor || remaining <= 0) return;
-        cursor.delete();
-        remaining -= 1;
-        cursor.continue();
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      const store = tx.objectStore(STORE_NAME);
+      const entry: LogEntry = {
+        ts: Date.now(),
+        version: DEBUG_LOG_VERSION,
+        tag,
+        message,
+        data: safeSerialize(data),
       };
-    };
+      store.add(entry);
+      const countReq = store.count();
+      countReq.onsuccess = () => {
+        const excess = countReq.result - MAX_ENTRIES;
+        if (excess <= 0) return;
+        const cursorReq = store.openCursor();
+        let remaining = excess;
+        cursorReq.onsuccess = e => {
+          const cursor = (e.target as IDBRequest<IDBCursorWithValue | null>).result;
+          if (!cursor || remaining <= 0) return;
+          cursor.delete();
+          remaining -= 1;
+          cursor.continue();
+        };
+      };
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error);
+    });
   } catch {
     // logger must not throw
   }

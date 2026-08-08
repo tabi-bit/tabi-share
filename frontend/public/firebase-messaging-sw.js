@@ -26,44 +26,50 @@ const openDebugDb = () =>
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
   });
+// commit (tx.oncomplete) まで待って resolve する。書き込み中に worker が終了すると
+// ログが消えるので、呼び出し側は必ず event.waitUntil に載せること。
 const debugLog = async (tag, message, data) => {
   try {
     const db = await openDebugDb();
-    const tx = db.transaction(DEBUG_STORE, 'readwrite');
-    const store = tx.objectStore(DEBUG_STORE);
-    const safeData = data === undefined ? null : JSON.parse(JSON.stringify(data));
-    store.add({ ts: Date.now(), version: DEBUG_LOG_VERSION, tag, message, data: safeData });
-    const countReq = store.count();
-    countReq.onsuccess = () => {
-      const excess = countReq.result - DEBUG_MAX;
-      if (excess <= 0) return;
-      const cursorReq = store.openCursor();
-      let remaining = excess;
-      cursorReq.onsuccess = e => {
-        const cursor = e.target.result;
-        if (!cursor || remaining <= 0) return;
-        cursor.delete();
-        remaining -= 1;
-        cursor.continue();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(DEBUG_STORE, 'readwrite');
+      const store = tx.objectStore(DEBUG_STORE);
+      const safeData = data === undefined ? null : JSON.parse(JSON.stringify(data));
+      store.add({ ts: Date.now(), version: DEBUG_LOG_VERSION, tag, message, data: safeData });
+      const countReq = store.count();
+      countReq.onsuccess = () => {
+        const excess = countReq.result - DEBUG_MAX;
+        if (excess <= 0) return;
+        const cursorReq = store.openCursor();
+        let remaining = excess;
+        cursorReq.onsuccess = e => {
+          const cursor = e.target.result;
+          if (!cursor || remaining <= 0) return;
+          cursor.delete();
+          remaining -= 1;
+          cursor.continue();
+        };
       };
-    };
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error);
+    });
   } catch {
     // logger must not throw
   }
 };
 
-// SW script が evaluate されたタイミングを残す (SW 更新が実機に届いたかの判定に使う)。
-void debugLog('SW', 'sw script evaluated');
+// SW script の evaluate タイミング (SW 更新が実機に届いたかの判定に使う)。
+// ここだけは載せられる event が無いので best effort。直後の install が worker を延命する。
+const scriptEvaluatedLog = debugLog('SW', 'sw script evaluated');
 
 // SW default lifecycle だと install → waiting、既存 client が全部閉じるまで activate されない。
 // FCM SW は root scope 外なので待たせるとユーザ操作なしに切替できず更新が届かない。
 self.addEventListener('install', event => {
-  void debugLog('SW', 'install (skipWaiting)');
-  event.waitUntil(self.skipWaiting());
+  event.waitUntil(Promise.all([scriptEvaluatedLog, debugLog('SW', 'install (skipWaiting)'), self.skipWaiting()]));
 });
 self.addEventListener('activate', event => {
-  void debugLog('SW', 'activate (clients.claim)');
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(Promise.all([debugLog('SW', 'activate (clients.claim)'), self.clients.claim()]));
 });
 
 // Firebase Admin SDK の WebpushFCMOptions(link=...) は SDK 12.x で
@@ -84,11 +90,16 @@ const pickTargetClient = clientsList => {
 
 self.addEventListener('notificationclick', event => {
   event.notification.close();
-  void debugLog('SW', 'notificationclick', { data: event.notification.data });
+
+  // 診断ログの commit 前に worker が終了すると書き込みが消えるので、必ず waitUntil に載せる。
+  // 遷移を待たせたくないので await はせず、末尾でまとめて待つ。
+  const logs = [debugLog('SW', 'notificationclick', { data: event.notification.data })];
+  const log = (message, data) => logs.push(debugLog('SW', message, data));
 
   const link = extractDeepLink(event.notification);
   if (!link) {
-    void debugLog('SW', 'no link extracted');
+    log('no link extracted');
+    event.waitUntil(Promise.all(logs));
     return;
   }
 
@@ -97,37 +108,47 @@ self.addEventListener('notificationclick', event => {
   try {
     targetUrl = new URL(link, self.location.origin);
   } catch (err) {
-    void debugLog('SW', 'URL parse fail', { link, err: String(err) });
+    log('URL parse fail', { link, err: String(err) });
+    event.waitUntil(Promise.all(logs));
     return;
   }
   if (targetUrl.origin !== self.location.origin) {
-    void debugLog('SW', 'origin mismatch', { target: targetUrl.origin, self: self.location.origin });
+    log('origin mismatch', { target: targetUrl.origin, self: self.location.origin });
+    event.waitUntil(Promise.all(logs));
     return;
   }
 
+  const navigate = async () => {
+    const clientsList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    const target = pickTargetClient(clientsList);
+    log('target picked', { n: clientsList.length, url: target ? target.url : null });
+
+    if (target) {
+      // WindowClient.navigate() を使うとフルリロードで atom / SWR / scroll 位置が飛ぶので、
+      // 代わりに client 側で React Router の navigate を呼んでもらう。
+      target.postMessage({ type: 'FCM_NAVIGATE', url: targetUrl.href });
+      try {
+        await target.focus();
+      } catch (err) {
+        // focus はユーザ操作起源でないと reject されるが postMessage は届いてるので許容
+        log('focus fail', { err: String(err) });
+      }
+      return;
+    }
+
+    // task-killed 状態など matchAll が 0 件のときは openWindow が唯一の起動経路。
+    // Chrome は URL を尊重して PWA を起動 (実機で verify 済み)。
+    log('openWindow fallback', { url: targetUrl.href });
+    await self.clients.openWindow(targetUrl.href);
+  };
+
   event.waitUntil(
     (async () => {
-      const clientsList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-      const target = pickTargetClient(clientsList);
-      void debugLog('SW', 'target picked', { n: clientsList.length, url: target ? target.url : null });
-
-      if (target) {
-        // WindowClient.navigate() を使うとフルリロードで atom / SWR / scroll 位置が飛ぶので、
-        // 代わりに client 側で React Router の navigate を呼んでもらう。
-        target.postMessage({ type: 'FCM_NAVIGATE', url: targetUrl.href });
-        try {
-          await target.focus();
-        } catch (err) {
-          // focus はユーザ操作起源でないと reject されるが postMessage は届いてるので許容
-          void debugLog('SW', 'focus fail', { err: String(err) });
-        }
-        return;
+      try {
+        await navigate();
+      } finally {
+        await Promise.all(logs);
       }
-
-      // task-killed 状態など matchAll が 0 件のときは openWindow が唯一の起動経路。
-      // Chrome は URL を尊重して PWA を起動 (実機で verify 済み)。
-      void debugLog('SW', 'openWindow fallback', { url: targetUrl.href });
-      await self.clients.openWindow(targetUrl.href);
     })()
   );
 });

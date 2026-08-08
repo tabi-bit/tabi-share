@@ -64,14 +64,14 @@ const DebugLogPanel = () => {
           onClick={onCopy}
           className='cursor-pointer rounded bg-teal-600 px-2 py-1 hover:bg-teal-500'
         >
-          Copy Logs
+          ログをコピー
         </button>
         <button
           type='button'
           onClick={onClear}
           className='cursor-pointer rounded bg-red-600 px-2 py-1 hover:bg-red-500'
         >
-          Clear
+          ログを消去
         </button>
       </div>
     </div>

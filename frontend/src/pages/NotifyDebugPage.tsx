@@ -32,6 +32,18 @@ const extractUrlId = (input: string): string | null => {
   }
 };
 
+type ServerTarget = { fcmToken: string; tripId: number; headers: Record<string, string> };
+
+/** サーバ経路を叩く前の解決処理。「裏に回したら送信」でも可視のうちにここまで済ませる */
+const resolveTarget = async (input: string): Promise<ServerTarget> => {
+  const id = extractUrlId(input);
+  if (!id) throw new Error('旅程の URL か urlId を入力して');
+  const fcmToken = await fetchFcmToken();
+  if (!fcmToken) throw new Error('FCM トークンが取れない');
+  const trip = await apiClient.get(`/trips/url/${id}`);
+  return { fcmToken, tripId: Number(trip.data.id), headers: { 'X-FCM-Token': fcmToken } };
+};
+
 type RegistrationInfo = {
   registration: ServiceWorkerRegistration;
   scope: string;
@@ -195,14 +207,8 @@ const NotifyDebugPage = () => {
   const callServer = async (action: 'status' | 'subscribe' | 'unsubscribe' | 'test'): Promise<void> => {
     setServerStatus('実行中...');
     try {
-      const id = extractUrlId(urlId);
-      if (!id) throw new Error('旅程の URL か urlId を入力して');
-      const fcmToken = await fetchFcmToken();
-      if (!fcmToken) throw new Error('FCM トークンが取れない');
+      const { fcmToken, tripId, headers } = await resolveTarget(urlId);
       setToken(fcmToken);
-      const trip = await apiClient.get(`/trips/url/${id}`);
-      const tripId = Number(trip.data.id);
-      const headers = { 'X-FCM-Token': fcmToken };
 
       if (action === 'subscribe') {
         await apiClient.post(`/trips/${tripId}/subscription`, {
@@ -229,20 +235,34 @@ const NotifyDebugPage = () => {
    * タイマーで遅延させると background では throttle されて送信タイミングが読めないので、
    * hidden になった瞬間を visibilitychange で捉えて送る。判定条件そのものを trigger にするので
    * 待ち時間の見積もりが要らない。
+   *
+   * token 解決と trip 解決は可視のうちに済ませ、hidden 後に走るのは送信の POST 1 本だけにする。
+   * hidden 直後の凍結は起きないが、非同期の連鎖が短いほど取りこぼしの余地が小さい。
    */
-  const armBackgroundTest = (): void => {
+  const armBackgroundTest = async (): Promise<void> => {
     disarmRef.current?.();
-    const onVisibilityChange = (): void => {
-      if (document.visibilityState !== 'hidden') return;
-      disarmRef.current?.();
-      void callServer('test');
-    };
-    document.addEventListener('visibilitychange', onVisibilityChange);
-    disarmRef.current = () => {
-      document.removeEventListener('visibilitychange', onVisibilityChange);
-      disarmRef.current = null;
-    };
-    setServerStatus('待機中 — アプリを裏に回すと送信します');
+    setServerStatus('準備中...');
+    try {
+      const { fcmToken, tripId, headers } = await resolveTarget(urlId);
+      setToken(fcmToken);
+
+      const onVisibilityChange = (): void => {
+        if (document.visibilityState !== 'hidden') return;
+        disarmRef.current?.();
+        apiClient.post(`/trips/${tripId}/subscription/test`, null, { headers }).then(
+          () => setServerStatus('裏に回った瞬間に送信した'),
+          error => setServerStatus(`送信失敗: ${String(error)}`)
+        );
+      };
+      document.addEventListener('visibilitychange', onVisibilityChange);
+      disarmRef.current = () => {
+        document.removeEventListener('visibilitychange', onVisibilityChange);
+        disarmRef.current = null;
+      };
+      setServerStatus(`tripId=${tripId} / 待機中 — アプリを裏に回すと送信します`);
+    } catch (error) {
+      setServerStatus(`失敗: ${String(error)}`);
+    }
   };
 
   return (
@@ -331,7 +351,7 @@ const NotifyDebugPage = () => {
             <Button size='sm' onClick={() => void callServer('test')}>
               テスト送信
             </Button>
-            <Button size='sm' onClick={armBackgroundTest}>
+            <Button size='sm' onClick={() => void armBackgroundTest()}>
               裏に回したら送信
             </Button>
           </div>

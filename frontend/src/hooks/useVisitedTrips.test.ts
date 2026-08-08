@@ -148,6 +148,17 @@ describe('useVisitedTrips', () => {
       expect(mockDbPut).toHaveBeenCalledWith(expect.objectContaining({ key: 'visitedTripUrlIds', value: ['alive-1'] }));
     });
     expect(result.current.trips?.map(trip => trip.urlId)).toEqual(['alive-1']);
+
+    // 除去が state にも反映されていないと、後続の追加で永続化 effect が 404 の ID を復活させる
+    act(() => {
+      result.current.addVisitedTrip('new-url');
+    });
+
+    await waitFor(() => {
+      expect(mockDbPut).toHaveBeenCalledWith(
+        expect.objectContaining({ key: 'visitedTripUrlIds', value: ['alive-1', 'new-url'] })
+      );
+    });
   });
 
   it('localStorageにデータがある場合、IndexedDBへマイグレーションされる', async () => {

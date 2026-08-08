@@ -141,10 +141,10 @@ export const useVisitedTrips = () => {
     );
 
     // 削除済み Trip を訪問済みリストから除去する。
-    // 404 ごとに read-modify-write すると互いの結果を打ち消し合うため、まとめて1回だけ書き込む
+    // IndexedDB を直接書くと state に残った ID が後続の永続化 effect で復活し、
+    // SWR key も stale なまま 404 を引き続けるため、state 経由で更新する
     if (deletedUrlIds.size > 0) {
-      const current = await getUrlIdsFromDB();
-      await saveUrlIdsToDB(current.filter(id => !deletedUrlIds.has(id)));
+      setUrlIds(prev => prev.filter(id => !deletedUrlIds.has(id)));
     }
     return results.filter((trip): trip is Trip => trip !== null);
   });

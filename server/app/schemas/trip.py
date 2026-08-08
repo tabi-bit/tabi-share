@@ -57,11 +57,22 @@ class TripUpdate(TripBase):
     pass
 
 
-class Trip(TripBase):
+class TripSummary(TripBase):
+    """一覧用の Trip。pages 配下のツリーは一覧で使わないため含めない。"""
+
     id: int
     url_id: str
-    pages: list[Page] = []
     created_at: datetime
     last_edited_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class Trip(TripSummary):
+    pages: list[Page] = []
+
+
+class TripArchiveUpdate(BaseModel):
+    """user から見た trip のアーカイブ状態。trip 自身ではなく user_trip_access の属性。"""
+
+    archived: bool

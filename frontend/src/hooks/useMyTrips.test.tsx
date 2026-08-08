@@ -72,6 +72,35 @@ describe('useArchiveTrip', () => {
     expect(bodies).toEqual([{ tripId: '7', body: { archived: true } }]);
   });
 
+  // 並走すると到達順が逆転し、サーバーが UI と食い違った状態で確定しうる
+  it('連続した切り替えを送信順どおりに直列化する', async () => {
+    const order: boolean[] = [];
+    let first = true;
+    server.use(
+      http.get('*/me/trips', () => HttpResponse.json([])),
+      http.patch('*/me/trips/:tripId', async ({ request }) => {
+        const { archived } = (await request.json()) as { archived: boolean };
+        // 先行リクエストだけ遅らせて、直列化されていなければ順序が入れ替わるようにする
+        if (first) {
+          first = false;
+          await new Promise(resolve => setTimeout(resolve, 50));
+        }
+        order.push(archived);
+        return new HttpResponse(null, { status: 204 });
+      })
+    );
+
+    const { result } = renderHook(() => useArchiveTrip(), { wrapper });
+    const trip = { id: 7, urlId: 'url-7' } as Trip;
+    await act(async () => {
+      const archiving = result.current.setArchived(trip, true);
+      const undoing = result.current.setArchived(trip, false);
+      await Promise.all([archiving, undoing]);
+    });
+
+    expect(order).toEqual([true, false]);
+  });
+
   // PATCH 送信前に移動先を再検証すると、更新前のサーバー状態で楽観更新が打ち消される。
   // ここでは GET が常に更新前の内容を返すため、再検証が入ると移動先が空のままになる
   it('PATCH の反映前でも移動先の一覧に反映される', async () => {

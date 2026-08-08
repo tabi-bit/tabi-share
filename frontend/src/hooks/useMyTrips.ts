@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { toast } from 'sonner';
 import useSWR, { useSWRConfig } from 'swr';
 import z from 'zod';
@@ -32,15 +33,23 @@ export const useMyTrips = (archived = false) => {
  */
 export const useArchiveTrip = () => {
   const { mutate } = useSWRConfig();
+  // アーカイブと Undo が並走すると PATCH の到達順が逆転し、サーバーと UI が
+  // 食い違ったまま残るため、送信は直列化する
+  const queueRef = useRef<Promise<void>>(Promise.resolve());
 
-  const setArchived = async (trip: Trip, archived: boolean): Promise<void> => {
+  const setArchived = (trip: Trip, archived: boolean): Promise<void> => {
     applyTripArchived(mutate, trip, archived);
-    try {
-      await apiClient.patch(`/me/trips/${trip.id}`, { archived });
-    } catch (err) {
-      applyTripArchived(mutate, trip, !archived);
-      toast.error(getErrorMessage(err));
-    }
+
+    const request = queueRef.current.then(async () => {
+      try {
+        await apiClient.patch(`/me/trips/${trip.id}`, { archived });
+      } catch (err) {
+        applyTripArchived(mutate, trip, !archived);
+        toast.error(getErrorMessage(err));
+      }
+    });
+    queueRef.current = request;
+    return request;
   };
 
   return { setArchived };

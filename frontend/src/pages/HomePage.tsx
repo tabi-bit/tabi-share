@@ -58,7 +58,12 @@ const HomePage = () => {
     }
   }, [isArchivedView, archivedTrips, setSearchParams]);
 
+  const leaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => clearTimeout(leaveTimerRef.current ?? undefined), []);
+
   const handleToggleArchive = (trip: Trip) => {
+    if (leavingTripId != null) return;
+
     const nextArchived = !isArchivedView;
     const commit = () => {
       setLeavingTripId(null);
@@ -73,7 +78,7 @@ const HomePage = () => {
       return;
     }
     setLeavingTripId(trip.id);
-    setTimeout(commit, LEAVE_ANIMATION_MS);
+    leaveTimerRef.current = setTimeout(commit, LEAVE_ANIMATION_MS);
   };
 
   return (
@@ -150,7 +155,7 @@ const HomePage = () => {
               {sortedTrips.map(trip => (
                 <TripListItem
                   archived={isArchivedView}
-                  disabled={isOffline}
+                  disabled={isOffline || leavingTripId != null}
                   key={trip.id}
                   leaving={leavingTripId === trip.id}
                   onToggleArchive={handleToggleArchive}

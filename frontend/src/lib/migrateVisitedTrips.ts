@@ -41,10 +41,16 @@ const grantAccess = async (urlId: string): Promise<boolean> => {
 
 const run = async (): Promise<void> => {
   const urlIds = await readLegacyUrlIds();
-  if (urlIds.length > 0) {
-    const results = await Promise.all(urlIds.map(grantAccess));
-    if (results.includes(false)) return;
+
+  // 逐次実行する。Cookie が切れた端末で並列送信すると、サーバーが各リクエストに
+  // 別々の匿名 session を発行し、ブラウザが保持する最後の Set-Cookie 以外の
+  // アクセス権が迷子になる。台帳はこの直後に消すため取り返しがつかない
+  let granted = true;
+  for (const urlId of urlIds) {
+    granted = (await grantAccess(urlId)) && granted;
   }
+  if (!granted) return;
+
   await db.userSettings.delete(VISITED_TRIPS_KEY);
   localStorage.removeItem(VISITED_TRIPS_KEY);
 };

@@ -71,6 +71,28 @@ describe('migrateVisitedTripUrlIds', () => {
     expect(mockDbDelete).toHaveBeenCalledWith('visitedTripUrlIds');
   });
 
+  // Cookie が切れた端末で並列送信すると、サーバーが各リクエストに別々の匿名 session を
+  // 発行し、最後の Set-Cookie 以外のアクセス権が迷子のまま台帳が消える
+  it('リクエストを逐次実行する', async () => {
+    mockDbGet.mockResolvedValue({ key: 'visitedTripUrlIds', value: ['url-1', 'url-2', 'url-3'] });
+    let inFlight = 0;
+    let maxInFlight = 0;
+    server.use(
+      http.get('*/trips/url/:urlId', async ({ params }) => {
+        inFlight += 1;
+        maxInFlight = Math.max(maxInFlight, inFlight);
+        await new Promise(resolve => setTimeout(resolve, 10));
+        inFlight -= 1;
+        return HttpResponse.json({ id: 1, url_id: String(params.urlId) });
+      })
+    );
+
+    await (await loadMigrate())();
+
+    expect(maxInFlight).toBe(1);
+    expect(mockDbDelete).toHaveBeenCalledWith('visitedTripUrlIds');
+  });
+
   it('通信に失敗したら台帳を残して次回に持ち越す', async () => {
     mockDbGet.mockResolvedValue({ key: 'visitedTripUrlIds', value: ['url-1'] });
     server.use(http.get('*/trips/url/:urlId', () => new HttpResponse(null, { status: 500 })));

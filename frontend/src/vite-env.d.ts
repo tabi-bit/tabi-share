@@ -1,5 +1,8 @@
 /// <reference types="vite/client" />
 
+/** ビルドごとに変わる ID。vite.config.ts の define で注入される */
+declare const __BUILD_ID__: string;
+
 interface ImportMetaEnv {
   readonly VITE_APP_ENV: 'production' | 'staging' | 'local';
   readonly VITE_API_BASE_URL: string;

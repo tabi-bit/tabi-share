@@ -11,6 +11,7 @@ from firebase_admin import auth as fb_auth
 from firebase_admin.exceptions import FirebaseError
 from pydantic import BaseModel
 from sqlalchemy import select, text
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -51,6 +52,28 @@ def _verify_id_token(id_token: str) -> str:
     return uid
 
 
+async def _insert_or_get_user_id(db: AsyncSession, firebase_uid: str) -> int:
+    """firebase_uid を持つ user の id を返す。存在しなければ作成する。
+
+    同時初回リンクによる unique 違反は ON CONFLICT DO NOTHING で吸収する。例外経路を
+    使わないので `ensure_session` が同一トランザクションで積んだ変更を巻き戻さずに済む。
+    競合時の SELECT フォールバックは READ COMMITTED (PostgreSQL 既定) 前提。
+    """
+    inserted_id = (
+        await db.execute(
+            pg_insert(User)
+            .values(firebase_uid=firebase_uid)
+            .on_conflict_do_nothing(index_elements=["firebase_uid"])
+            .returning(User.id)
+        )
+    ).scalar_one_or_none()
+    if inserted_id is not None:
+        return inserted_id
+    return (
+        await db.execute(select(User.id).where(User.firebase_uid == firebase_uid))
+    ).scalar_one()
+
+
 @router.post(
     "/link",
     summary="Firebase 認証情報を現在の session に紐付ける",
@@ -69,14 +92,18 @@ async def link_firebase(
     匿名 session を先に発行してから紐付ける。これで「Cookie 消失時のリカバリ」
     という本機能の主要ユースケースが成立する。
 
-    ケース分岐 (issue #194 の grill-me 議論参照):
-    - パターン 1 (初認証): 同 firebase_uid の user が DB に無い
+    ケース分岐 (issue #194 の grill-me 議論、issue #223):
+    - パターン 1 (匿名 × 初認証): 同 firebase_uid の user が DB に無い
       → 匿名 user の firebase_uid を UPDATE で埋める (昇格)
-    - パターン 2 (別デバイスで先に認証済み): 同 firebase_uid の user が既に存在
+    - パターン 2 (匿名 × 別デバイスで先に認証済み): 同 firebase_uid の user が既に存在
       → 匿名 user の user_trip_access を INSERT ON CONFLICT DO NOTHING でマージし、
         session.user_id を振り替え、匿名 user を削除。archived フラグは既存側優先
     - パターン 3 (再認証): session が既に該当認証済 user に属している → 何もしない
       (Cookie パージ後の再ログインでもここに落ちるだけで副作用なし)
+    - パターン 4 (アカウント切り替え): session の user が既に別の firebase_uid を持つ
+      → 元 user には触れず、切り替え先 user (無ければ作成) へ session を張り替えるだけ。
+        昇格すると元アカウントが DB から辿れなくなり、マージすると元アカウントが消える
+        ため (issue #223)。切り替えは正当な操作なので 409 では弾かない
     """
     firebase_uid = _verify_id_token(body.id_token)
     session = await ensure_session(request, response, db)
@@ -88,9 +115,26 @@ async def link_firebase(
         )
     session_id = session.id
 
+    if current_user.firebase_uid == firebase_uid:
+        # パターン 3: ensure_session の last_seen_at 更新だけを確定させる
+        await db.commit()
+        return LinkFirebaseOut(firebase_uid=firebase_uid)
+
     existing = (
         await db.execute(select(User).where(User.firebase_uid == firebase_uid))
     ).scalar_one_or_none()
+
+    if current_user.firebase_uid is not None:
+        # パターン 4: session 行は作り直さず user_id だけ張り替える (作り直すと、
+        # レスポンスが届かなかった端末が既存 session を失う)
+        target_id = (
+            existing.id
+            if existing is not None
+            else await _insert_or_get_user_id(db, firebase_uid)
+        )
+        session.user_id = target_id
+        await db.commit()
+        return LinkFirebaseOut(firebase_uid=firebase_uid)
 
     if existing is None:
         # パターン 1: 匿名 user を認証済に昇格する。並行昇格 (別デバイスから同時に

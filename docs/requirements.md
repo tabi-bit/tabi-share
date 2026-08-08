@@ -61,12 +61,13 @@
     - デバイス間での旅程一覧同期
     - Cookie 消失 (ブラウザデータクリア、機種変更、iOS Safari の ITP 7 日パージ) 時のリカバリ
   - `signInWithPopup(GoogleAuthProvider)` で OAuth。認証時は同一 `firebase_uid` の user に session を紐付けて統合する
+    - ただし統合の対象は**匿名 user のみ**。既に別アカウントで認証済みの session に別 `firebase_uid` が来た場合は「アカウント切り替え」として session の紐付け先を変えるだけにし、元アカウントの昇格・マージ・削除は行わない (issue #223)
     - `signInWithRedirect` は使わない: redirect フローは authDomain (`<project>.firebaseapp.com`) 上のクロスオリジン iframe に依存し、サードパーティストレージをブロックするブラウザ (Safari 16.1+ / Firefox 109+ / Chrome M115+) で `getRedirectResult` が黙って null を返す。authDomain を自ドメインに変える回避策は Hosting preview チャンネルの URL が動的で OAuth リダイレクト URI を事前登録できないため採れない
 - **デバイス引き継ぎ** (8 桁ペアリングコード + Firebase Custom Token):
   - iOS PWA (ホーム画面追加) は Safari とストレージが分離され、OAuth リダイレクトも常に Safari 側で開かれるため **Google 認証によるリカバリが PWA では機能しない**。この抜け穴を塞ぐための機構
   - 認証済みデバイスで 8 桁コード (base32 = 40 bits) を発行し、実体の Firebase Custom Token とのマッピングは Firestore に短命保存 (5 分 TTL + one-time consume)
   - 受信側デバイスがコードを入力すると `POST /pair/redeem` で Custom Token を交換し、`signInWithCustomToken` で認証状態を移送
-  - 受信側は既存の `/auth/link` (パターン 2: マージ) が自動発火し、匿名 session が同 user_id に統合される。PostgreSQL 側の追加スキーマは不要 (Firestore に完結)
+  - 受信側は既存の `/auth/link` が自動発火し、匿名 session なら同 user_id に統合される (パターン 2: マージ)。受信側が既に別アカウントで認証済みだった場合は切り替え扱いになる。PostgreSQL 側の追加スキーマは不要 (Firestore に完結)
 
 ### Phase 2
 

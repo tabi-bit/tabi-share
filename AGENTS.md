@@ -19,6 +19,11 @@
 - リアルタイム協調編集は後勝ちルールで競合解決
 - UIテキストと仕様書は日本語で記述
 
+## 実機診断
+
+console が取れない実機（Android PWA 等）で困ったら、URL に `?debug=1` を付けると
+診断ログのコピーパネルが出ます。[@docs/debug_logger.md](docs/debug_logger.md)
+
 ## 共通コーディング規約
 
 [@docs/coding_standards.md](docs/coding_standards.md)

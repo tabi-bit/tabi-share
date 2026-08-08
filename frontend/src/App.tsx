@@ -1,9 +1,11 @@
 import { useAtomValue } from 'jotai';
 import { Route, Routes } from 'react-router-dom';
 import { isOfflineReadAtom } from './atoms/network';
+import { DebugLogPanel } from './components/DebugLogPanel';
 import { NoIndex } from './components/NoIndex';
 import { Title } from './components/Title';
 import { useAuthStateSync } from './hooks/useAuth';
+import { useDebugPanel } from './hooks/useDebugPanel';
 import { useFcmNavigationListener } from './hooks/useFcmNavigationListener';
 import { useForegroundNotificationToast } from './hooks/useForegroundNotificationToast';
 import { useNetworkToast } from './hooks/useNetworkToast';
@@ -23,6 +25,7 @@ const App = () => {
   useForegroundNotificationToast();
   useFcmNavigationListener();
   useAuthStateSync();
+  const isDebugPanelEnabled = useDebugPanel();
 
   return (
     <>
@@ -56,6 +59,7 @@ const App = () => {
           }
         />
       </Routes>
+      {isDebugPanelEnabled && <DebugLogPanel />}
     </>
   );
 };

@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import paperPlaneIcon from '@/assets/icons/paper-plane.svg';
+import { useDebugTapGesture } from '@/hooks/useDebugPanel';
 import { getEnvLabel } from '@/lib/envBranding';
 import { cn } from '@/lib/utils';
 
@@ -12,10 +13,14 @@ const envLabel = getEnvLabel();
 const logoIcon = envLabel ? `/favicon-${envLabel.env === 'staging' ? 'stg' : envLabel.env}.svg` : paperPlaneIcon;
 
 export function Logo({ size = 'medium', className }: LogoProps) {
+  // 7 回連打でデバッグモードを切り替える隠しジェスチャー。通常のホーム遷移は妨げない
+  const onDebugTap = useDebugTapGesture();
+
   return (
     <Link
       to='/'
       data-component='Logo'
+      onClick={onDebugTap}
       className={cn('flex w-fit flex-row items-center justify-center gap-1', className)}
     >
       <img

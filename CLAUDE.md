@@ -35,8 +35,8 @@
 
 ## 実機診断
 
-console が取れない実機（Android PWA 等）で困ったら、URL に `?debug=1` を付けると
-診断ログのコピーパネルが出ます。[@docs/debug_logger.md](docs/debug_logger.md)
+console が取れない実機（Android PWA 等）で困ったら、ロゴを7回連打するか URL に `?debug=1` を
+付けると診断ログのコピーパネルが出ます。[@docs/debug_logger.md](docs/debug_logger.md)
 
 ## 開発コマンド
 

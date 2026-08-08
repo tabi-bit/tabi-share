@@ -14,6 +14,7 @@ import { detectEnv } from './lib/envBranding';
 import { cn } from './lib/utils';
 import { HomePage } from './pages/HomePage';
 import { NotFoundPage } from './pages/NotFoundPage';
+import { NotifyDebugPage } from './pages/NotifyDebugPage';
 import { TripPage } from './pages/TripPage';
 
 const isProduction = detectEnv() === 'production';
@@ -46,6 +47,16 @@ const App = () => {
             <>
               <NoIndex />
               <TripPage />
+            </>
+          }
+        />
+        {/* 通知デバッグ。導線は HomeMenu の「デバッグ」から (デバッグモード時のみ) */}
+        <Route
+          path='/debug/notify'
+          element={
+            <>
+              <NoIndex />
+              <NotifyDebugPage />
             </>
           }
         />

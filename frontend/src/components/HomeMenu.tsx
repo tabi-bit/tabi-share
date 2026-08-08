@@ -1,7 +1,9 @@
 import { useAtomValue } from 'jotai';
-import { Download, LogInIcon, MoreVerticalIcon, SendIcon, SmartphoneIcon } from 'lucide-react';
+import { BellRingIcon, Download, LogInIcon, MoreVerticalIcon, SendIcon, SmartphoneIcon } from 'lucide-react';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { authUserAtom } from '@/atoms/auth';
+import { debugPanelEnabledAtom } from '@/atoms/debug';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -28,6 +30,9 @@ export const HomeMenu = ({ className }: { className?: string }) => {
   const { isReady: pwaReady, installApp } = usePWAInstall();
   const [transferOpen, setTransferOpen] = useState(false);
   const [receiveOpen, setReceiveOpen] = useState(false);
+  // PWA はアドレスバーが無く URL 直打ちできないため、デバッグ画面へはメニュー経由でしか入れない
+  const isDebugEnabled = useAtomValue(debugPanelEnabledAtom);
+  const navigate = useNavigate();
 
   // authUser が undefined (初期化前) の間はメニュー項目は仮描画 (Google 認証・受け取り経路として)
   const isAuthed = authUser != null;
@@ -66,6 +71,16 @@ export const HomeMenu = ({ className }: { className?: string }) => {
               <DropdownMenuItem onSelect={() => void installApp()}>
                 <Download className='size-4' />
                 アプリとしてインストール
+              </DropdownMenuItem>
+            </>
+          )}
+          {isDebugEnabled && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel>デバッグ</DropdownMenuLabel>
+              <DropdownMenuItem onSelect={() => navigate('/debug/notify')}>
+                <BellRingIcon className='size-4' />
+                通知デバッグ
               </DropdownMenuItem>
             </>
           )}

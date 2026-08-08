@@ -8,14 +8,14 @@
 from datetime import UTC, datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, Request, Response
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, Query, Request, Response, status
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import decode_session_id, set_session_cookie
+from app.auth import decode_session_id, require_trip_access, set_session_cookie
 from app.db_connection import get_db_session
 from app.models import Trip, UserSession, UserTripAccess
-from app.schemas.trip import TripSummary
+from app.schemas.trip import TripArchiveUpdate, TripSummary
 
 router = APIRouter(tags=["Me"], prefix="/me")
 
@@ -58,3 +58,34 @@ async def list_my_trips(
     await db.commit()
     set_session_cookie(request, response, session_id)
     return trips
+
+
+@router.patch(
+    "/trips/{trip_id}",
+    summary="旅程のアーカイブ状態を切り替える",
+    operation_id="me-update-trip-archived",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def update_my_trip_archived(
+    _: Annotated[int, Depends(require_trip_access)],
+    request: Request,
+    trip_id: int,
+    archive_in: TripArchiveUpdate,
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+) -> None:
+    """自分の一覧上でのみ trip を出し分ける。共有相手の一覧には影響しない。
+
+    require_trip_access が通った時点で該当行の存在は保証されるため、対象は常に 1 行。
+    """
+    await db.execute(
+        update(UserTripAccess)
+        .where(
+            UserTripAccess.trip_id == trip_id,
+            UserTripAccess.user_id
+            == select(UserSession.user_id)
+            .where(UserSession.id == decode_session_id(request))
+            .scalar_subquery(),
+        )
+        .values(archived=archive_in.archived)
+    )
+    await db.commit()

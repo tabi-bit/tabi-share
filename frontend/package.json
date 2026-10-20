@@ -19,7 +19,8 @@
     "test": "vitest run",
     "test:watch": "vitest --watch",
     "test:ui": "vitest --ui",
-    "type-check": "tsc -b"
+    "type-check": "tsc -b",
+    "mock": "vite --config mock/vite.config.ts"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

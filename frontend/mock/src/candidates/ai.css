@@ -1,0 +1,126 @@
+/* [mock] AI の演出。Tailwind に無いアニメーションだけをここに置く */
+
+@keyframes ai-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes ai-breathe {
+  0%,
+  100% {
+    transform: scale(0.94);
+  }
+  50% {
+    transform: scale(1.08);
+  }
+}
+
+/* 形を崩しながら揺れる。角丸の比率を変えて、生き物っぽい輪郭にする */
+@keyframes ai-morph {
+  0%,
+  100% {
+    border-radius: 42% 58% 63% 37% / 41% 44% 56% 59%;
+    transform: translate(0, 0) rotate(0deg);
+  }
+  25% {
+    border-radius: 63% 37% 41% 59% / 58% 36% 64% 42%;
+    transform: translate(4%, -5%) rotate(80deg);
+  }
+  50% {
+    border-radius: 37% 63% 51% 49% / 37% 65% 35% 63%;
+    transform: translate(-4%, 3%) rotate(170deg);
+  }
+  75% {
+    border-radius: 55% 45% 32% 68% / 63% 42% 58% 37%;
+    transform: translate(3%, 5%) rotate(260deg);
+  }
+}
+
+@keyframes ai-orbit {
+  from {
+    transform: rotate(0deg) translateX(var(--orbit-r)) rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg) translateX(var(--orbit-r)) rotate(-360deg);
+  }
+}
+
+/* 周回と同じ transform を触ると打ち消し合うため、明るさだけを変える */
+@keyframes ai-twinkle {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes ai-shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.ai-orb-root {
+  --ai-speed: 1;
+  animation: ai-breathe calc(3.4s / var(--ai-speed)) ease-in-out infinite;
+}
+
+.ai-orb-root[data-busy="true"] {
+  --ai-speed: 2.2;
+}
+
+.ai-orb-glow {
+  border-radius: 9999px;
+  background: radial-gradient(circle, #a78bfa 0%, #5eead4 45%, transparent 70%);
+  filter: blur(18px);
+  opacity: 0.7;
+  animation: ai-breathe calc(2.6s / var(--ai-speed)) ease-in-out infinite reverse;
+}
+
+.ai-orb-blob {
+  mix-blend-mode: multiply;
+  animation: ai-morph calc(7s / var(--ai-speed)) ease-in-out infinite;
+}
+
+.ai-orb-blob-1 {
+  background: conic-gradient(from 0deg, #8b5cf6, #2dd4bf, #f0abfc, #8b5cf6);
+}
+
+.ai-orb-blob-2 {
+  background: conic-gradient(from 120deg, #60a5fa, #a78bfa, #5eead4, #60a5fa);
+  opacity: 0.8;
+  animation-duration: calc(5.5s / var(--ai-speed));
+  animation-direction: reverse;
+}
+
+.ai-orb-blob-3 {
+  background: radial-gradient(circle at 30% 30%, #ffffff 0%, rgba(255, 255, 255, 0.55) 25%, transparent 60%);
+  mix-blend-mode: screen;
+  animation-duration: calc(4.2s / var(--ai-speed));
+}
+
+.ai-orb-particle {
+  --orbit-r: 60px;
+  animation:
+    ai-orbit calc(var(--orbit-t, 5s) / var(--ai-speed)) linear infinite,
+    ai-twinkle 1.8s ease-in-out infinite;
+}
+
+.ai-shimmer-block {
+  background: linear-gradient(90deg, #f5f3ff 0%, #ede9fe 30%, #ccfbf1 50%, #ede9fe 70%, #f5f3ff 100%);
+  background-size: 200% 100%;
+  animation: ai-shimmer 1.6s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-orb-root,
+  .ai-orb-glow,
+  .ai-orb-blob,
+  .ai-orb-particle,
+  .ai-shimmer-block {
+    animation: none;
+  }
+}

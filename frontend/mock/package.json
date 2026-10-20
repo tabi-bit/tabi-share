@@ -1,0 +1,11 @@
+{
+  "name": "tabishare-mock",
+  "private": true,
+  "description": "UI モック専用の依存。frontend 本体の依存・lockfile に影響させないため分けている",
+  "dependencies": {
+    "three": "0.170.0"
+  },
+  "devDependencies": {
+    "@types/three": "0.170.0"
+  }
+}

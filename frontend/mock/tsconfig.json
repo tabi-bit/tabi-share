@@ -1,0 +1,12 @@
+{
+  "extends": "../tsconfig.app.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "../node_modules/.tmp/tsconfig.mock.tsbuildinfo",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["../src/*"],
+      "@mock/*": ["./src/*"]
+    }
+  },
+  "include": ["src", "overrides", "../src/vite-env.d.ts"]
+}

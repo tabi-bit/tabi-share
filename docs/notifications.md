@@ -31,7 +31,7 @@ Issue #148 で導入した Web Push 通知の**恒久リファレンス**。設�
 |---|---|
 | Client | React + Vite PWA、Firebase Messaging Web SDK |
 | Backend | FastAPI on Cloud Run (asia-northeast1) |
-| DB | PostgreSQL (Neon 想定) |
+| DB | PostgreSQL (Supabase、[database.md](database.md)) |
 | Scheduler | Cloud Scheduler (無料枠 3 ジョブ以内) |
 | 認証 | ADC (Application Default Credentials)、Runtime SA `tabi-share-api-runtime` に IAM 権限 |
 
@@ -312,7 +312,7 @@ firebase_admin.initialize_app()   # 引数なし = ADC 自動検出
 ```bash
 # stg
 gcloud scheduler jobs create http notify-tick-stg \
-  --location=asia-northeast1 \
+  --location=us-central1 \
   --schedule="* * * * *" \
   --uri="https://<stg-cloud-run-url>/internal/notify/tick" \
   --http-method=POST \
@@ -506,7 +506,7 @@ curl -X POST https://<staging-cloud-run-url>/internal/notify/tick \
 ### 11.1 通知機能の一時停止
 
 ```bash
-gcloud scheduler jobs pause notify-tick-prod --location=asia-northeast1
+gcloud scheduler jobs pause notify-tick-prod --location=us-central1
 # 再開: resume
 ```
 

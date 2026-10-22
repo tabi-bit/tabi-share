@@ -9,7 +9,7 @@ on:
 
 env:
   PYTHON_VERSION: '3.13'
-  POSTGRES_VERSION: '16'
+  POSTGRES_VERSION: '17'
 
 jobs:
   build:

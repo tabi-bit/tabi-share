@@ -132,7 +132,7 @@
 
 - **フロントエンド**: Firebase Hosting
 - **バックエンド**: Google Cloud Run
-- **データベース**: PostgreSQL (Cloud SQL / Neon 等)
+- **データベース**: PostgreSQL (Supabase、[database.md](./database.md))
 
 #### 外部API
 
@@ -219,6 +219,7 @@
 
 - Firebase Hosting: 無料枠内運用
 - Google Cloud Run: 従量課金 (通常運用で月数ドル程度)
+- Supabase: Free プラン (DB 500 MB、egress 5 GB/月)
 - Firebase Authentication: 無料枠内 (Google 認証は無制限で無料)
 - Firestore: 無料枠内 (書き込み 20K/日、読み取り 50K/日 まで無料)
 - Google Maps API: 無料枠内、制限機能実装

@@ -6,75 +6,53 @@ on:
   pull_request_review_comment:
     types: [created]
 
+permissions: {}
+
 jobs:
   notify:
     runs-on: ubuntu-latest
     steps:
-      - name: Set Event Context Variables
-        id: set_context
-        run: |
-          COMMENT_BODY=""
-          NOTIFICATION_TITLE=""
-          NOTIFICATION_URL=""
-          NOTIFICATION_AUTHOR=""
-          NOTIFICATION_TYPE=""
-
-          DELIMITER="EOF"
-
-          if [ "${{ github.event_name }}" == "issue_comment" ]; then
-            # issue_comment イベントの場合
-            COMMENT_BODY="${{ github.event.comment.body }}"
-            NOTIFICATION_AUTHOR="${{ github.event.sender.login }}"
-
-            # コメントがプルリクエストに紐付いているかを確認
-            if [ -n "${{ github.event.issue.pull_request }}" ]; then
-              # プルリクエストへのコメントの場合
-              NOTIFICATION_TITLE="PR: ${{ github.event.issue.title }}"
-              NOTIFICATION_URL="${{ github.event.issue.html_url }}"
-              NOTIFICATION_TYPE="Pull Request Comment"
-            else
-              # 通常のIssueへのコメントの場合
-              NOTIFICATION_TITLE="ISSUE: ${{ github.event.issue.title }}"
-              NOTIFICATION_URL="${{ github.event.issue.html_url }}"
-              NOTIFICATION_TYPE="Issue Comment"
-            fi
-          elif [ "${{ github.event_name }}" == "pull_request_review_comment" ]; then
-            # pull_request_review_comment イベントの場合
-            COMMENT_BODY="${{ github.event.comment.body }}"
-            NOTIFICATION_TITLE="PR Review: ${{ github.event.pull_request.title }}"
-            NOTIFICATION_URL="${{ github.event.comment.html_url }}" # レビューコメント自体のURL
-            NOTIFICATION_AUTHOR="${{ github.event.sender.login }}"
-            NOTIFICATION_TYPE="Pull Request Review Comment"
-          else
-            echo "Unsupported event type: ${{ github.event_name }}. Skipping notification."
-            exit 0
-          fi
-
-          # 取得した情報を次のステップで使えるように出力
-          echo "COMMENT_BODY<<$DELIMITER" >> "$GITHUB_OUTPUT"
-          echo "$COMMENT_BODY" >> "$GITHUB_OUTPUT"
-          echo "$DELIMITER" >> "$GITHUB_OUTPUT"
-          echo "NOTIFICATION_TITLE=$NOTIFICATION_TITLE" >> "$GITHUB_OUTPUT"
-          echo "NOTIFICATION_URL=$NOTIFICATION_URL" >> "$GITHUB_OUTPUT"
-          echo "NOTIFICATION_AUTHOR=$NOTIFICATION_AUTHOR" >> "$GITHUB_OUTPUT"
-          echo "NOTIFICATION_TYPE=$NOTIFICATION_TYPE" >> "$GITHUB_OUTPUT"
-
       - name: Check for Mentions and Send Discord Notification
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           DISCORD_MENTION_MEMBERS: ${{ secrets.DISCORD_MENTION_MEMBERS }}
 
-          COMMENT_BODY: ${{ steps.set_context.outputs.COMMENT_BODY }}
-          NOTIFICATION_TITLE: ${{ steps.set_context.outputs.NOTIFICATION_TITLE }}
-          NOTIFICATION_URL: ${{ steps.set_context.outputs.NOTIFICATION_URL }}
-          NOTIFICATION_AUTHOR: ${{ steps.set_context.outputs.NOTIFICATION_AUTHOR }}
-          NOTIFICATION_TYPE: ${{ steps.set_context.outputs.NOTIFICATION_TYPE }}
+          # コメント本文やタイトルは誰でも書けるため、run: に ${{ }} で直接展開せず env 経由で渡す
+          # (展開するとシェルスクリプトとして解釈され、任意コマンドを実行できてしまう)
+          EVENT_NAME: ${{ github.event_name }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
+          NOTIFICATION_AUTHOR: ${{ github.event.sender.login }}
+          IS_PULL_REQUEST: ${{ github.event.issue.pull_request != null }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_URL: ${{ github.event.issue.html_url }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          REVIEW_COMMENT_URL: ${{ github.event.comment.html_url }}
         run: |
+          if [ "$EVENT_NAME" == "issue_comment" ]; then
+            # コメントがプルリクエストに紐付いているかを確認
+            if [ "$IS_PULL_REQUEST" == "true" ]; then
+              NOTIFICATION_TITLE="PR: $ISSUE_TITLE"
+              NOTIFICATION_TYPE="Pull Request Comment"
+            else
+              NOTIFICATION_TITLE="ISSUE: $ISSUE_TITLE"
+              NOTIFICATION_TYPE="Issue Comment"
+            fi
+            NOTIFICATION_URL="$ISSUE_URL"
+          elif [ "$EVENT_NAME" == "pull_request_review_comment" ]; then
+            NOTIFICATION_TITLE="PR Review: $PR_TITLE"
+            NOTIFICATION_URL="$REVIEW_COMMENT_URL" # レビューコメント自体のURL
+            NOTIFICATION_TYPE="Pull Request Review Comment"
+          else
+            echo "Unsupported event type: $EVENT_NAME. Skipping notification."
+            exit 0
+          fi
+
           # Discordメンションマップを読み込む
           MENTION_MAP=$(echo "$DISCORD_MENTION_MEMBERS")
 
           # Discord用に変換されたメンションを格納する変数
           DISCORD_MENTIONS=""
+          REGISTERED_MENTION_COUNT=0
 
           # コメント本文からメンションを検出
           DETECTED_MENTIONS=$(echo "$COMMENT_BODY" | grep -oE '@[a-zA-Z0-9_-]+' | tr '\n' ' ')
@@ -93,21 +71,31 @@ jobs:
 
             if [ -n "$discord_user_id" ]; then
               DISCORD_MENTIONS+="<@${discord_user_id}> "
+              REGISTERED_MENTION_COUNT=$((REGISTERED_MENTION_COUNT + 1))
             else
               DISCORD_MENTIONS+="${github_mention} (未登録) "
             fi
           done
 
+          # bot のコメントは import パス (@frontend 等) や bot 名もメンションとして拾うため、
+          # 登録済みメンバー宛てが無ければ通知しない
+          if [ "$REGISTERED_MENTION_COUNT" -eq 0 ]; then
+            echo "登録済みメンバーへのメンションがありません。Discord通知をスキップします。"
+            exit 0
+          fi
+
           DISCORD_MENTIONS=$(echo "$DISCORD_MENTIONS" | xargs)
 
-          printf -v MESSAGE "新しい%sでメンションがあります！\n\n**タイトル:** %s\n**作成者:** %s\n**メンション:** %s\n**URL:** %s\n\n**コメント内容:**\n%s" \
+          printf -v MESSAGE_HEADER "新しい%sでメンションがあります！\n\n**タイトル:** %s\n**作成者:** %s\n**メンション:** %s\n**URL:** %s\n\n**コメント内容:**\n" \
             "$NOTIFICATION_TYPE" \
             "$NOTIFICATION_TITLE" \
             "$NOTIFICATION_AUTHOR" \
             "$DISCORD_MENTIONS" \
-            "$NOTIFICATION_URL" \
-            "$FORMATTED_COMMENT_BODY"
+            "$NOTIFICATION_URL"
 
-          PAYLOAD=$(jq -n --arg msg "$MESSAGE" '{"content": $msg}')
+          # Discord は 2000 文字を超えるメッセージを 400 で拒否するため、本文を切り詰める
+          PAYLOAD=$(jq -n --arg header "$MESSAGE_HEADER" --arg body "$FORMATTED_COMMENT_BODY" '
+            ([1990 - ($header | length), 0] | max) as $room
+            | {"content": ($header + (if ($body | length) > $room then $body[0:([$room - 1, 0] | max)] + "…" else $body end))}')
 
-          curl -X POST -H "Content-Type: application/json" -d "$PAYLOAD" "$DISCORD_WEBHOOK_URL"
+          curl -sS --fail-with-body -X POST -H "Content-Type: application/json" -d "$PAYLOAD" "$DISCORD_WEBHOOK_URL"

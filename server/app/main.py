@@ -19,7 +19,7 @@ from app.errors import (
     validation_exception_handler,
 )
 from app.firebase import init_firebase_admin
-from app.middleware.legacy_cookie_migration import LegacyCookieMigrationMiddleware
+from app.middleware.origin_check import origin_check_middleware
 from app.observability import setup_observability
 
 from .routers import (
@@ -41,7 +41,6 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     """アプリケーション起動時と終了時のフック。
 
     起動時: Firebase Admin SDK を ADC で初期化する。
-    NOTIFICATIONS_ENABLED=false の場合は初期化スキップ (log のみ)。
     """
     init_firebase_admin()
     yield
@@ -96,16 +95,13 @@ async def openapi_schema(
     )
 
 
-# issue #194 の移行期間限定のミドルウェア。旧形式 (trip_ids 配列) の Cookie を
-# 検出したら透過的に新形式 (session_id) へ移行する。CORS より内側 (inner) に
-# 置くことで preflight (Cookie 無) はスルーされる。
-# 削除タイミング: リリース 2-3 ヶ月後を目安に、この 1 行とファイル一式を削除する。
-app.add_middleware(LegacyCookieMigrationMiddleware)
+# CORS より内側に置き、拒否した応答にも CORS の判定が通常どおり掛かるようにする
+app.middleware("http")(origin_check_middleware)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins,
-    allow_origin_regex=r"https://tabi-share-8ef6b--[a-z0-9-]+\.web\.app$",
+    allow_origins=settings.allowed_origins,
+    allow_origin_regex=settings.allowed_origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -134,6 +130,7 @@ async def health_check(
     ] = 0,
 ):
     """Renderのヘルスチェック用エンドポイント"""
-    if delay > 0:
+    # 本番では無効: 認証なしで接続を最大 30 秒占有でき、スケールアウトを誘発できるため
+    if delay > 0 and settings.environment != "production":
         await asyncio.sleep(delay)
     return {"status": "healthy"}

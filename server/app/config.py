@@ -4,6 +4,7 @@
 環境変数からの設定読み込みと型安全な管理を提供
 """
 
+import re
 import ssl
 from functools import lru_cache
 from pathlib import Path
@@ -12,6 +13,9 @@ from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 SERVER_ROOT = Path(__file__).resolve().parent.parent
+
+PRODUCTION_FRONTEND_ORIGIN = "https://tabishare.net"
+PREVIEW_ORIGIN_REGEX = r"https://tabi-share-8ef6b--[a-z0-9-]+\.web\.app"
 
 
 class Settings(BaseSettings):
@@ -75,6 +79,26 @@ class Settings(BaseSettings):
         case_sensitive=False,
         extra="ignore",
     )
+
+    @property
+    def allowed_origins(self) -> list[str]:
+        """CORS と送信元の検証で許可する Origin。本番は本番フロントエンドだけに絞る。"""
+        if self.environment == "production":
+            return [PRODUCTION_FRONTEND_ORIGIN]
+        return self.cors_origins
+
+    @property
+    def allowed_origin_regex(self) -> str | None:
+        """Firebase Hosting のプレビューチャンネル。プレビューはステージング API を使うため本番では許可しない。"""
+        if self.environment == "production":
+            return None
+        return PREVIEW_ORIGIN_REGEX
+
+    def is_allowed_origin(self, origin: str) -> bool:
+        if origin in self.allowed_origins:
+            return True
+        regex = self.allowed_origin_regex
+        return regex is not None and re.fullmatch(regex, origin) is not None
 
     def get_database_ssl(self) -> ssl.SSLContext | None:
         """DATABASE_URL 接続用の SSL 設定。証明書チェーンとホスト名を検証する (verify-full 相当)

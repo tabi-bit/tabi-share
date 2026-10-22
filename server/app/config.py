@@ -105,13 +105,13 @@ class Settings(BaseSettings):
         if self.database_url:
             # asyncpg 用に URL スキームを変換
             url = self.database_url.replace("postgresql://", "postgresql+asyncpg://")
-            # libpq 形式の SSL パラメータは asyncpg が受け付けないため除去する
+            # libpq 専用のパラメータは asyncpg が受け付けないため除去する
             # (SSL は get_database_ssl() で connect_args に渡す)
             parsed = urlparse(url)
             params = {
                 k: v[0]
                 for k, v in parse_qs(parsed.query).items()
-                if k not in ("sslmode", "sslrootcert")
+                if k not in ("sslmode", "sslrootcert", "channel_binding")
             }
             return urlunparse(parsed._replace(query=urlencode(params)))
 

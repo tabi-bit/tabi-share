@@ -10,9 +10,9 @@ SUPABASE_URL = (
 )
 
 
-def test_get_database_url_strips_libpq_ssl_params() -> None:
+def test_get_database_url_strips_libpq_only_params() -> None:
     url = Settings(
-        database_url=f"{SUPABASE_URL}&application_name=api"
+        database_url=f"{SUPABASE_URL}&channel_binding=require&application_name=api"
     ).get_database_url()
 
     assert url == (

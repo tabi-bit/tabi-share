@@ -6,70 +6,47 @@ on:
   pull_request_review_comment:
     types: [created]
 
+permissions: {}
+
 jobs:
   notify:
     runs-on: ubuntu-latest
     steps:
-      - name: Set Event Context Variables
-        id: set_context
-        run: |
-          COMMENT_BODY=""
-          NOTIFICATION_TITLE=""
-          NOTIFICATION_URL=""
-          NOTIFICATION_AUTHOR=""
-          NOTIFICATION_TYPE=""
-
-          DELIMITER="EOF"
-
-          if [ "${{ github.event_name }}" == "issue_comment" ]; then
-            # issue_comment イベントの場合
-            COMMENT_BODY="${{ github.event.comment.body }}"
-            NOTIFICATION_AUTHOR="${{ github.event.sender.login }}"
-
-            # コメントがプルリクエストに紐付いているかを確認
-            if [ -n "${{ github.event.issue.pull_request }}" ]; then
-              # プルリクエストへのコメントの場合
-              NOTIFICATION_TITLE="PR: ${{ github.event.issue.title }}"
-              NOTIFICATION_URL="${{ github.event.issue.html_url }}"
-              NOTIFICATION_TYPE="Pull Request Comment"
-            else
-              # 通常のIssueへのコメントの場合
-              NOTIFICATION_TITLE="ISSUE: ${{ github.event.issue.title }}"
-              NOTIFICATION_URL="${{ github.event.issue.html_url }}"
-              NOTIFICATION_TYPE="Issue Comment"
-            fi
-          elif [ "${{ github.event_name }}" == "pull_request_review_comment" ]; then
-            # pull_request_review_comment イベントの場合
-            COMMENT_BODY="${{ github.event.comment.body }}"
-            NOTIFICATION_TITLE="PR Review: ${{ github.event.pull_request.title }}"
-            NOTIFICATION_URL="${{ github.event.comment.html_url }}" # レビューコメント自体のURL
-            NOTIFICATION_AUTHOR="${{ github.event.sender.login }}"
-            NOTIFICATION_TYPE="Pull Request Review Comment"
-          else
-            echo "Unsupported event type: ${{ github.event_name }}. Skipping notification."
-            exit 0
-          fi
-
-          # 取得した情報を次のステップで使えるように出力
-          echo "COMMENT_BODY<<$DELIMITER" >> "$GITHUB_OUTPUT"
-          echo "$COMMENT_BODY" >> "$GITHUB_OUTPUT"
-          echo "$DELIMITER" >> "$GITHUB_OUTPUT"
-          echo "NOTIFICATION_TITLE=$NOTIFICATION_TITLE" >> "$GITHUB_OUTPUT"
-          echo "NOTIFICATION_URL=$NOTIFICATION_URL" >> "$GITHUB_OUTPUT"
-          echo "NOTIFICATION_AUTHOR=$NOTIFICATION_AUTHOR" >> "$GITHUB_OUTPUT"
-          echo "NOTIFICATION_TYPE=$NOTIFICATION_TYPE" >> "$GITHUB_OUTPUT"
-
       - name: Check for Mentions and Send Discord Notification
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           DISCORD_MENTION_MEMBERS: ${{ secrets.DISCORD_MENTION_MEMBERS }}
 
-          COMMENT_BODY: ${{ steps.set_context.outputs.COMMENT_BODY }}
-          NOTIFICATION_TITLE: ${{ steps.set_context.outputs.NOTIFICATION_TITLE }}
-          NOTIFICATION_URL: ${{ steps.set_context.outputs.NOTIFICATION_URL }}
-          NOTIFICATION_AUTHOR: ${{ steps.set_context.outputs.NOTIFICATION_AUTHOR }}
-          NOTIFICATION_TYPE: ${{ steps.set_context.outputs.NOTIFICATION_TYPE }}
+          # コメント本文やタイトルは誰でも書けるため、run: に ${{ }} で直接展開せず env 経由で渡す
+          # (展開するとシェルスクリプトとして解釈され、任意コマンドを実行できてしまう)
+          EVENT_NAME: ${{ github.event_name }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
+          NOTIFICATION_AUTHOR: ${{ github.event.sender.login }}
+          IS_PULL_REQUEST: ${{ github.event.issue.pull_request != null }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_URL: ${{ github.event.issue.html_url }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          REVIEW_COMMENT_URL: ${{ github.event.comment.html_url }}
         run: |
+          if [ "$EVENT_NAME" == "issue_comment" ]; then
+            # コメントがプルリクエストに紐付いているかを確認
+            if [ "$IS_PULL_REQUEST" == "true" ]; then
+              NOTIFICATION_TITLE="PR: $ISSUE_TITLE"
+              NOTIFICATION_TYPE="Pull Request Comment"
+            else
+              NOTIFICATION_TITLE="ISSUE: $ISSUE_TITLE"
+              NOTIFICATION_TYPE="Issue Comment"
+            fi
+            NOTIFICATION_URL="$ISSUE_URL"
+          elif [ "$EVENT_NAME" == "pull_request_review_comment" ]; then
+            NOTIFICATION_TITLE="PR Review: $PR_TITLE"
+            NOTIFICATION_URL="$REVIEW_COMMENT_URL" # レビューコメント自体のURL
+            NOTIFICATION_TYPE="Pull Request Review Comment"
+          else
+            echo "Unsupported event type: $EVENT_NAME. Skipping notification."
+            exit 0
+          fi
+
           # Discordメンションマップを読み込む
           MENTION_MAP=$(echo "$DISCORD_MENTION_MEMBERS")
 

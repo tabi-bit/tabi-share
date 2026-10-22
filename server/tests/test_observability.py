@@ -64,8 +64,8 @@ async def test_latency_log_emits_for_api_request(
     rec = records[0]
     assert rec["type"] == "request"
     assert rec["method"] == "GET"
-    assert rec["path"] == f"/trips/{test_create_trip.id}"
     assert rec["route"] == "/trips/{trip_id}"
+    assert rec["path_params"] == {"trip_id": str(test_create_trip.id)}
     assert rec["status"] == 200
     assert rec["total_ms"] >= 0
     # selectinload で最低 1 クエリ（trips の取得）が走る
@@ -73,6 +73,23 @@ async def test_latency_log_emits_for_api_request(
     assert rec["db_total_ms"] >= 0
     assert rec["db_max_ms"] >= 0
     assert "db_slowest_sql" in rec
+
+
+async def test_latency_log_omits_url_id(
+    client: AsyncClient,
+    test_create_trip,
+    latency_caplog: pytest.LogCaptureFixture,
+) -> None:
+    """旅程を開く鍵である url_id はログに残さず、数値の trip_id に置き換える"""
+    response = await client.get(f"/trips/url/{test_create_trip.url_id}")
+    assert response.status_code == 200
+
+    records = _capture_records(latency_caplog)
+    assert len(records) == 1
+    rec = records[0]
+    assert rec["route"] == "/trips/url/{url_id}"
+    assert rec["path_params"] == {"trip_id": str(test_create_trip.id)}
+    assert test_create_trip.url_id not in json.dumps(rec)
 
 
 async def test_latency_log_records_no_db_for_404_unauthorized(

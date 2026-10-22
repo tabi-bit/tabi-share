@@ -85,6 +85,8 @@ async def get_trip_by_url_id(
     db_trip = await trips_cruds.get_trip_by_url_id(db, url_id=url_id)
     if db_trip is None:
         raise NotFound(message="Trip not found")
+    # リクエストログに url_id の代わりに記録する (observability.py)
+    request.state.trip_id = db_trip.id
     await grant_trip_access(request, response, db_trip.id, db)
 
     return db_trip

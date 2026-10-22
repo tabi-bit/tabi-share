@@ -100,6 +100,8 @@ export default defineConfig({
       workbox: {
         navigateFallback: '/index.html',
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        // メインバンドルが既定の上限 (2 MiB) を超えるとビルドがエラーで止まり、デプロイできなくなる
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         // firebase-messaging-sw.js は別 scope で登録される独立 SW。VitePWA sw.js の
         // precache に紛れ込むと、Chrome の register 時に fetch handler が cache 経由で
         // 古い版を返し続けて更新が実機に届かなくなる。glob から除外必須。

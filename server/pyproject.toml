@@ -14,10 +14,10 @@ dependencies = [
     "gunicorn>=24.1.1",
     "nanoid>=2.0.0",
     "passlib>=1.7.4",
-    "pydantic-settings>=2.12.0",
+    "pydantic-settings>=2.16.0",
     "pydantic[email]>=2.11.7",
-    "pyjwt>=2.12.1",
-    "python-dotenv>=1.1.1",
+    "pyjwt>=2.15.1",
+    "python-dotenv>=1.2.4",
     "sqlalchemy>=2.0.42",
     "uvicorn>=0.35.0",
 ]

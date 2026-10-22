@@ -12,6 +12,7 @@ from starlette.responses import Response
 from app.auth import (
     SESSION_COOKIE_NAME,
     _has_trip_access,
+    _resolve_samesite,
     decode_session_id,
     generate_session_id,
     grant_trip_access,
@@ -106,6 +107,40 @@ def test_decode_session_id_missing_field():
     token = pyjwt.encode(payload, settings.cookie_secret_key, algorithm="HS256")
     request = _make_request({SESSION_COOKIE_NAME: token})
     assert decode_session_id(request) is None
+
+
+# ---- _resolve_samesite ----
+
+PREVIEW_ORIGIN = "https://tabi-share-8ef6b--pr246-chore-xyz.web.app"
+
+
+@pytest.mark.parametrize(
+    ("environment", "origin", "expected"),
+    [
+        ("production", "https://tabishare.net", "lax"),
+        ("production", PREVIEW_ORIGIN, "lax"),
+        ("production", "https://evil.example", "lax"),
+        ("production", None, "lax"),
+        ("staging", "https://st.tabishare.net", "lax"),
+        ("staging", PREVIEW_ORIGIN, "none"),
+        ("staging", "http://localhost:5173", "none"),
+        ("staging", "https://evil.example", "lax"),
+        # トップレベルのナビゲーションには Origin が付かない
+        ("staging", None, "lax"),
+        ("development", "http://localhost:5173", "lax"),
+    ],
+)
+def test_resolve_samesite(
+    monkeypatch: pytest.MonkeyPatch,
+    environment: str,
+    origin: str | None,
+    expected: str,
+):
+    monkeypatch.setattr(settings, "environment", environment)
+    request = _make_request()
+    if origin is not None:
+        request.scope["headers"].append((b"origin", origin.encode()))
+    assert _resolve_samesite(request) == expected
 
 
 # ---- require_trip_access (DB 統合) ----

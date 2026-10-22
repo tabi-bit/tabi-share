@@ -85,9 +85,9 @@ export const PairReceiveDialog = ({ open, onOpenChange }: PairReceiveDialogProps
       console.error('failed to redeem pairing code', err);
       setStatus('error');
       if (isAxiosError(err) && err.response?.status === 404) {
-        setErrorMessage('コードが見つかりません。もう一度確認してください。');
-      } else if (isAxiosError(err) && err.response?.status === 403) {
-        setErrorMessage('コードの有効期限が切れているか、既に使用されています。');
+        setErrorMessage('コードが無効です。入力ミスや有効期限 (5 分) 切れがないか確認してください。');
+      } else if (isAxiosError(err) && err.response?.status === 429) {
+        setErrorMessage('試行回数が多すぎます。1 分ほど待ってから再度お試しください。');
       } else {
         setErrorMessage('認証に失敗しました。時間をおいて再度お試しください。');
       }

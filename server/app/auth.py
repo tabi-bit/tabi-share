@@ -52,12 +52,7 @@ _SESSION_ID_BYTES = 24
 
 
 def decode_session_id(request: Request) -> str | None:
-    """Cookie の JWT から session_id を取り出す。Cookie 無・不正・期限切れなら None。
-
-    移行ミドルウェアからも参照できるよう public。旧形式 (payload に trip_ids
-    フィールドがある) の JWT はここで None 扱いになるため、ミドルウェア側で
-    別途 payload を検査して移行する必要がある。
-    """
+    """Cookie の JWT から session_id を取り出す。Cookie 無・不正・期限切れなら None。"""
     raw = request.cookies.get(SESSION_COOKIE_NAME)
     if not raw:
         return None
@@ -70,25 +65,28 @@ def decode_session_id(request: Request) -> str | None:
     return sid if isinstance(sid, str) else None
 
 
-def _resolve_samesite(request: Request, is_production: bool) -> Literal["lax", "none"]:
+def _resolve_samesite(request: Request) -> Literal["lax", "none"]:
     """リクエスト元 Origin から適切な SameSite 値を選ぶ。
 
-    - `st.tabishare.net` 等 `tabishare.net` 配下からのアクセスは same-site なので `Lax`。
-      Safari の ITP でも first-party 扱いとなり cookie が送信される。
-    - Firebase Hosting プレビュー (`*.web.app`) 等の cross-site origin からは `None` に
-      フォールバックする (`Secure` 前提)。Safari は third-party として扱いブロックするが、
+    - 既定は `Lax`。本番のフロントエンド (`tabishare.net`) は API と same-site なので常にこれ。
+    - ステージングでは、許可済みの cross-site Origin (Firebase Hosting プレビュー、ローカル開発)
+      のときだけ `None` にする (`Secure` 前提)。Safari は third-party として扱いブロックするが、
       Chrome ではプレビュー動作確認が可能になる。
+    - 許可していない Origin や Origin なしで `None` を返すと、第三者サイトからのリクエストで
+      Cookie を送らせたり上書きさせたりできてしまう (issue #242)。
     """
-    if not is_production:
+    settings = get_settings()
+    if settings.environment in ("development", "production"):
         return "lax"
-    origin_host = urlparse(request.headers.get("origin", "")).hostname or ""
+    origin = request.headers.get("origin", "")
+    origin_host = urlparse(origin).hostname or ""
     if origin_host == "tabishare.net" or origin_host.endswith(".tabishare.net"):
         return "lax"
-    return "none"
+    return "none" if settings.is_allowed_origin(origin) else "lax"
 
 
 def encode_session_jwt(session_id: str) -> str:
-    """session_id を含む新形式 JWT を生成する。移行ミドルウェアと共用するため public。"""
+    """session_id を含む JWT を生成する。"""
     settings = get_settings()
     payload = {
         "session_id": session_id,
@@ -113,7 +111,7 @@ def set_session_cookie(request: Request, response: Response, session_id: str) ->
         max_age=settings.cookie_max_age,
         httponly=True,
         secure=is_production,
-        samesite=_resolve_samesite(request, is_production),
+        samesite=_resolve_samesite(request),
         path="/",
     )
 

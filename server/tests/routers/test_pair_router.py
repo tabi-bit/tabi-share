@@ -16,6 +16,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import SESSION_COOKIE_NAME, generate_session_id
 from app.models import User, UserSession
+from app.routers import pair
+from app.routers.pair import _document_id
 from tests.conftest import _make_session_cookie_value
 
 
@@ -84,8 +86,27 @@ class _FakeFirestoreClient:
     def store(self) -> dict[str, dict[str, Any]]:
         return self._store
 
+    def seed(self, code: str, **fields: Any) -> None:
+        """コードに対応するドキュメントを置く。既定は有効期限内・未使用"""
+        self._store[_document_id(code)] = {
+            "firebase_uid": "uid-seeded",
+            "expires_at": datetime.now(UTC) + timedelta(minutes=5),
+            "consumed_at": None,
+            **fields,
+        }
+
+    def doc_for(self, code: str) -> dict[str, Any]:
+        return self._store[_document_id(code)]
+
 
 # ---- Test fixtures ----
+
+
+@pytest.fixture(autouse=True)
+def reset_rate_limiters(monkeypatch: pytest.MonkeyPatch) -> None:
+    """レート制限の回数はモジュール単位で持つため、テストごとに空にする"""
+    monkeypatch.setattr(pair._create_limiter, "_hits", {})
+    monkeypatch.setattr(pair._redeem_limiter, "_hits", {})
 
 
 @pytest.fixture
@@ -100,11 +121,11 @@ def fake_firestore(monkeypatch: pytest.MonkeyPatch) -> _FakeFirestoreClient:
     return client
 
 
-def _mock_create_custom_token(
-    monkeypatch: pytest.MonkeyPatch, token: bytes = b"fake-custom-token"
-) -> None:
+def _mock_create_custom_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    """uid ごとに異なる token を返し、どの user の token かをテストで判別できるようにする"""
+
     def _fake_create(uid: str, *args: Any, **kwargs: Any) -> bytes:
-        return token
+        return f"token-for-{uid}".encode()
 
     monkeypatch.setattr("app.routers.pair.fb_auth.create_custom_token", _fake_create)
 
@@ -144,25 +165,40 @@ async def _make_anon_session(db: AsyncSession) -> UserSession:
 async def test_create_pairing_returns_code_for_authed_user(
     client: AsyncClient,
     db_session: AsyncSession,
-    monkeypatch: pytest.MonkeyPatch,
     fake_firestore: _FakeFirestoreClient,
 ):
-    """firebase_uid あり user は 8 桁コードを受け取り、Firestore に Custom Token が保存される"""
-    _mock_create_custom_token(monkeypatch, token=b"custom-token-abc")
+    """firebase_uid あり user は 8 桁コードを受け取り、Firestore に uid が保存される"""
     session = await _make_authed_session(db_session, firebase_uid="uid-abc")
     client.cookies.set(SESSION_COOKIE_NAME, _make_session_cookie_value(session.id))
 
     r = await client.post("/pair/create")
     assert r.status_code == 200
-    body = r.json()
-    code = body["code"]
+    code = r.json()["code"]
     assert len(code) == 8
     # 生成コードは大文字 + 数字のみ (紛らわしい文字は除外)
     assert all(c in "23456789ABCDEFGHJKMNPQRSTUVWXYZ" for c in code)
 
-    stored = fake_firestore.store[code]
-    assert stored["custom_token"] == "custom-token-abc"
+    stored = fake_firestore.doc_for(code)
+    assert stored["firebase_uid"] == "uid-abc"
     assert stored["consumed_at"] is None
+
+
+async def test_create_pairing_does_not_store_code_or_token(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    fake_firestore: _FakeFirestoreClient,
+):
+    """Firestore を読めても引き換えられないよう、コードもログイン用の token も置かない"""
+    session = await _make_authed_session(db_session, firebase_uid="uid-secret")
+    client.cookies.set(SESSION_COOKIE_NAME, _make_session_cookie_value(session.id))
+
+    r = await client.post("/pair/create")
+    code = r.json()["code"]
+
+    assert code not in fake_firestore.store
+    stored = fake_firestore.doc_for(code)
+    assert "custom_token" not in stored
+    assert code not in str(stored)
 
 
 async def test_create_pairing_retries_on_code_collision(
@@ -173,15 +209,10 @@ async def test_create_pairing_retries_on_code_collision(
 ):
     """コードが衝突したら採番し直し、既存ドキュメントは書き換えない。
 
-    set() だと衝突時に既存の未使用コードの custom_token を上書きしてしまい、
+    set() だと衝突時に既存の未使用コードの持ち主を上書きしてしまい、
     先のコードの持ち主が別 user として認証されうるため、create() + リトライにしている。
     """
-    _mock_create_custom_token(monkeypatch, token=b"new-token")
-    fake_firestore.store["AAAA2222"] = {
-        "custom_token": "existing-token",
-        "expires_at": datetime.now(UTC) + timedelta(minutes=5),
-        "consumed_at": None,
-    }
+    fake_firestore.seed("AAAA2222", firebase_uid="uid-existing")
     # 1 回目は既存コードと衝突させ、2 回目で空きコードを引かせる
     codes = iter(["AAAA2222", "BBBB3333"])
     monkeypatch.setattr("app.routers.pair._generate_code", lambda: next(codes))
@@ -192,19 +223,17 @@ async def test_create_pairing_retries_on_code_collision(
     r = await client.post("/pair/create")
     assert r.status_code == 200
     assert r.json()["code"] == "BBBB3333"
-    # 既存コードのトークンは無傷
-    assert fake_firestore.store["AAAA2222"]["custom_token"] == "existing-token"
-    assert fake_firestore.store["BBBB3333"]["custom_token"] == "new-token"
+    # 既存コードの持ち主は無傷
+    assert fake_firestore.doc_for("AAAA2222")["firebase_uid"] == "uid-existing"
+    assert fake_firestore.doc_for("BBBB3333")["firebase_uid"] == "uid-collision"
 
 
 async def test_create_pairing_forbidden_for_anonymous_session(
     client: AsyncClient,
     db_session: AsyncSession,
-    monkeypatch: pytest.MonkeyPatch,
     fake_firestore: _FakeFirestoreClient,
 ):
     """firebase_uid 無しの匿名 user は 403 (発行不可)"""
-    _mock_create_custom_token(monkeypatch)
     session = await _make_anon_session(db_session)
     client.cookies.set(SESSION_COOKIE_NAME, _make_session_cookie_value(session.id))
 
@@ -213,110 +242,115 @@ async def test_create_pairing_forbidden_for_anonymous_session(
     assert fake_firestore.store == {}
 
 
-async def test_create_pairing_firebase_error_returns_403(
+async def test_create_pairing_is_rate_limited(
     client: AsyncClient,
     db_session: AsyncSession,
-    monkeypatch: pytest.MonkeyPatch,
     fake_firestore: _FakeFirestoreClient,
 ):
-    _mock_create_custom_token_raises(monkeypatch, FirebaseError("unavailable", "boom"))
-    session = await _make_authed_session(db_session, firebase_uid="uid-broken")
+    session = await _make_authed_session(db_session, firebase_uid="uid-many")
     client.cookies.set(SESSION_COOKIE_NAME, _make_session_cookie_value(session.id))
 
-    r = await client.post("/pair/create")
-    assert r.status_code == 403
-
-
-async def test_create_pairing_value_error_returns_503(
-    client: AsyncClient,
-    db_session: AsyncSession,
-    monkeypatch: pytest.MonkeyPatch,
-    fake_firestore: _FakeFirestoreClient,
-):
-    """署名 SA credentials が使えないとき (ローカル ADC 等) は 503"""
-    _mock_create_custom_token_raises(monkeypatch, ValueError("no signing SA"))
-    session = await _make_authed_session(db_session, firebase_uid="uid-nosign")
-    client.cookies.set(SESSION_COOKIE_NAME, _make_session_cookie_value(session.id))
-
-    r = await client.post("/pair/create")
-    assert r.status_code == 503
+    statuses = [(await client.post("/pair/create")).status_code for _ in range(6)]
+    assert statuses == [200] * 5 + [429]
 
 
 # ---- /pair/redeem ----
 
 
-async def test_redeem_returns_custom_token(
-    client: AsyncClient, fake_firestore: _FakeFirestoreClient
+async def test_redeem_returns_custom_token_for_stored_user(
+    client: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+    fake_firestore: _FakeFirestoreClient,
 ):
-    """有効なコードは custom_token を返し、Firestore で consumed_at がセットされる"""
-    fake_firestore.store["A9K3P2Q7"] = {
-        "custom_token": "redeemed-token",
-        "expires_at": datetime.now(UTC) + timedelta(minutes=5),
-        "consumed_at": None,
-    }
+    """有効なコードは発行元 user の custom_token を返し、consumed_at がセットされる"""
+    _mock_create_custom_token(monkeypatch)
+    fake_firestore.seed("A9K3P2Q7", firebase_uid="uid-owner")
 
     r = await client.post("/pair/redeem", json={"code": "A9K3P2Q7"})
     assert r.status_code == 200
-    assert r.json() == {"custom_token": "redeemed-token"}
-    assert fake_firestore.store["A9K3P2Q7"]["consumed_at"] is not None
+    assert r.json() == {"custom_token": "token-for-uid-owner"}
+    assert fake_firestore.doc_for("A9K3P2Q7")["consumed_at"] is not None
 
 
 async def test_redeem_normalizes_input_code(
-    client: AsyncClient, fake_firestore: _FakeFirestoreClient
+    client: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+    fake_firestore: _FakeFirestoreClient,
 ):
     """小文字・空白・ハイフンを含む入力も同じコードとして扱う。
 
     UI は `A9K3-P2Q7` のように 4 桁ずつ区切って表示するため、画面の見た目通りに
     ハイフン込みで入力されるケースを必ず通す。
     """
-    fake_firestore.store["A9K3P2Q7"] = {
-        "custom_token": "normalized-token",
-        "expires_at": datetime.now(UTC) + timedelta(minutes=5),
-        "consumed_at": None,
-    }
+    _mock_create_custom_token(monkeypatch)
+    fake_firestore.seed("A9K3P2Q7", firebase_uid="uid-normalized")
 
     r = await client.post("/pair/redeem", json={"code": "  a9k3-p2q7 "})
     assert r.status_code == 200
-    assert r.json() == {"custom_token": "normalized-token"}
+    assert r.json() == {"custom_token": "token-for-uid-normalized"}
 
 
-async def test_redeem_blank_after_normalize_returns_404(
-    client: AsyncClient, fake_firestore: _FakeFirestoreClient
+@pytest.mark.parametrize(
+    ("code", "seed_fields"),
+    [
+        # 正規化後に空になる入力は Firestore に触れない (空 ID は SDK が受け付けないため)
+        ("---", None),
+        # コードは _CODE_ALPHABET (紛らわしい 0/1/I/L/O を除いた 31 文字) のみで構成される
+        ("ZZZZ9999", None),
+        ("EXPRD222", {"expires_at": datetime.now(UTC) - timedelta(seconds=1)}),
+        ("USED2222", {"consumed_at": datetime.now(UTC) - timedelta(seconds=10)}),
+    ],
+)
+async def test_redeem_invalid_codes_share_one_response(
+    client: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+    fake_firestore: _FakeFirestoreClient,
+    code: str,
+    seed_fields: dict[str, Any] | None,
 ):
-    """正規化後に空になる入力は Firestore に触れず 404 (空 ID は SDK が受け付けないため)"""
-    r = await client.post("/pair/redeem", json={"code": "---"})
+    """存在しない・期限切れ・使用済みを区別しない (総当たりの手がかりにさせない)"""
+    _mock_create_custom_token(monkeypatch)
+    if seed_fields is not None:
+        fake_firestore.seed(code, **seed_fields)
+
+    r = await client.post("/pair/redeem", json={"code": code})
     assert r.status_code == 404
+    assert r.json()["message"] == pair._INVALID_CODE_MESSAGE
 
 
-async def test_redeem_unknown_code_returns_404(
+async def test_redeem_signing_failure_returns_503(
+    client: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+    fake_firestore: _FakeFirestoreClient,
+):
+    """署名に失敗したら 503。コードは消費済みのため再発行してもらう"""
+    _mock_create_custom_token_raises(monkeypatch, FirebaseError("unavailable", "boom"))
+    fake_firestore.seed("SGNF2222")
+
+    r = await client.post("/pair/redeem", json={"code": "SGNF2222"})
+    assert r.status_code == 503
+    assert fake_firestore.doc_for("SGNF2222")["consumed_at"] is not None
+
+
+async def test_redeem_is_rate_limited_per_client_ip(
     client: AsyncClient, fake_firestore: _FakeFirestoreClient
 ):
-    # コードは _CODE_ALPHABET (紛らわしい 0/1/I/L/O を除いた 31 文字) のみで構成される
-    r = await client.post("/pair/redeem", json={"code": "ZZZZ9999"})
-    assert r.status_code == 404
+    """X-Forwarded-For の先頭 (クライアントが書ける部分) を変えても制限を回避できない"""
+    statuses = [
+        (
+            await client.post(
+                "/pair/redeem",
+                json={"code": "ZZZZ9999"},
+                headers={"x-forwarded-for": f"10.0.0.{i}, 203.0.113.1"},
+            )
+        ).status_code
+        for i in range(11)
+    ]
+    assert statuses == [404] * 10 + [429]
 
-
-async def test_redeem_expired_code_returns_403(
-    client: AsyncClient, fake_firestore: _FakeFirestoreClient
-):
-    fake_firestore.store["EXPRD222"] = {
-        "custom_token": "irrelevant",
-        "expires_at": datetime.now(UTC) - timedelta(seconds=1),
-        "consumed_at": None,
-    }
-
-    r = await client.post("/pair/redeem", json={"code": "EXPRD222"})
-    assert r.status_code == 403
-
-
-async def test_redeem_already_consumed_returns_403(
-    client: AsyncClient, fake_firestore: _FakeFirestoreClient
-):
-    fake_firestore.store["USED2222"] = {
-        "custom_token": "irrelevant",
-        "expires_at": datetime.now(UTC) + timedelta(minutes=5),
-        "consumed_at": datetime.now(UTC) - timedelta(seconds=10),
-    }
-
-    r = await client.post("/pair/redeem", json={"code": "USED2222"})
-    assert r.status_code == 403
+    other = await client.post(
+        "/pair/redeem",
+        json={"code": "ZZZZ9999"},
+        headers={"x-forwarded-for": "203.0.113.2"},
+    )
+    assert other.status_code == 404

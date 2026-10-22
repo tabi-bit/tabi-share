@@ -120,11 +120,17 @@ def _build_log_payload(
     total_ms: float,
     stats: RequestStats,
 ) -> dict[str, Any]:
+    # 生のパスは url_id (旅程を開く鍵そのもの) を含むためログに残さない (issue #242)。
+    # 代わりに数値の trip_id を記録する (アクセス権が無いと使えない)
+    path_params = {k: v for k, v in request.path_params.items() if k != "url_id"}
+    trip_id = getattr(request.state, "trip_id", None)
+    if trip_id is not None:
+        path_params["trip_id"] = str(trip_id)
     payload: dict[str, Any] = {
         "type": "request",
         "method": request.method,
-        "path": request.url.path,
         "route": _route_template(request),
+        "path_params": path_params,
         "status": status_code,
         "total_ms": round(total_ms, 2),
         "db_query_count": stats.db_query_count,

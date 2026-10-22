@@ -16,6 +16,21 @@
           "headers": [
             { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
           ]
+        },
+        {
+          "source": "**",
+          "headers": [
+            { "key": "X-Content-Type-Options", "value": "nosniff" },
+            { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+            {
+              "key": "Content-Security-Policy",
+              "value": "object-src 'none'; base-uri 'self'; frame-ancestors 'self'"
+            },
+            {
+              "key": "Content-Security-Policy-Report-Only",
+              "value": "default-src 'self'; script-src 'self' https://kit.fontawesome.com https://apis.google.com https://maps.googleapis.com https://www.googletagmanager.com https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://ka-f.fontawesome.com; font-src 'self' data: https://fonts.gstatic.com https://ka-f.fontawesome.com; img-src 'self' data: blob: https:; connect-src 'self' https://api.tabishare.net https://api.st.tabishare.net https://*.googleapis.com https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com https://ka-f.fontawesome.com https://maps.gstatic.com; frame-src 'self' https://walica.jp https://*.firebaseapp.com https://www.google.com; worker-src 'self' blob:"
+            }
+          ]
         }
       ]
     },
@@ -35,6 +50,21 @@
           "headers": [
             { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
           ]
+        },
+        {
+          "source": "**",
+          "headers": [
+            { "key": "X-Content-Type-Options", "value": "nosniff" },
+            { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+            {
+              "key": "Content-Security-Policy",
+              "value": "object-src 'none'; base-uri 'self'; frame-ancestors 'self'"
+            },
+            {
+              "key": "Content-Security-Policy-Report-Only",
+              "value": "default-src 'self'; script-src 'self' https://kit.fontawesome.com https://apis.google.com https://maps.googleapis.com https://www.googletagmanager.com https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://ka-f.fontawesome.com; font-src 'self' data: https://fonts.gstatic.com https://ka-f.fontawesome.com; img-src 'self' data: blob: https:; connect-src 'self' https://api.tabishare.net https://api.st.tabishare.net https://*.googleapis.com https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com https://ka-f.fontawesome.com https://maps.gstatic.com; frame-src 'self' https://walica.jp https://*.firebaseapp.com https://www.google.com; worker-src 'self' blob:"
+            }
+          ]
         }
       ]
     },
@@ -53,6 +83,21 @@
           "source": "/firebase-messaging-sw.js",
           "headers": [
             { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+          ]
+        },
+        {
+          "source": "**",
+          "headers": [
+            { "key": "X-Content-Type-Options", "value": "nosniff" },
+            { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+            {
+              "key": "Content-Security-Policy",
+              "value": "object-src 'none'; base-uri 'self'; frame-ancestors 'self'"
+            },
+            {
+              "key": "Content-Security-Policy-Report-Only",
+              "value": "default-src 'self'; script-src 'self' https://kit.fontawesome.com https://apis.google.com https://maps.googleapis.com https://www.googletagmanager.com https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://ka-f.fontawesome.com; font-src 'self' data: https://fonts.gstatic.com https://ka-f.fontawesome.com; img-src 'self' data: blob: https:; connect-src 'self' https://api.tabishare.net https://api.st.tabishare.net https://*.googleapis.com https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com https://ka-f.fontawesome.com https://maps.gstatic.com; frame-src 'self' https://walica.jp https://*.firebaseapp.com https://www.google.com; worker-src 'self' blob:"
+            }
           ]
         }
       ]

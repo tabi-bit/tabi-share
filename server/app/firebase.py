@@ -50,10 +50,8 @@ def init_firebase_admin() -> None:
     if firebase_admin._apps:
         return
 
-    if not settings.notifications_enabled:
-        logger.info("Firebase Admin SDK init skipped (NOTIFICATIONS_ENABLED=false)")
-        return
-
+    # 通知を止めても Google 認証 (/auth/link) と引き継ぎ (/pair/*) は Admin SDK を使うため、
+    # NOTIFICATIONS_ENABLED に関係なく初期化する。送信の有無は send_fcm 側で判定する
     options: dict[str, Any] = {}
     if settings.firebase_admin_sa_email:
         options["serviceAccountId"] = settings.firebase_admin_sa_email

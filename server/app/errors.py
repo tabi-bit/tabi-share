@@ -144,6 +144,29 @@ class InvalidParam(ErrorResponseException):
         self.description = description
 
 
+class TooManyRequests(ErrorResponseException):
+    """
+    リクエスト回数の上限を超えた場合のエラー
+
+    Attributes:
+      response_status (int): HTTP ステータスコード
+    """
+
+    response_status = status.HTTP_429_TOO_MANY_REQUESTS
+
+    def __init__(
+        self,
+        message: str = "リクエストが多すぎます。しばらく待ってから再度お試しください",
+        code: str = "too_many_requests",
+        detail: dict[str, Any] | None = None,
+        description: str = "",
+    ):
+        self.message = message
+        self.code = code
+        self.detail = detail
+        self.description = description
+
+
 async def error_response_exception_handler(
     request: Request, exc: Exception
 ) -> JSONResponse:

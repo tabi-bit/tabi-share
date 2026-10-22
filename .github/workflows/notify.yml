@@ -52,6 +52,7 @@ jobs:
 
           # Discord用に変換されたメンションを格納する変数
           DISCORD_MENTIONS=""
+          REGISTERED_MENTION_COUNT=0
 
           # コメント本文からメンションを検出
           DETECTED_MENTIONS=$(echo "$COMMENT_BODY" | grep -oE '@[a-zA-Z0-9_-]+' | tr '\n' ' ')
@@ -70,21 +71,31 @@ jobs:
 
             if [ -n "$discord_user_id" ]; then
               DISCORD_MENTIONS+="<@${discord_user_id}> "
+              REGISTERED_MENTION_COUNT=$((REGISTERED_MENTION_COUNT + 1))
             else
               DISCORD_MENTIONS+="${github_mention} (未登録) "
             fi
           done
 
+          # bot のコメントは import パス (@frontend 等) や bot 名もメンションとして拾うため、
+          # 登録済みメンバー宛てが無ければ通知しない
+          if [ "$REGISTERED_MENTION_COUNT" -eq 0 ]; then
+            echo "登録済みメンバーへのメンションがありません。Discord通知をスキップします。"
+            exit 0
+          fi
+
           DISCORD_MENTIONS=$(echo "$DISCORD_MENTIONS" | xargs)
 
-          printf -v MESSAGE "新しい%sでメンションがあります！\n\n**タイトル:** %s\n**作成者:** %s\n**メンション:** %s\n**URL:** %s\n\n**コメント内容:**\n%s" \
+          printf -v MESSAGE_HEADER "新しい%sでメンションがあります！\n\n**タイトル:** %s\n**作成者:** %s\n**メンション:** %s\n**URL:** %s\n\n**コメント内容:**\n" \
             "$NOTIFICATION_TYPE" \
             "$NOTIFICATION_TITLE" \
             "$NOTIFICATION_AUTHOR" \
             "$DISCORD_MENTIONS" \
-            "$NOTIFICATION_URL" \
-            "$FORMATTED_COMMENT_BODY"
+            "$NOTIFICATION_URL"
 
-          PAYLOAD=$(jq -n --arg msg "$MESSAGE" '{"content": $msg}')
+          # Discord は 2000 文字を超えるメッセージを 400 で拒否するため、本文を切り詰める
+          PAYLOAD=$(jq -n --arg header "$MESSAGE_HEADER" --arg body "$FORMATTED_COMMENT_BODY" '
+            ([1990 - ($header | length), 0] | max) as $room
+            | {"content": ($header + (if ($body | length) > $room then $body[0:([$room - 1, 0] | max)] + "…" else $body end))}')
 
-          curl -X POST -H "Content-Type: application/json" -d "$PAYLOAD" "$DISCORD_WEBHOOK_URL"
+          curl -sS --fail-with-body -X POST -H "Content-Type: application/json" -d "$PAYLOAD" "$DISCORD_WEBHOOK_URL"

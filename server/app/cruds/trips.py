@@ -33,20 +33,6 @@ async def create_trip(db: AsyncSession, trip: TripCreateIn, url_id: str) -> int:
     return db_trip.id
 
 
-async def find_trips(db: AsyncSession) -> list[Trip]:
-    """
-    すべての旅行プランを取得する関数
-
-    Args:
-        db (AsyncSession): 非同期データベースセッション
-
-    Returns:
-        list[Trip]: すべての旅行プラン
-    """
-    result = await db.execute(_trip_with_relations())
-    return list(result.scalars().all())
-
-
 async def get_trip(db: AsyncSession, trip_id: int) -> Trip | None:
     """
     特定の旅行プランを取得する関数

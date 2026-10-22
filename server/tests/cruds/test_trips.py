@@ -113,28 +113,6 @@ async def test_get_trip_by_url_id(db_session: AsyncSession):
 
 
 @pytest.mark.asyncio
-async def test_find_trips(db_session: AsyncSession):
-    """
-    find_trips()/正常系
-    """
-    # arrange
-    await trips_cruds.create_trip(
-        db_session, TripCreateIn(title="trip 1", detail="d1"), "url1"
-    )
-    await trips_cruds.create_trip(
-        db_session, TripCreateIn(title="trip 2", detail="d2"), "url2"
-    )
-
-    # act
-    trips = await trips_cruds.find_trips(db=db_session)
-
-    # assert
-    assert len(trips) == 2
-    assert trips[0].title == "trip 1"
-    assert trips[1].title == "trip 2"
-
-
-@pytest.mark.asyncio
 async def test_update_trip(db_session: AsyncSession):
     """
     update_trip()/正常系

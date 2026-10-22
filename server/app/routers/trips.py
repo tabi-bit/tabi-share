@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Request, Response
 from nanoid import generate
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import grant_trip_access, require_basic_auth, require_trip_access
+from app.auth import grant_trip_access, require_trip_access
 from app.cruds import trips as trips_cruds
 from app.db_connection import get_db_session
 from app.errors import NotFound
@@ -39,24 +39,6 @@ async def create_trip(
     await grant_trip_access(request, response, trip_id, db)
 
     return TripCreateOut(id=trip_id, url_id=url_id)
-
-
-@router.get(
-    "",
-    summary="旅行一覧取得",
-    operation_id="trips-list",
-    response_model=list[Trip],
-)
-async def list_trips(
-    _: Annotated[None, Depends(require_basic_auth)],
-    db: Annotated[AsyncSession, Depends(get_db_session)],
-) -> list[Trip]:
-    """
-    説明:
-
-    - すべての旅行プランを取得する
-    """
-    return await trips_cruds.find_trips(db=db)
 
 
 @router.get(

@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from app import models  # noqa: F401
 from app.config import get_settings
-from app.db_connection import Base
+from app.db_connection import Base, get_connect_args
 
 config = context.config
 
@@ -81,12 +81,11 @@ def do_run_migrations(connection: Connection) -> None:
 
 async def run_async_migrations() -> None:
     """非同期モードでマイグレーションを実行"""
-    connect_args = {"ssl": True} if settings.ssl_required else {}
     connectable = async_engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
-        connect_args=connect_args,
+        connect_args=get_connect_args(),
     )
 
     async with connectable.connect() as connection:

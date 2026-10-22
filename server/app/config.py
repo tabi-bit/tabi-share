@@ -4,17 +4,21 @@
 環境変数からの設定読み込みと型安全な管理を提供
 """
 
+import ssl
 from functools import lru_cache
+from pathlib import Path
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+SERVER_ROOT = Path(__file__).resolve().parent.parent
 
 
 class Settings(BaseSettings):
     """アプリケーション設定クラス"""
 
     # データベース設定
-    # Neon の DATABASE_URL 形式: postgresql://user:pass@host/dbname
+    # DATABASE_URL 形式: postgresql://user:pass@host:port/dbname?sslrootcert=<CA ファイル>
     # ローカル開発では個別の環境変数から構築
     database_url: str | None = None
     postgres_user: str | None = None
@@ -72,29 +76,42 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    @property
-    def ssl_required(self) -> bool:
-        """DATABASE_URL に sslmode=require が含まれる場合は SSL が必要"""
-        return bool(self.database_url and "sslmode=require" in self.database_url)
+    def get_database_ssl(self) -> ssl.SSLContext | None:
+        """DATABASE_URL 接続用の SSL 設定。証明書チェーンとホスト名を検証する (verify-full 相当)
+
+        sslrootcert (SERVER_ROOT からの相対パス) があればその CA で検証する。
+        Supabase の中間 CA は Key Usage 拡張を持たず、Python 3.13 既定の
+        VERIFY_X509_STRICT で拒否されるため、strict 検証だけを外す。
+        """
+        if not self.database_url:
+            return None
+        params = parse_qs(urlparse(self.database_url).query)
+        if "sslrootcert" not in params:
+            return ssl.create_default_context()
+        context = ssl.create_default_context(
+            cafile=str(SERVER_ROOT / params["sslrootcert"][0])
+        )
+        context.verify_flags &= ~ssl.VERIFY_X509_STRICT
+        return context
 
     def get_database_url(self) -> str:
         """
         データベースURLを取得
 
         優先順位:
-        1. DATABASE_URL 環境変数 (Neon用)
+        1. DATABASE_URL 環境変数 (stg / prod)
         2. 個別の POSTGRES_* 環境変数から構築 (ローカル開発用)
         """
         if self.database_url:
             # asyncpg 用に URL スキームを変換
             url = self.database_url.replace("postgresql://", "postgresql+asyncpg://")
-            # asyncpg がサポートしないクエリパラメータを除去
-            # (sslmode, channel_binding は connect_args で設定する)
+            # libpq 専用のパラメータは asyncpg が受け付けないため除去する
+            # (SSL は get_database_ssl() で connect_args に渡す)
             parsed = urlparse(url)
             params = {
                 k: v[0]
                 for k, v in parse_qs(parsed.query).items()
-                if k not in ("sslmode", "channel_binding")
+                if k not in ("sslmode", "sslrootcert", "channel_binding")
             }
             return urlunparse(parsed._replace(query=urlencode(params)))
 

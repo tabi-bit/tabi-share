@@ -1,7 +1,7 @@
 import { createStore } from 'jotai';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { isOfflineAtom } from '@/atoms/network';
-import { checkNetworkStatus, evaluateNetwork, thresholdManager } from './networkDetection';
+import { checkNetworkStatus, evaluateNetwork, RESUME_RETRY_DELAY_MS, thresholdManager } from './networkDetection';
 
 const mockNavigatorOnLine = (value: boolean) => {
   vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(value);
@@ -185,5 +185,99 @@ describe('evaluateNetwork', () => {
 
     expect(store.get(isOfflineAtom)).toBe(false);
     expect(thresholdManager.get()).toBe(5000); // 変更なし
+  });
+});
+
+describe('evaluateNetwork - タブ復帰時の誤検知対策 (allowRetry)', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.useFakeTimers();
+    thresholdManager.reset();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('allowRetry: 初回 rtt-exceeded でも再判定でオンラインなら誤オフライン判定しない', async () => {
+    mockNavigatorOnLine(true);
+    // 1回目: しきい値超過で返らない / 2回目: 即成功
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    fetchSpy.mockReturnValueOnce(
+      new Promise(() => {
+        // 1回目は解決しない（しきい値タイマーが先に発火）
+      })
+    );
+    fetchSpy.mockResolvedValueOnce(new Response('ok', { status: 200 }));
+    // 2回目の RTT 計測用
+    vi.spyOn(performance, 'now').mockReturnValue(0);
+
+    const store = createStore();
+    store.set(isOfflineAtom, false); // 以前はオンライン
+
+    const promise = evaluateNetwork(store, { allowRetry: true });
+    // 1回目の RTT しきい値(5000ms) 超過 → 待機(1500ms) → 2回目チェック
+    await vi.advanceTimersByTimeAsync(5000 + 1500);
+    await promise;
+
+    expect(store.get(isOfflineAtom)).toBe(false); // 誤オフラインにならない
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it('allowRetry: 再判定でも失敗すれば最終的にオフライン判定する', async () => {
+    mockNavigatorOnLine(true);
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new TypeError('Network error'));
+
+    const store = createStore();
+    store.set(isOfflineAtom, false);
+
+    const promise = evaluateNetwork(store, { allowRetry: true });
+    await vi.advanceTimersByTimeAsync(RESUME_RETRY_DELAY_MS);
+    await promise;
+
+    expect(store.get(isOfflineAtom)).toBe(true);
+  });
+
+  it('allowRetry: 待機中に navigator.onLine が false になればオフライン確定', async () => {
+    const onLineSpy = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true);
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new TypeError('Network error'));
+
+    const store = createStore();
+    store.set(isOfflineAtom, false);
+
+    const promise = evaluateNetwork(store, { allowRetry: true });
+    // 待機中にブラウザがオフライン確定
+    onLineSpy.mockReturnValue(false);
+    await vi.advanceTimersByTimeAsync(RESUME_RETRY_DELAY_MS);
+    await promise;
+
+    expect(store.get(isOfflineAtom)).toBe(true);
+  });
+
+  it('allowRetry: navigator-offline は再判定せず即オフライン', async () => {
+    mockNavigatorOnLine(false);
+    const fetchSpy = mockFetchSuccess();
+
+    const store = createStore();
+    store.set(isOfflineAtom, false);
+
+    await evaluateNetwork(store, { allowRetry: true });
+
+    expect(store.get(isOfflineAtom)).toBe(true);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('allowRetry: 以前オフラインだった場合は再判定しない（オフライン→オフライン）', async () => {
+    mockNavigatorOnLine(true);
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    fetchSpy.mockRejectedValue(new TypeError('Network error'));
+
+    const store = createStore();
+    store.set(isOfflineAtom, true); // 以前からオフライン
+
+    await evaluateNetwork(store, { allowRetry: true });
+
+    expect(store.get(isOfflineAtom)).toBe(true);
+    expect(fetchSpy).toHaveBeenCalledTimes(1); // 再判定なし（1回のみ）
   });
 });

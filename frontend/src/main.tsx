@@ -42,13 +42,13 @@ window.addEventListener('offline', () => {
 
 window.addEventListener('online', () => {
   if (jotaiStore.get(isForcedOfflineAtom)) return;
-  evaluateNetwork(jotaiStore);
+  evaluateNetwork(jotaiStore, { allowRetry: true });
 });
 
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') {
     if (jotaiStore.get(isForcedOfflineAtom)) return;
-    evaluateNetwork(jotaiStore);
+    evaluateNetwork(jotaiStore, { allowRetry: true });
   }
 });
 
